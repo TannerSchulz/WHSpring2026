@@ -21,7 +21,7 @@ app.add_middleware(
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY")
 ai_client = None
 
-if ANTHROPIC_API_KEY:
+if ANTHROPIC_API_KEY and ANTHROPIC_API_KEY.startswith("sk-ant-"):
     import anthropic
     ai_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
@@ -191,6 +191,232 @@ async def assess_mortgage(data: MortgageInput):
         **result,
         dti_ratio=dti,
         ltv_ratio=ltv,
+        demo_mode=True,
+    )
+
+
+class StepHelpInput(BaseModel):
+    step_text: str
+    user_profile: dict
+
+
+class ChecklistItem(BaseModel):
+    task: str
+    detail: str
+
+
+class StepHelpResponse(BaseModel):
+    title: str
+    explanation: str
+    checklist: list[ChecklistItem]
+    documents: list[str]
+    tips: list[str]
+    timeline: str
+    demo_mode: bool = False
+
+
+STEP_HELP_FALLBACKS = {
+    "credit": {
+        "title": "Improving Your Credit Score",
+        "explanation": "Your credit score is one of the most important factors lenders consider. It reflects your history of repaying debts on time. Raising it even 20–40 points can unlock better loan terms and lower rates.",
+        "checklist": [
+            {"task": "Pay down revolving balances (credit cards)", "detail": "Aim to use less than 30% of your available credit limit on each card. This is called your credit utilization ratio and has a big impact on your score."},
+            {"task": "Dispute errors on your credit report", "detail": "Get your free report at annualcreditreport.com and review all three bureaus (Equifax, Experian, TransUnion) for inaccurate accounts or late payments."},
+            {"task": "Avoid opening new credit accounts", "detail": "Each hard inquiry can drop your score a few points. Hold off on applying for new credit cards, car loans, or any new lines of credit."},
+            {"task": "Keep old accounts open", "detail": "The length of your credit history matters. Don't close old credit cards even if you're not using them."},
+            {"task": "Set up autopay for all bills", "detail": "A single missed payment can drop your score significantly. Automate at least the minimum payment on all accounts."},
+        ],
+        "documents": [
+            "Credit reports from all 3 bureaus (annualcreditreport.com — free once/year)",
+            "List of all open accounts and balances",
+            "Any dispute letters if correcting errors",
+        ],
+        "tips": [
+            "Credit Karma and Experian offer free score monitoring with weekly updates.",
+            "Becoming an authorized user on a family member's old, low-balance card can boost your score.",
+            "Paying down the card closest to its limit first gives the quickest score bump.",
+        ],
+        "timeline": "3–6 months for meaningful improvement; 12+ months for major gains",
+    },
+    "dti": {
+        "title": "Lowering Your Debt-to-Income Ratio",
+        "explanation": "Your DTI ratio is your total monthly debt payments divided by your gross monthly income. Lenders use it to measure how much of your income is already committed to debt. Getting it below 43% (ideally below 36%) significantly improves your chances.",
+        "checklist": [
+            {"task": "List all monthly debt payments", "detail": "Include car loans, student loans, credit card minimums, personal loans, and any other recurring debt obligations."},
+            {"task": "Pay off the smallest debt balance first", "detail": "The 'snowball' method eliminates a monthly payment entirely, immediately lowering your DTI. Even removing a $200/mo payment makes a real difference."},
+            {"task": "Avoid taking on new debt", "detail": "No new car loans, furniture financing, or credit card balances until after you close on your home."},
+            {"task": "Explore income-driven repayment for student loans", "detail": "If student loans are dragging up your DTI, an IDR plan can reduce your required monthly payment, lowering your DTI ratio."},
+            {"task": "Look for ways to increase your income", "detail": "A part-time job, freelance work, or raise can improve your DTI from the income side. Document all income sources carefully."},
+        ],
+        "documents": [
+            "Most recent statements for all loans and credit cards",
+            "Pay stubs (last 30 days)",
+            "Any side income documentation (1099s, bank statements)",
+        ],
+        "tips": [
+            "Lenders use your minimum required payment, not what you actually pay, to calculate DTI.",
+            "If you're close to the limit, ask your lender if they offer a higher DTI allowance with compensating factors like a large down payment or high credit score.",
+            "A co-borrower with income but low debt can also help improve your combined DTI.",
+        ],
+        "timeline": "3–12 months depending on debt amounts; paying off one loan can help immediately",
+    },
+    "employment": {
+        "title": "Building a Stronger Employment History",
+        "explanation": "Lenders want to see stable, consistent income. Two years of employment history at the same job (or in the same field) shows you're a reliable borrower. Job-hopping within the same industry is usually fine — gaps or industry changes are what raise flags.",
+        "checklist": [
+            {"task": "Stay at your current job through the home purchase", "detail": "Changing jobs during the mortgage process — even for more money — can delay or kill your approval. Wait until after closing."},
+            {"task": "Document your employment history accurately", "detail": "Gather W-2s and pay stubs for the past 2 years. Self-employed borrowers need 2 years of tax returns showing consistent income."},
+            {"task": "Get an offer letter if you recently changed jobs", "detail": "If you switched jobs in the last 6 months, a formal offer letter with your salary and start date can help your case, especially if it's in the same field."},
+            {"task": "Track any gaps in employment", "detail": "Be prepared to explain gaps. Lenders will ask. School, medical leave, or caregiving are generally acceptable explanations with documentation."},
+        ],
+        "documents": [
+            "W-2s for the past 2 years",
+            "Pay stubs (most recent 30 days)",
+            "Employment offer letter (if recently hired)",
+            "2 years of federal tax returns (self-employed)",
+            "Explanation letter for any employment gaps",
+        ],
+        "tips": [
+            "Switching from hourly to salaried (or vice versa) in the same company is usually fine.",
+            "Commission or bonus income typically requires a 2-year average to be counted by lenders.",
+            "FHA loans can be more flexible with shorter employment history than conventional loans.",
+        ],
+        "timeline": "You may need to wait until you accumulate 2 years at your current position",
+    },
+    "down": {
+        "title": "Saving a Larger Down Payment",
+        "explanation": "Your down payment directly affects your loan amount, monthly payment, and whether you'll need to pay private mortgage insurance (PMI). Saving more upfront is one of the most reliable ways to improve your mortgage terms.",
+        "checklist": [
+            {"task": "Open a dedicated high-yield savings account", "detail": "Keep your down payment savings separate so you're not tempted to spend it. Many online banks offer 4–5% APY."},
+            {"task": "Automate monthly transfers to your savings account", "detail": "Set a recurring transfer on payday so the money moves before you can spend it. Even $300–500/month adds up."},
+            {"task": "Research down payment assistance programs", "detail": "Many states and counties offer grants or low-interest loans for first-time buyers. Utah has several — search the HUD website for local programs."},
+            {"task": "Look into gift funds", "detail": "Most loan programs allow down payment funds to be gifted by a family member. You'll need a gift letter stating the money doesn't need to be repaid."},
+            {"task": "Calculate how much you actually need", "detail": "Remember to budget for closing costs (2–5% of loan amount) in addition to your down payment. Underestimating is a common mistake."},
+        ],
+        "documents": [
+            "Bank statements (last 2–3 months) showing savings",
+            "Gift letter (if receiving funds from family)",
+            "Down payment assistance program documentation (if applicable)",
+        ],
+        "tips": [
+            "20% down eliminates PMI, but you don't need it — many loans accept 3–5%.",
+            "Some employers offer homebuyer assistance as a benefit — worth asking HR.",
+            "A Roth IRA allows first-time homebuyers to withdraw up to $10,000 penalty-free for a home purchase.",
+        ],
+        "timeline": "Varies — calculate your gap and divide by your monthly savings rate",
+    },
+    "pre-approv": {
+        "title": "Getting Pre-Approved for a Mortgage",
+        "explanation": "A pre-approval letter shows sellers you're a serious buyer and tells you exactly how much you can borrow. It's different from pre-qualification — pre-approval involves verifying your actual income and credit, making it much more meaningful.",
+        "checklist": [
+            {"task": "Gather your financial documents", "detail": "Lenders will ask for proof of income, assets, employment, and identity. Having these ready speeds up the process significantly."},
+            {"task": "Apply with 2–3 lenders", "detail": "Shopping multiple lenders lets you compare rates and fees. Multiple mortgage inquiries within 14–45 days typically count as a single credit hit."},
+            {"task": "Review the Loan Estimate carefully", "detail": "Each lender must give you a Loan Estimate within 3 days. Compare APR (not just rate), closing costs, and loan terms side by side."},
+            {"task": "Understand your pre-approval limits", "detail": "Just because you're approved for a certain amount doesn't mean you should borrow that much. Make sure the monthly payment fits your actual budget."},
+            {"task": "Don't make major financial changes after pre-approval", "detail": "No new credit, big purchases, or job changes. Lenders may re-pull your credit right before closing."},
+        ],
+        "documents": [
+            "Government-issued photo ID",
+            "Social Security number",
+            "W-2s for the past 2 years",
+            "Pay stubs (last 30 days)",
+            "Federal tax returns (last 2 years)",
+            "Bank and investment account statements (last 2–3 months)",
+            "List of all monthly debt payments",
+        ],
+        "tips": [
+            "Credit unions and community banks often offer more competitive rates than big banks.",
+            "A mortgage broker shops multiple lenders for you — useful if your situation is non-standard.",
+            "Pre-approval letters typically expire in 60–90 days.",
+        ],
+        "timeline": "1–5 business days once documents are submitted",
+    },
+}
+
+
+def fallback_step_help(step_text: str) -> dict:
+    step_lower = step_text.lower()
+    for keyword, data in STEP_HELP_FALLBACKS.items():
+        if keyword in step_lower:
+            return data
+    # Generic fallback
+    return {
+        "title": "Taking This Next Step",
+        "explanation": f"Here's a guide to help you work through this step: {step_text}",
+        "checklist": [
+            {"task": "Research what's required", "detail": "Start by understanding exactly what lenders look for regarding this specific factor."},
+            {"task": "Consult a HUD-approved housing counselor", "detail": "Free counseling is available at hud.gov/counseling — they can give you personalized, unbiased advice."},
+            {"task": "Set a measurable goal and timeline", "detail": "Break this step into concrete monthly targets so you can track progress."},
+        ],
+        "documents": ["Any statements or paperwork relevant to this area of your finances"],
+        "tips": ["Don't hesitate to ask your lender directly what they need to see for this specific factor."],
+        "timeline": "Varies — speak with a mortgage advisor for a personalized estimate",
+    }
+
+
+@app.post("/api/step-help", response_model=StepHelpResponse)
+async def step_help(data: StepHelpInput):
+    if ai_client:
+        profile = data.user_profile
+        prompt = f"""You are a helpful mortgage advisor. A user is working on this specific next step for their mortgage journey:
+
+STEP: {data.step_text}
+
+USER PROFILE:
+- Annual Income: ${profile.get('annual_income', 0):,.0f}
+- Monthly Debts: ${profile.get('monthly_debts', 0):,.0f}
+- Credit Score: {profile.get('credit_score', 'unknown')}
+- Down Payment: ${profile.get('down_payment', 0):,.0f}
+- Home Price: ${profile.get('home_price', 0):,.0f}
+- Employment: {profile.get('employment_years', 0)} years
+- Loan Type: {profile.get('loan_type', 'conventional').upper()}
+
+Give them personalized, actionable help to complete this step. Respond in this EXACT JSON format (no markdown):
+{{
+  "title": "Short title for this help guide",
+  "explanation": "2-3 sentences explaining why this step matters and how it applies to their specific situation",
+  "checklist": [
+    {{"task": "Concrete action item", "detail": "1-2 sentences of specific guidance"}},
+    {{"task": "...", "detail": "..."}},
+    {{"task": "...", "detail": "..."}},
+    {{"task": "...", "detail": "..."}},
+    {{"task": "...", "detail": "..."}}
+  ],
+  "documents": ["document or resource 1", "document or resource 2", "document or resource 3"],
+  "tips": ["insider tip 1", "insider tip 2", "insider tip 3"],
+  "timeline": "realistic timeframe to complete this step"
+}}
+
+Be specific to their numbers. If their credit score is 590, mention 590. Make it feel personalized."""
+
+        try:
+            message = ai_client.messages.create(
+                model="claude-opus-4-6",
+                max_tokens=1500,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            content = message.content[0].text.strip()
+            ai_response = json.loads(content)
+            return StepHelpResponse(
+                title=ai_response["title"],
+                explanation=ai_response["explanation"],
+                checklist=[ChecklistItem(**item) for item in ai_response["checklist"]],
+                documents=ai_response["documents"],
+                tips=ai_response["tips"],
+                timeline=ai_response["timeline"],
+                demo_mode=False,
+            )
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=str(e))
+
+    result = fallback_step_help(data.step_text)
+    return StepHelpResponse(
+        title=result["title"],
+        explanation=result["explanation"],
+        checklist=[ChecklistItem(**item) for item in result["checklist"]],
+        documents=result["documents"],
+        tips=result["tips"],
+        timeline=result["timeline"],
         demo_mode=True,
     )
 

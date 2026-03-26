@@ -18,3 +18,19 @@ export interface AssessmentResponse {
   ltv_ratio: number
   demo_mode: boolean
 }
+
+export interface ChecklistItem {
+  task: string
+  detail: string
+  done?: boolean
+}
+
+export interface StepHelpResponse {
+  title: string
+  explanation: string
+  checklist: ChecklistItem[]
+  documents: string[]
+  tips: string[]
+  timeline: string
+  demo_mode: boolean
+}
