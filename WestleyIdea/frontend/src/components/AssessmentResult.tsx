@@ -4,9 +4,10 @@ interface Props {
   result: AssessmentResponse
   onRestart: () => void
   onGetStarted: () => void
+  onOpenCalculator: () => void
 }
 
-export default function AssessmentResult({ result, onRestart, onGetStarted }: Props) {
+export default function AssessmentResult({ result, onRestart, onGetStarted, onOpenCalculator }: Props) {
   const q = result.qualifies
 
   return (
@@ -17,7 +18,7 @@ export default function AssessmentResult({ result, onRestart, onGetStarted }: Pr
         </div>
 
         <div className="result-title">
-          {q ? 'Great news — you\'re on track!' : 'Not quite there yet, but you can get there.'}
+          {q ? "Great news — you're on track!" : "Not quite there yet, but you can get there."}
         </div>
 
         {result.demo_mode && (
@@ -39,7 +40,7 @@ export default function AssessmentResult({ result, onRestart, onGetStarted }: Pr
           </div>
           {result.estimated_monthly_payment != null && (
             <div className="metric">
-              <div className="metric-label">Est. Payment</div>
+              <div className="metric-label">Est. P&amp;I Payment</div>
               <div className="metric-value">${result.estimated_monthly_payment.toLocaleString()}/mo</div>
             </div>
           )}
@@ -61,15 +62,37 @@ export default function AssessmentResult({ result, onRestart, onGetStarted }: Pr
           {result.action_steps.map((s, i) => <li key={i}>{s}</li>)}
         </ol>
 
-        {/* CTA */}
-        <div className="help-cta">
-          <div className="help-cta-text">
-            <span className="help-cta-heading">Need help getting started?</span>
-            <span className="help-cta-sub">We'll walk you through each step and set up your profile.</span>
+        {/* Two-path CTA section */}
+        <div className="result-cta-section">
+          <div className="result-cta-heading">What would you like to do next?</div>
+
+          <div className="result-cta-cards">
+            {/* Planning path */}
+            <button className="result-cta-card plan-card" onClick={onGetStarted}>
+              <div className="result-cta-icon">📋</div>
+              <div className="result-cta-content">
+                <div className="result-cta-title">Build My Action Plan</div>
+                <div className="result-cta-desc">
+                  {q
+                    ? 'Get a step-by-step checklist to move from pre-approval to closing.'
+                    : 'Get a personalized roadmap with steps to fix each issue and qualify sooner.'}
+                </div>
+              </div>
+              <div className="result-cta-arrow">→</div>
+            </button>
+
+            {/* Calculator path */}
+            <button className="result-cta-card calc-card" onClick={onOpenCalculator}>
+              <div className="result-cta-icon">🧮</div>
+              <div className="result-cta-content">
+                <div className="result-cta-title">Calculate My Payment</div>
+                <div className="result-cta-desc">
+                  Run the full mortgage calculator — true monthly cost, rate comparisons, rent vs. buy analysis, and more.
+                </div>
+              </div>
+              <div className="result-cta-arrow">→</div>
+            </button>
           </div>
-          <button className="btn-get-started" onClick={onGetStarted}>
-            We Can Help! →
-          </button>
         </div>
 
         <button className="btn-restart" onClick={onRestart}>

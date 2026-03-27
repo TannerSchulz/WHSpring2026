@@ -10,6 +10,18 @@ load_dotenv()
 
 app = FastAPI(title="MortgageAI API")
 
+
+def extract_json(text: str) -> dict:
+    """Parse JSON from Claude's response, stripping any markdown code fences."""
+    text = text.strip()
+    # Strip ```json ... ``` or ``` ... ``` wrappers
+    if text.startswith("```"):
+        text = text.split("```", 2)[1]
+        if text.startswith("json"):
+            text = text[4:]
+        text = text.rsplit("```", 1)[0].strip()
+    return json.loads(text)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:3000"],
@@ -170,7 +182,7 @@ async def assess_mortgage(data: MortgageInput):
                 messages=[{"role": "user", "content": build_prompt(data, loan_amount, dti, ltv)}],
             )
             content = message.content[0].text.strip()
-            ai_response = json.loads(content)
+            ai_response = extract_json(content)
 
             return AssessmentResponse(
                 qualifies=ai_response["qualifies"],
@@ -182,10 +194,13 @@ async def assess_mortgage(data: MortgageInput):
                 ltv_ratio=ltv,
                 demo_mode=False,
             )
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+        except Exception:
+            # AI response parsing failed — fall back to rule-based
+            pass
 
-    # No API key — use rule-based fallback
+    # No API key or AI parse failure — use rule-based fallback
+
+    # No API key or AI parse failure — use rule-based fallback
     result = rule_based_assessment(data)
     return AssessmentResponse(
         **result,
@@ -396,7 +411,7 @@ Be specific to their numbers. If their credit score is 590, mention 590. Make it
                 messages=[{"role": "user", "content": prompt}],
             )
             content = message.content[0].text.strip()
-            ai_response = json.loads(content)
+            ai_response = extract_json(content)
             return StepHelpResponse(
                 title=ai_response["title"],
                 explanation=ai_response["explanation"],
@@ -406,8 +421,8 @@ Be specific to their numbers. If their credit score is 590, mention 590. Make it
                 timeline=ai_response["timeline"],
                 demo_mode=False,
             )
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=str(e))
+        except Exception:
+            pass  # fall through to rule-based fallback below
 
     result = fallback_step_help(data.step_text)
     return StepHelpResponse(
