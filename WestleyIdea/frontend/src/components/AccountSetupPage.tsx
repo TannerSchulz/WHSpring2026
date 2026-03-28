@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { MortgageInput, AssessmentResponse } from '../types'
+import { getStateResources, US_STATES } from '../data/localResources'
 
 interface Props {
   result: AssessmentResponse
@@ -17,10 +18,11 @@ interface GoalsForm {
   firstHome: boolean
   workingWithAgent: boolean
   topConcern: string
+  stateCode: string
 }
 
 const defaultGoals: GoalsForm = {
-  timeline: '', firstHome: true, workingWithAgent: false, topConcern: '',
+  timeline: '', firstHome: true, workingWithAgent: false, topConcern: '', stateCode: '',
 }
 
 const TIMELINE_OPTIONS = [
@@ -79,10 +81,11 @@ function getSupportResources(step: string): SupportResource[] {
 
 interface ActionStep { text: string; done: boolean; expanded: boolean }
 
-function ActionPlanView({ result, onBack }: { result: AssessmentResponse; onBack: () => void }) {
+function ActionPlanView({ result, stateCode, onBack }: { result: AssessmentResponse; stateCode: string; onBack: () => void }) {
   const [steps, setSteps] = useState<ActionStep[]>(
     result.action_steps.map(text => ({ text, done: false, expanded: false }))
   )
+  const localRes = getStateResources(stateCode)
   const [showAccountForm, setShowAccountForm] = useState(false)
   const [accountForm, setAccountForm] = useState({ name: '', email: '' })
   const [accountCreated, setAccountCreated] = useState(false)
@@ -129,13 +132,16 @@ function ActionPlanView({ result, onBack }: { result: AssessmentResponse; onBack
       {/* Steps */}
       <div className="plan-steps">
         {steps.map((step, i) => (
-          <div key={i} className={`plan-step-card${step.done ? ' plan-step--done' : ''}`}>
+          <div key={i} className={`plan-step-card${step.done ? ' plan-step--done' : ''}${i === 0 ? ' plan-step-card--featured' : ''}`}>
             <div className="plan-step-top">
               <button className="plan-check-btn" onClick={() => toggleDone(i)}>
                 {step.done ? '✓' : ''}
               </button>
               <div className="plan-step-content">
-                <div className="plan-step-num">Step {i + 1}</div>
+                <div className="plan-step-num">
+                  Step {i + 1}
+                  {i === 0 && <span className="plan-step-badge">Start Here</span>}
+                </div>
                 <div className="plan-step-text">{step.text}</div>
               </div>
               <button className="plan-expand-btn" onClick={() => toggleExpand(i)}>
@@ -144,7 +150,96 @@ function ActionPlanView({ result, onBack }: { result: AssessmentResponse; onBack
             </div>
             {step.expanded && (
               <div className="plan-step-resources">
-                <div className="plan-resources-label">Ways we can support you</div>
+                {/* Step 1 gets expanded local resources */}
+                {i === 0 && (
+                  <div className="local-resources-section">
+                    <div className="local-res-heading">
+                      <span>📍</span>
+                      <span>Local Resources for {localRes.stateName}</span>
+                    </div>
+
+                    {/* Housing Authority */}
+                    <div className="local-res-block">
+                      <div className="local-res-block-title">🏛️ State Housing Authority</div>
+                      <div className="plan-resource-item local-res-highlight">
+                        <div className="plan-resource-header">
+                          <span className="plan-resource-name">{localRes.housingAuthority.name}</span>
+                          <a href={localRes.housingAuthority.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Visit Site →</a>
+                        </div>
+                        <p className="plan-resource-desc">{localRes.housingAuthority.description}</p>
+                      </div>
+                    </div>
+
+                    {/* First-Time Buyer Programs */}
+                    {localRes.firstTimeBuyerPrograms.length > 0 && (
+                      <div className="local-res-block">
+                        <div className="local-res-block-title">🏠 First-Time Buyer Programs</div>
+                        <div className="plan-resource-list">
+                          {localRes.firstTimeBuyerPrograms.map((res, ri) => (
+                            <div key={ri} className="plan-resource-item">
+                              <div className="plan-resource-header">
+                                <span className="plan-resource-name">{res.label}</span>
+                                <a href={res.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Learn More →</a>
+                              </div>
+                              <p className="plan-resource-desc">{res.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Down Payment Assistance */}
+                    {localRes.downPaymentAssistance.length > 0 && (
+                      <div className="local-res-block">
+                        <div className="local-res-block-title">💰 Down Payment Assistance</div>
+                        <div className="plan-resource-list">
+                          {localRes.downPaymentAssistance.map((res, ri) => (
+                            <div key={ri} className="plan-resource-item">
+                              <div className="plan-resource-header">
+                                <span className="plan-resource-name">{res.label}</span>
+                                <a href={res.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Apply →</a>
+                              </div>
+                              <p className="plan-resource-desc">{res.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* HUD Counseling */}
+                    <div className="local-res-block">
+                      <div className="local-res-block-title">🤝 Free HUD Counseling in {localRes.stateName}</div>
+                      <div className="plan-resource-item">
+                        <div className="plan-resource-header">
+                          <span className="plan-resource-name">HUD-Approved Housing Counselors</span>
+                          <a href={localRes.hudCounselingUrl} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Find Near Me →</a>
+                        </div>
+                        <p className="plan-resource-desc">Get free, unbiased mortgage advice from a certified counselor in {localRes.stateName}. No cost, no sales pitch.</p>
+                      </div>
+                    </div>
+
+                    {/* Additional Resources */}
+                    {localRes.additionalResources.length > 0 && (
+                      <div className="local-res-block">
+                        <div className="local-res-block-title">📚 More Local Resources</div>
+                        <div className="plan-resource-list">
+                          {localRes.additionalResources.map((res, ri) => (
+                            <div key={ri} className="plan-resource-item">
+                              <div className="plan-resource-header">
+                                <span className="plan-resource-name">{res.label}</span>
+                                <a href={res.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Visit →</a>
+                              </div>
+                              <p className="plan-resource-desc">{res.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Generic support resources for all steps */}
+                <div className="plan-resources-label">{i === 0 ? 'General support resources' : 'Ways we can support you'}</div>
                 <div className="plan-resource-list">
                   {getSupportResources(step.text).map((res, ri) => (
                     <div key={ri} className="plan-resource-item">
@@ -269,7 +364,7 @@ export default function AccountSetupPage({ result, userProfile, onBack }: Props)
   }
 
   if (submitted) {
-    return <ActionPlanView result={result} onBack={onBack} />
+    return <ActionPlanView result={result} stateCode={goals.stateCode} onBack={onBack} />
   }
 
   return (
@@ -316,6 +411,19 @@ export default function AccountSetupPage({ result, userProfile, onBack }: Props)
                 <button type="button" className={`setup-toggle${goals.workingWithAgent ? ' selected' : ''}`} onClick={() => set('workingWithAgent', true)}>Yes</button>
                 <button type="button" className={`setup-toggle${!goals.workingWithAgent ? ' selected' : ''}`} onClick={() => set('workingWithAgent', false)}>Not yet</button>
               </div>
+            </div>
+            <div className="setup-field" style={{ marginTop: '1.25rem' }}>
+              <label>What state are you buying in? <span style={{ fontWeight: 400, opacity: 0.7 }}>(for local resources)</span></label>
+              <select
+                className="setup-select"
+                value={goals.stateCode}
+                onChange={e => set('stateCode', e.target.value)}
+              >
+                <option value="">— Select your state —</option>
+                {US_STATES.map(s => (
+                  <option key={s.code} value={s.code}>{s.name}</option>
+                ))}
+              </select>
             </div>
           </div>
         )}
