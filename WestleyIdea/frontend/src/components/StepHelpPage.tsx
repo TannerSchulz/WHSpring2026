@@ -44,7 +44,7 @@ export default function StepHelpPage({ stepText, userProfile, onBack }: Props) {
       {!data && !error && (
         <div className="help-loading">
           <div className="help-loading-ring" />
-          <p>Building your personalized guide...</p>
+          <p>Building your guide...</p>
         </div>
       )}
 

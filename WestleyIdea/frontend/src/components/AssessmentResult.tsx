@@ -18,7 +18,7 @@ export default function AssessmentResult({ result, onRestart, onGetStarted, onOp
         </div>
 
         <div className="result-title">
-          {q ? "Great news — you're on track!" : "Not quite there yet, but you can get there."}
+          {q ? "You're on track." : "Not there yet — here's what to fix."}
         </div>
 
         {result.demo_mode && (
@@ -64,7 +64,7 @@ export default function AssessmentResult({ result, onRestart, onGetStarted, onOp
 
         {/* Two-path CTA section */}
         <div className="result-cta-section">
-          <div className="result-cta-heading">What would you like to do next?</div>
+          <div className="result-cta-heading">What's next?</div>
 
           <div className="result-cta-cards">
             {/* Planning path */}
@@ -74,8 +74,8 @@ export default function AssessmentResult({ result, onRestart, onGetStarted, onOp
                 <div className="result-cta-title">Build My Action Plan</div>
                 <div className="result-cta-desc">
                   {q
-                    ? 'Get a step-by-step checklist to move from pre-approval to closing.'
-                    : 'Get a personalized roadmap with steps to fix each issue and qualify sooner.'}
+                    ? 'Step-by-step checklist from pre-approval to closing.'
+                    : 'Personalized roadmap to fix each issue and qualify sooner.'}
                 </div>
               </div>
               <div className="result-cta-arrow">→</div>
@@ -87,7 +87,7 @@ export default function AssessmentResult({ result, onRestart, onGetStarted, onOp
               <div className="result-cta-content">
                 <div className="result-cta-title">Calculate My Payment</div>
                 <div className="result-cta-desc">
-                  Run the full mortgage calculator — true monthly cost, rate comparisons, rent vs. buy analysis, and more.
+                  Monthly cost, rate comparisons, and rent vs. buy.
                 </div>
               </div>
               <div className="result-cta-arrow">→</div>

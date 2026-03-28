@@ -138,7 +138,7 @@ def rule_based_assessment(data: MortgageInput) -> dict:
 
 
 def build_prompt(data: MortgageInput, loan_amount: float, dti: float, ltv: float) -> str:
-    return f"""You are a helpful mortgage advisor AI. Analyze this mortgage application and provide a clear, friendly assessment.
+    return f"""You are a mortgage advisor AI. Analyze this application and give a direct, concise assessment.
 
 APPLICANT FINANCIAL PROFILE:
 - Annual Income: ${data.annual_income:,.0f}
@@ -161,13 +161,13 @@ QUALIFICATION GUIDELINES BY LOAN TYPE:
 Please respond in this EXACT JSON format (no markdown, just raw JSON):
 {{
   "qualifies": true or false,
-  "summary": "2-3 sentence friendly summary of their situation",
-  "details": ["detail point 1", "detail point 2", "detail point 3"],
-  "action_steps": ["step 1", "step 2", "step 3"],
+  "summary": "1-2 sentences max. Be direct. Bold key numbers like **DTI: {dti:.1f}%** using markdown.",
+  "details": ["short detail — bold the key number or factor", "short detail", "short detail"],
+  "action_steps": ["short, actionable step — start with a verb", "step 2", "step 3"],
   "estimated_monthly_payment": estimated monthly P&I payment as a number or null
 }}
 
-Be encouraging but honest. If they don't qualify, focus on actionable steps they can take."""
+Be direct and brief. Bold the most important numbers. If they don't qualify, lead with the biggest issue first."""
 
 
 @app.post("/api/assess", response_model=AssessmentResponse)
@@ -232,117 +232,114 @@ class StepHelpResponse(BaseModel):
 
 STEP_HELP_FALLBACKS = {
     "credit": {
-        "title": "Improving Your Credit Score",
-        "explanation": "Your credit score is one of the most important factors lenders consider. It reflects your history of repaying debts on time. Raising it even 20–40 points can unlock better loan terms and lower rates.",
+        "title": "Boost Your Credit Score",
+        "explanation": "**Credit score** is the #1 factor lenders check — raising it 20–40 points can unlock better rates.",
         "checklist": [
-            {"task": "Pay down revolving balances (credit cards)", "detail": "Aim to use less than 30% of your available credit limit on each card. This is called your credit utilization ratio and has a big impact on your score."},
-            {"task": "Dispute errors on your credit report", "detail": "Get your free report at annualcreditreport.com and review all three bureaus (Equifax, Experian, TransUnion) for inaccurate accounts or late payments."},
-            {"task": "Avoid opening new credit accounts", "detail": "Each hard inquiry can drop your score a few points. Hold off on applying for new credit cards, car loans, or any new lines of credit."},
-            {"task": "Keep old accounts open", "detail": "The length of your credit history matters. Don't close old credit cards even if you're not using them."},
-            {"task": "Set up autopay for all bills", "detail": "A single missed payment can drop your score significantly. Automate at least the minimum payment on all accounts."},
+            {"task": "Pay down credit card balances", "detail": "Keep utilization **below 30%** on each card — this has the biggest impact."},
+            {"task": "Dispute errors on your report", "detail": "Check all 3 bureaus at **annualcreditreport.com** for mistakes."},
+            {"task": "Don't open new credit accounts", "detail": "Each hard inquiry drops your score — hold off until after closing."},
+            {"task": "Keep old accounts open", "detail": "Credit history length matters — don't close old cards."},
+            {"task": "Set up autopay", "detail": "One missed payment can hurt badly — automate at least the minimum."},
         ],
         "documents": [
-            "Credit reports from all 3 bureaus (annualcreditreport.com — free once/year)",
-            "List of all open accounts and balances",
-            "Any dispute letters if correcting errors",
+            "Credit reports from all 3 bureaus (annualcreditreport.com — free)",
+            "List of open accounts and balances",
+            "Dispute letters (if correcting errors)",
         ],
         "tips": [
-            "Credit Karma and Experian offer free score monitoring with weekly updates.",
-            "Becoming an authorized user on a family member's old, low-balance card can boost your score.",
-            "Paying down the card closest to its limit first gives the quickest score bump.",
+            "**Credit Karma** gives free weekly score updates.",
+            "Becoming an authorized user on a family member's old card can boost your score fast.",
+            "Pay down the card **closest to its limit** first for the quickest gain.",
         ],
-        "timeline": "3–6 months for meaningful improvement; 12+ months for major gains",
+        "timeline": "3–6 months for meaningful improvement",
     },
     "dti": {
-        "title": "Lowering Your Debt-to-Income Ratio",
-        "explanation": "Your DTI ratio is your total monthly debt payments divided by your gross monthly income. Lenders use it to measure how much of your income is already committed to debt. Getting it below 43% (ideally below 36%) significantly improves your chances.",
+        "title": "Lower Your DTI Ratio",
+        "explanation": "Lenders want your DTI **below 43%** — eliminate even one monthly payment to make a real impact.",
         "checklist": [
-            {"task": "List all monthly debt payments", "detail": "Include car loans, student loans, credit card minimums, personal loans, and any other recurring debt obligations."},
-            {"task": "Pay off the smallest debt balance first", "detail": "The 'snowball' method eliminates a monthly payment entirely, immediately lowering your DTI. Even removing a $200/mo payment makes a real difference."},
-            {"task": "Avoid taking on new debt", "detail": "No new car loans, furniture financing, or credit card balances until after you close on your home."},
-            {"task": "Explore income-driven repayment for student loans", "detail": "If student loans are dragging up your DTI, an IDR plan can reduce your required monthly payment, lowering your DTI ratio."},
-            {"task": "Look for ways to increase your income", "detail": "A part-time job, freelance work, or raise can improve your DTI from the income side. Document all income sources carefully."},
+            {"task": "List all monthly debt payments", "detail": "Include car loans, student loans, credit card minimums, and any recurring obligations."},
+            {"task": "Pay off the smallest debt first", "detail": "The snowball method removes a payment entirely — even **$200/mo** matters."},
+            {"task": "Take on no new debt", "detail": "No car loans or credit card balances until after closing."},
+            {"task": "Explore income-driven repayment for student loans", "detail": "An IDR plan can cut your required monthly payment and lower your DTI."},
+            {"task": "Increase your income", "detail": "Freelance or part-time income helps — document all sources."},
         ],
         "documents": [
-            "Most recent statements for all loans and credit cards",
+            "Statements for all loans and credit cards",
             "Pay stubs (last 30 days)",
-            "Any side income documentation (1099s, bank statements)",
+            "Side income documentation (1099s, bank statements)",
         ],
         "tips": [
-            "Lenders use your minimum required payment, not what you actually pay, to calculate DTI.",
-            "If you're close to the limit, ask your lender if they offer a higher DTI allowance with compensating factors like a large down payment or high credit score.",
-            "A co-borrower with income but low debt can also help improve your combined DTI.",
+            "Lenders use your **minimum required payment**, not what you actually pay.",
+            "A **large down payment** can sometimes offset a high DTI — ask your lender.",
+            "A co-borrower with low debt can improve your combined DTI.",
         ],
-        "timeline": "3–12 months depending on debt amounts; paying off one loan can help immediately",
+        "timeline": "3–12 months; paying off one loan can help immediately",
     },
     "employment": {
-        "title": "Building a Stronger Employment History",
-        "explanation": "Lenders want to see stable, consistent income. Two years of employment history at the same job (or in the same field) shows you're a reliable borrower. Job-hopping within the same industry is usually fine — gaps or industry changes are what raise flags.",
+        "title": "Strengthen Employment History",
+        "explanation": "Lenders want **2 years** of stable employment — gaps or industry changes raise flags.",
         "checklist": [
-            {"task": "Stay at your current job through the home purchase", "detail": "Changing jobs during the mortgage process — even for more money — can delay or kill your approval. Wait until after closing."},
-            {"task": "Document your employment history accurately", "detail": "Gather W-2s and pay stubs for the past 2 years. Self-employed borrowers need 2 years of tax returns showing consistent income."},
-            {"task": "Get an offer letter if you recently changed jobs", "detail": "If you switched jobs in the last 6 months, a formal offer letter with your salary and start date can help your case, especially if it's in the same field."},
-            {"task": "Track any gaps in employment", "detail": "Be prepared to explain gaps. Lenders will ask. School, medical leave, or caregiving are generally acceptable explanations with documentation."},
+            {"task": "Stay at your current job until closing", "detail": "Changing jobs during the process — even for more pay — can kill your approval."},
+            {"task": "Document your employment history", "detail": "Gather **W-2s and pay stubs** for the past 2 years."},
+            {"task": "Get an offer letter if you recently switched jobs", "detail": "A formal offer letter with salary and start date helps, especially in the same field."},
+            {"task": "Be ready to explain any employment gaps", "detail": "School, medical leave, or caregiving are acceptable — have documentation ready."},
         ],
         "documents": [
-            "W-2s for the past 2 years",
-            "Pay stubs (most recent 30 days)",
+            "W-2s (past 2 years)",
+            "Pay stubs (last 30 days)",
             "Employment offer letter (if recently hired)",
-            "2 years of federal tax returns (self-employed)",
-            "Explanation letter for any employment gaps",
+            "2 years of tax returns (self-employed)",
         ],
         "tips": [
-            "Switching from hourly to salaried (or vice versa) in the same company is usually fine.",
-            "Commission or bonus income typically requires a 2-year average to be counted by lenders.",
-            "FHA loans can be more flexible with shorter employment history than conventional loans.",
+            "Job changes **within the same industry** are generally fine.",
+            "**Commission/bonus income** needs a 2-year average to count.",
+            "**FHA loans** are more flexible with shorter employment history.",
         ],
-        "timeline": "You may need to wait until you accumulate 2 years at your current position",
+        "timeline": "May require up to 2 years at your current position",
     },
     "down": {
-        "title": "Saving a Larger Down Payment",
-        "explanation": "Your down payment directly affects your loan amount, monthly payment, and whether you'll need to pay private mortgage insurance (PMI). Saving more upfront is one of the most reliable ways to improve your mortgage terms.",
+        "title": "Save a Larger Down Payment",
+        "explanation": "More down = lower monthly payment and no **PMI** — but many loans accept as little as 3–5%.",
         "checklist": [
-            {"task": "Open a dedicated high-yield savings account", "detail": "Keep your down payment savings separate so you're not tempted to spend it. Many online banks offer 4–5% APY."},
-            {"task": "Automate monthly transfers to your savings account", "detail": "Set a recurring transfer on payday so the money moves before you can spend it. Even $300–500/month adds up."},
-            {"task": "Research down payment assistance programs", "detail": "Many states and counties offer grants or low-interest loans for first-time buyers. Utah has several — search the HUD website for local programs."},
-            {"task": "Look into gift funds", "detail": "Most loan programs allow down payment funds to be gifted by a family member. You'll need a gift letter stating the money doesn't need to be repaid."},
-            {"task": "Calculate how much you actually need", "detail": "Remember to budget for closing costs (2–5% of loan amount) in addition to your down payment. Underestimating is a common mistake."},
+            {"task": "Open a high-yield savings account", "detail": "Keep savings separate — many online banks offer **4–5% APY**."},
+            {"task": "Automate monthly transfers", "detail": "Move money on payday before you can spend it — even **$300–500/mo** adds up."},
+            {"task": "Research down payment assistance programs", "detail": "Many states offer grants for first-time buyers — check **hud.gov**."},
+            {"task": "Look into gift funds", "detail": "Family can gift your down payment — you'll need a gift letter."},
+            {"task": "Budget for closing costs too", "detail": "Closing costs run **2–5% of the loan** — don't forget them."},
         ],
         "documents": [
-            "Bank statements (last 2–3 months) showing savings",
-            "Gift letter (if receiving funds from family)",
-            "Down payment assistance program documentation (if applicable)",
+            "Bank statements (last 2–3 months)",
+            "Gift letter (if using family funds)",
+            "Down payment assistance paperwork (if applicable)",
         ],
         "tips": [
-            "20% down eliminates PMI, but you don't need it — many loans accept 3–5%.",
-            "Some employers offer homebuyer assistance as a benefit — worth asking HR.",
-            "A Roth IRA allows first-time homebuyers to withdraw up to $10,000 penalty-free for a home purchase.",
+            "**20% down** eliminates PMI, but it's not required.",
+            "Ask HR — some employers offer **homebuyer assistance** as a benefit.",
+            "First-time buyers can withdraw up to **$10,000 from a Roth IRA** penalty-free.",
         ],
-        "timeline": "Varies — calculate your gap and divide by your monthly savings rate",
+        "timeline": "Varies — divide your savings gap by your monthly savings rate",
     },
     "pre-approv": {
-        "title": "Getting Pre-Approved for a Mortgage",
-        "explanation": "A pre-approval letter shows sellers you're a serious buyer and tells you exactly how much you can borrow. It's different from pre-qualification — pre-approval involves verifying your actual income and credit, making it much more meaningful.",
+        "title": "Get Pre-Approved",
+        "explanation": "Pre-approval shows sellers you're serious and tells you **exactly how much you can borrow**.",
         "checklist": [
-            {"task": "Gather your financial documents", "detail": "Lenders will ask for proof of income, assets, employment, and identity. Having these ready speeds up the process significantly."},
-            {"task": "Apply with 2–3 lenders", "detail": "Shopping multiple lenders lets you compare rates and fees. Multiple mortgage inquiries within 14–45 days typically count as a single credit hit."},
-            {"task": "Review the Loan Estimate carefully", "detail": "Each lender must give you a Loan Estimate within 3 days. Compare APR (not just rate), closing costs, and loan terms side by side."},
-            {"task": "Understand your pre-approval limits", "detail": "Just because you're approved for a certain amount doesn't mean you should borrow that much. Make sure the monthly payment fits your actual budget."},
-            {"task": "Don't make major financial changes after pre-approval", "detail": "No new credit, big purchases, or job changes. Lenders may re-pull your credit right before closing."},
+            {"task": "Gather your financial documents", "detail": "Have income, assets, employment, and ID ready — this speeds things up significantly."},
+            {"task": "Apply with 2–3 lenders", "detail": "Multiple inquiries within **14–45 days** count as one credit hit — shop around."},
+            {"task": "Compare Loan Estimates side by side", "detail": "Look at **APR** (not just rate) and closing costs — not just the interest rate."},
+            {"task": "Don't borrow your maximum", "detail": "Approval for a large amount doesn't mean you should take it — stick to your budget."},
+            {"task": "Make no major financial changes after pre-approval", "detail": "No new credit or big purchases — lenders may re-check right before closing."},
         ],
         "documents": [
             "Government-issued photo ID",
-            "Social Security number",
-            "W-2s for the past 2 years",
+            "W-2s (past 2 years)",
             "Pay stubs (last 30 days)",
-            "Federal tax returns (last 2 years)",
-            "Bank and investment account statements (last 2–3 months)",
-            "List of all monthly debt payments",
+            "Tax returns (last 2 years)",
+            "Bank statements (last 2–3 months)",
         ],
         "tips": [
-            "Credit unions and community banks often offer more competitive rates than big banks.",
-            "A mortgage broker shops multiple lenders for you — useful if your situation is non-standard.",
-            "Pre-approval letters typically expire in 60–90 days.",
+            "**Credit unions** often beat big bank rates.",
+            "A **mortgage broker** shops multiple lenders for you.",
+            "Pre-approval letters expire in **60–90 days**.",
         ],
         "timeline": "1–5 business days once documents are submitted",
     },
@@ -386,23 +383,23 @@ USER PROFILE:
 - Employment: {profile.get('employment_years', 0)} years
 - Loan Type: {profile.get('loan_type', 'conventional').upper()}
 
-Give them personalized, actionable help to complete this step. Respond in this EXACT JSON format (no markdown):
+Give them concise, personalized help. Be direct — no fluff. Respond in this EXACT JSON format (no markdown):
 {{
-  "title": "Short title for this help guide",
-  "explanation": "2-3 sentences explaining why this step matters and how it applies to their specific situation",
+  "title": "Short title (4-6 words)",
+  "explanation": "1 sentence. State the key fact and why it matters to them. Bold the most important number like **score: 590**.",
   "checklist": [
-    {{"task": "Concrete action item", "detail": "1-2 sentences of specific guidance"}},
+    {{"task": "Action item (start with a verb)", "detail": "1 sentence of specific guidance. Bold key numbers."}},
     {{"task": "...", "detail": "..."}},
     {{"task": "...", "detail": "..."}},
     {{"task": "...", "detail": "..."}},
     {{"task": "...", "detail": "..."}}
   ],
-  "documents": ["document or resource 1", "document or resource 2", "document or resource 3"],
-  "tips": ["insider tip 1", "insider tip 2", "insider tip 3"],
-  "timeline": "realistic timeframe to complete this step"
+  "documents": ["document 1", "document 2", "document 3"],
+  "tips": ["short tip — bold the key point", "tip 2", "tip 3"],
+  "timeline": "X–Y months" (keep it brief)
 }}
 
-Be specific to their numbers. If their credit score is 590, mention 590. Make it feel personalized."""
+Use their exact numbers. Bold the most critical figures. Keep every field as short as possible."""
 
         try:
             message = ai_client.messages.create(

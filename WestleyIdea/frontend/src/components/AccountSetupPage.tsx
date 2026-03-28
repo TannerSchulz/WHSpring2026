@@ -108,7 +108,7 @@ function ActionPlanView({ result, onBack }: { result: AssessmentResponse; onBack
         <div className="plan-welcome-icon">🗺️</div>
         <div>
           <h2 className="plan-welcome-title">Your Mortgage Action Plan</h2>
-          <p className="plan-welcome-sub">Work through these steps at your own pace. Expand each one for tools and resources.</p>
+          <p className="plan-welcome-sub">Expand each step for tools and resources.</p>
         </div>
       </div>
 
@@ -122,7 +122,7 @@ function ActionPlanView({ result, onBack }: { result: AssessmentResponse; onBack
           <div className="plan-progress-fill" style={{ width: `${(doneCount / steps.length) * 100}%` }} />
         </div>
         {doneCount === steps.length && (
-          <div className="plan-all-done">🏆 You've completed all your steps! Consider getting pre-approved next.</div>
+          <div className="plan-all-done">🏆 All done! Time to get pre-approved.</div>
         )}
       </div>
 
@@ -171,7 +171,7 @@ function ActionPlanView({ result, onBack }: { result: AssessmentResponse; onBack
           <span className="plan-support-icon">🏛️</span>
           <div>
             <div className="plan-support-title">Free HUD Counseling</div>
-            <div className="plan-support-desc">Speak with a certified, unbiased mortgage advisor at no cost.</div>
+            <div className="plan-support-desc">Free, certified mortgage advice.</div>
           </div>
           <a href="https://www.hud.gov/counseling" target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Find One →</a>
         </div>
@@ -179,7 +179,7 @@ function ActionPlanView({ result, onBack }: { result: AssessmentResponse; onBack
           <span className="plan-support-icon">📞</span>
           <div>
             <div className="plan-support-title">CFPB Helpline</div>
-            <div className="plan-support-desc">Call 1-855-411-2372 for free mortgage questions, Mon–Fri 8am–8pm ET.</div>
+            <div className="plan-support-desc">**1-855-411-2372** — free mortgage help, Mon–Fri 8am–8pm ET.</div>
           </div>
         </div>
       </div>
@@ -192,8 +192,8 @@ function ActionPlanView({ result, onBack }: { result: AssessmentResponse; onBack
               <div className="account-cta-left">
                 <div className="account-cta-icon">🔔</div>
                 <div>
-                  <div className="account-cta-title">Want to track your progress?</div>
-                  <div className="account-cta-desc">Create a free account to save your plan, get reminders, and access useful tools as you work through each step.</div>
+                  <div className="account-cta-title">Track your progress</div>
+                  <div className="account-cta-desc">Save your plan and get reminders as you work through each step.</div>
                 </div>
               </div>
               <button className="btn-create-account" onClick={() => setShowAccountForm(true)}>
@@ -278,7 +278,7 @@ export default function AccountSetupPage({ result, userProfile, onBack }: Props)
 
       <div className="setup-header">
         <h1 className="setup-title">Build your mortgage plan</h1>
-        <p className="setup-subtitle">Answer two quick questions and we'll create your personalized roadmap.</p>
+        <p className="setup-subtitle">Two quick questions, then your personalized roadmap.</p>
       </div>
 
       <div className="setup-steps-indicator">
