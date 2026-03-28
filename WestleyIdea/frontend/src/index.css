@@ -1291,23 +1291,23 @@ body::after {
   min-width: 0;
 }
 
-/* Current step header card */
-.plan-step-header {
-  background: rgba(255,255,255,0.97);
+/* ── Step focus card (left panel) ─────────────────────────────── */
+.step-focus-card {
+  background: #ffffff;
   border-radius: var(--radius);
-  padding: 1.5rem;
-  box-shadow: var(--shadow-sm);
-  animation: fadeUp 0.35s ease both;
+  padding: 1.75rem;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.12);
+  animation: fadeUp 0.3s ease both;
 }
 
-.plan-step-label-row {
+.step-focus-meta {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.85rem;
 }
 
-.plan-step-label {
+.step-focus-label {
   font-size: 0.72rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -1315,86 +1315,218 @@ body::after {
   color: var(--primary);
 }
 
-.plan-step-title {
-  font-size: 1.25rem;
+.step-focus-badge {
+  font-size: 0.68rem;
   font-weight: 700;
-  color: var(--gray-900);
-  line-height: 1.4;
-  margin-bottom: 1.1rem;
+  padding: 0.18rem 0.55rem;
+  border-radius: 20px;
+}
+.step-focus-badge--start { background: rgba(99,102,241,0.12); color: var(--primary-dark); }
+.step-focus-badge--done  { background: rgba(16,185,129,0.12); color: #059669; }
+
+.step-focus-text {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.45;
+  margin: 0 0 1.5rem;
 }
 
-.plan-step-actions {
+.step-focus-footer {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
+  border-top: 1px solid #f3f4f6;
+  padding-top: 1.1rem;
 }
 
-.plan-mark-btn {
-  padding: 0.55rem 1.15rem;
+.step-mark-btn {
+  padding: 0.55rem 1.1rem;
   border-radius: var(--radius-sm);
   font-size: 0.85rem;
   font-weight: 700;
   cursor: pointer;
-  border: 2px solid var(--success);
+  border: 2px solid #10b981;
   background: rgba(16,185,129,0.08);
-  color: var(--success);
-  transition: all 0.2s;
+  color: #059669;
+  transition: all 0.18s;
 }
-.plan-mark-btn:hover { background: rgba(16,185,129,0.16); }
-.plan-mark-btn--done {
-  border-color: var(--gray-300);
+.step-mark-btn:hover { background: rgba(16,185,129,0.18); }
+.step-mark-btn--undo {
+  border-color: #d1d5db;
   background: transparent;
-  color: var(--gray-500);
+  color: #6b7280;
 }
-.plan-mark-btn--done:hover { border-color: var(--gray-400); color: var(--gray-600); }
+.step-mark-btn--undo:hover { border-color: #9ca3af; color: #374151; }
 
-.plan-nav-btns {
-  display: flex;
-  gap: 0.4rem;
-  margin-left: auto;
-}
+.step-nav-btns { display: flex; gap: 0.4rem; margin-left: auto; }
 
-.plan-nav-btn {
+.step-nav-btn {
   padding: 0.5rem 0.9rem;
   border-radius: var(--radius-sm);
-  border: 2px solid var(--gray-200);
+  border: 2px solid #e5e7eb;
   background: transparent;
-  color: var(--gray-600);
+  color: #6b7280;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.18s;
 }
-.plan-nav-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
-.plan-nav-btn:disabled { opacity: 0.35; cursor: default; }
-.plan-nav-btn--next {
+.step-nav-btn:hover:not(:disabled) { border-color: var(--primary); color: var(--primary); }
+.step-nav-btn:disabled { opacity: 0.3; cursor: default; }
+.step-nav-btn--fwd {
   background: var(--primary);
   border-color: var(--primary);
-  color: white;
+  color: #fff;
 }
-.plan-nav-btn--next:hover:not(:disabled) { background: var(--primary-dark); border-color: var(--primary-dark); color: white; }
+.step-nav-btn--fwd:hover:not(:disabled) { background: var(--primary-dark); border-color: var(--primary-dark); }
 
-/* Resources section on white card bg */
-.plan-resources-section {
-  background: rgba(255,255,255,0.97);
+/* ── Resource rows card ────────────────────────────────────────── */
+.step-resources-card {
+  background: #ffffff;
   border-radius: var(--radius);
-  padding: 1.25rem;
-  box-shadow: var(--shadow-sm);
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 2px 16px rgba(0,0,0,0.12);
+  animation: fadeUp 0.35s ease both;
 }
 
-/* All-done celebration */
+.step-resources-heading {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: #9ca3af;
+  margin-bottom: 0.85rem;
+}
+
+.step-resource-rows { display: flex; flex-direction: column; }
+
+.step-resource-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+.step-resource-row:last-child { border-bottom: none; padding-bottom: 0; }
+.step-resource-row:first-child { padding-top: 0; }
+
+.step-resource-icon { font-size: 1.1rem; flex-shrink: 0; width: 1.4rem; text-align: center; }
+
+.step-resource-label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #1f2937;
+  flex: 1;
+  min-width: 0;
+}
+
+.step-resource-link {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: rgba(99,102,241,0.08);
+  border-radius: 20px;
+  padding: 0.2rem 0.6rem;
+  text-decoration: none;
+  transition: background 0.15s;
+}
+.step-resource-link:hover { background: rgba(99,102,241,0.16); }
+
+.step-resource-note {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* ── Save CTA ──────────────────────────────────────────────────── */
+.plan-save-cta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: var(--radius);
+  padding: 0.85rem 1.1rem;
+  flex-wrap: wrap;
+}
+
+.plan-save-cta-text {
+  flex: 1;
+  font-size: 0.82rem;
+  color: rgba(255,255,255,0.65);
+}
+
+.plan-save-btn {
+  flex-shrink: 0;
+  padding: 0.45rem 1rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--primary), var(--accent));
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  transition: opacity 0.18s;
+}
+.plan-save-btn:hover:not(:disabled) { opacity: 0.88; }
+.plan-save-btn:disabled { opacity: 0.4; cursor: default; }
+
+.plan-save-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.plan-save-input {
+  flex: 1;
+  min-width: 180px;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.2);
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
+  font-size: 0.85rem;
+}
+.plan-save-input::placeholder { color: rgba(255,255,255,0.35); }
+.plan-save-input:focus { outline: none; border-color: var(--primary); }
+
+.plan-save-cancel {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.45);
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.plan-save-cancel:hover { color: rgba(255,255,255,0.8); }
+
+.plan-saved-banner {
+  font-size: 0.82rem;
+  color: #6ee7b7;
+  font-weight: 600;
+  padding: 0.65rem 1rem;
+  background: rgba(16,185,129,0.1);
+  border: 1px solid rgba(16,185,129,0.25);
+  border-radius: var(--radius-sm);
+}
+
+/* ── All-done card ─────────────────────────────────────────────── */
 .plan-all-done-card {
-  background: rgba(255,255,255,0.97);
+  background: #ffffff;
   border-radius: var(--radius);
   padding: 2.5rem;
-  box-shadow: var(--shadow-sm);
+  box-shadow: 0 2px 16px rgba(0,0,0,0.12);
   text-align: center;
   animation: popIn 0.5s cubic-bezier(0.4,0,0.2,1) both;
 }
 .plan-done-icon { font-size: 3rem; margin-bottom: 0.75rem; }
-.plan-all-done-card h2 { font-size: 1.4rem; font-weight: 800; color: var(--gray-900); margin-bottom: 0.5rem; }
-.plan-all-done-card p { color: var(--gray-500); font-size: 0.9rem; margin-bottom: 1.25rem; }
+.plan-all-done-card h2 { font-size: 1.4rem; font-weight: 800; color: #111827; margin-bottom: 0.5rem; }
+.plan-all-done-card p { color: #6b7280; font-size: 0.9rem; margin-bottom: 0.25rem; }
 
 /* ── Right sidebar ─────────────────────────────────────────────── */
 .plan-sidebar {
