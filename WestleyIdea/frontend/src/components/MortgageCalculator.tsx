@@ -262,7 +262,7 @@ interface PaymentResult {
   pi: number; mortgageInsurance: number; monthlyTax: number; monthlyInsurance: number
   monthlyHoa: number; utilities: number; maintenance: number; total: number
   totalInterest: number; totalCost: number; closingCosts: ReturnType<typeof estimateClosingCosts>
-  pmiDropMonth: number | null; frontEndDTI: number | null
+  pmiDropMonth: number | null; frontEndDTI: number | null; down: number
 }
 
 function PaymentCalc({ prefill }: { prefill?: MortgageInput | null }) {
@@ -344,7 +344,7 @@ function PaymentCalc({ prefill }: { prefill?: MortgageInput | null }) {
     setResult({ loanBase: baseLoan, loanAdjusted: adjLoan, ltv, pi, mortgageInsurance: mi,
       monthlyTax: mTax, monthlyInsurance: mIns, monthlyHoa: mHoa, utilities: mUtils,
       maintenance: mMaint, total, totalInterest, totalCost, closingCosts: closing,
-      pmiDropMonth, frontEndDTI })
+      pmiDropMonth, frontEndDTI, down })
   }
 
   const downPct = (() => {
@@ -576,6 +576,10 @@ function PaymentCalc({ prefill }: { prefill?: MortgageInput | null }) {
             {showClosing && (
               <div className="calc-expand-body">
                 <p className="calc-expand-desc">Typical range: ${fmt(result.closingCosts.range[0])} – ${fmt(result.closingCosts.range[1])} (2–5% of loan). These are paid at closing.</p>
+                <div className="closing-item">
+                  <span>Down payment</span>
+                  <span>${fmt(result.down)}</span>
+                </div>
                 {result.closingCosts.items.map(item => (
                   <div key={item.label} className="closing-item">
                     <span>{item.label}</span>
@@ -583,8 +587,12 @@ function PaymentCalc({ prefill }: { prefill?: MortgageInput | null }) {
                   </div>
                 ))}
                 <div className="closing-total">
-                  <span>Estimated Total</span>
+                  <span>Estimated Closing Costs</span>
                   <span>${fmt(result.closingCosts.total)}</span>
+                </div>
+                <div className="closing-total" style={{ marginTop: '0.5rem', borderTop: '2px solid #1d4ed8', paddingTop: '0.5rem' }}>
+                  <span>Total Cash to Close</span>
+                  <span>${fmt(result.down + result.closingCosts.total)}</span>
                 </div>
               </div>
             )}
