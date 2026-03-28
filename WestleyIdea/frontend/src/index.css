@@ -4,17 +4,26 @@
   --primary: #6366f1;
   --primary-dark: #4f46e5;
   --primary-light: #a5b4fc;
+  --accent: #8b5cf6;
   --success: #10b981;
   --success-bg: #ecfdf5;
   --danger: #ef4444;
   --danger-bg: #fef2f2;
   --white: #ffffff;
+  --gray-50:  #f9fafb;
   --gray-100: #f3f4f6;
   --gray-200: #e5e7eb;
+  --gray-300: #d1d5db;
   --gray-400: #9ca3af;
   --gray-500: #6b7280;
+  --gray-600: #4b5563;
   --gray-700: #374151;
+  --gray-800: #1f2937;
   --gray-900: #111827;
+  /* Dark-theme tokens — used on glass/dark surfaces */
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --surface: rgba(255, 255, 255, 0.07);
   --radius: 16px;
   --radius-sm: 10px;
   --shadow: 0 20px 60px rgba(0,0,0,0.15);
@@ -3384,8 +3393,8 @@ body::after {
   padding: 0.65rem 0.85rem;
   border-radius: 10px;
   border: 2px solid var(--gray-200);
-  background: var(--surface);
-  color: var(--text);
+  background: var(--gray-100);
+  color: var(--gray-900);
   font-size: 0.95rem;
   font-family: inherit;
   cursor: pointer;
@@ -3456,8 +3465,8 @@ body::after {
   padding: 0.65rem 0.85rem;
   border-radius: 10px;
   border: 2px solid var(--gray-200);
-  background: var(--surface);
-  color: var(--text);
+  background: var(--gray-100);
+  color: var(--gray-900);
   font-size: 0.95rem;
   font-family: inherit;
   box-sizing: border-box;
