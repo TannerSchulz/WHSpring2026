@@ -6,6 +6,7 @@ export interface MortgageInput {
   home_price: number
   employment_years: number
   loan_type: 'conventional' | 'fha' | 'va' | 'usda'
+  state?: string
 }
 
 export interface AssessmentResponse {

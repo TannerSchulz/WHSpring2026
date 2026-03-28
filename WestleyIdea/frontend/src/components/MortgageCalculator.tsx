@@ -7,7 +7,7 @@ interface Props {
   prefill?: MortgageInput | null
 }
 
-type Mode = 'payment' | 'afford' | 'rentvsbuy'
+type Mode = 'payment' | 'afford'
 type LoanType = 'conventional' | 'fha' | 'va' | 'usda'
 
 // ── Math helpers ──────────────────────────────────────────────────────────────
@@ -64,19 +64,6 @@ function mortgageInsuranceDropsOff(loanType: LoanType, downPct: number): boolean
 }
 
 // Amortization — returns remaining balance after N payments
-function remainingBalance(loan: number, annualRatePct: number, termYears: number, paymentsMade: number): number {
-  if (loan <= 0) return 0
-  const r = annualRatePct / 100 / 12
-  const n = termYears * 12
-  const pi = calcPI(loan, annualRatePct, termYears)
-  let bal = loan
-  for (let i = 0; i < Math.min(paymentsMade, n); i++) {
-    const interest = bal * r
-    bal = bal - (pi - interest)
-  }
-  return Math.max(0, bal)
-}
-
 // Find month when LTV drops below 80% (for PMI drop-off)
 function monthsUntilPmiDrops(loan: number, homePrice: number, annualRatePct: number, termYears: number): number {
   const r = annualRatePct / 100 / 12
@@ -108,11 +95,13 @@ function monthsWithExtraPayment(loan: number, annualRatePct: number, termYears: 
 
 // Closing cost estimate
 function estimateClosingCosts(homePrice: number, loan: number, loanType: LoanType): {
-  items: { label: string; amount: number }[]
-  total: number
+  cashItems: { label: string; amount: number }[]
+  financedItems: { label: string; amount: number }[]
+  cashTotal: number
+  financedTotal: number
   range: [number, number]
 } {
-  const items = [
+  const cashItems = [
     { label: 'Loan origination fee (0.5–1%)',  amount: Math.round(loan * 0.0075) },
     { label: 'Appraisal',                       amount: 550 },
     { label: 'Home inspection',                 amount: 400 },
@@ -120,55 +109,18 @@ function estimateClosingCosts(homePrice: number, loan: number, loanType: LoanTyp
     { label: 'Title search & attorney',         amount: 850 },
     { label: 'Recording fees',                  amount: 250 },
     { label: 'Credit report',                   amount: 50 },
-    ...(loanType === 'fha' ? [{ label: 'FHA upfront MIP (1.75% — usually financed)', amount: Math.round(loan * 0.0175) }] : []),
-    ...(loanType === 'va'  ? [{ label: 'VA funding fee (est. — usually financed)',    amount: Math.round(loan * 0.0215) }] : []),
   ]
-  const total = items.reduce((s, i) => s + i.amount, 0)
-  const prepaidEscrow = Math.round(homePrice * 0.012) // ~2 months tax + 1mo insurance
-  return {
-    items: [...items, { label: 'Prepaid items & escrow setup (est.)', amount: prepaidEscrow }],
-    total: total + prepaidEscrow,
-    range: [Math.round(loan * 0.02), Math.round(loan * 0.05)],
-  }
-}
+  const prepaidEscrow = Math.round(homePrice * 0.012)
+  cashItems.push({ label: 'Prepaid items & escrow setup (est.)', amount: prepaidEscrow })
 
-// Rent vs Buy: returns net worth at various years
-function rentVsBuyAnalysis(params: {
-  homePrice: number; down: number; closingCosts: number; loanAmount: number
-  annualRatePct: number; termYears: number; monthlyTotal: number
-  monthlyRent: number; annualAppreciation: number; annualInvestReturn: number
-  annualRentIncrease: number; years: number
-}) {
-  const { homePrice, down, closingCosts, loanAmount, annualRatePct, termYears, monthlyTotal,
-          monthlyRent, annualAppreciation, annualInvestReturn, annualRentIncrease, years } = params
+  const financedItems: { label: string; amount: number }[] = []
+  if (loanType === 'fha') financedItems.push({ label: 'FHA upfront MIP (1.75%)', amount: Math.round(loan * 0.0175) })
+  if (loanType === 'va')  financedItems.push({ label: 'VA funding fee (est.)',    amount: Math.round(loan * 0.0215) })
+  if (loanType === 'usda') financedItems.push({ label: 'USDA guarantee fee (1%)', amount: Math.round(loan * 0.01) })
 
-  // Buying: net worth = home value - remaining loan - total cash spent
-  const homeValue = homePrice * Math.pow(1 + annualAppreciation / 100, years)
-  const remBal = remainingBalance(loanAmount, annualRatePct, termYears, years * 12)
-  const equity = homeValue - remBal
-  const buyNetWorth = equity // home equity
-
-  // Renting: down payment + closing costs invested; monthly savings invested too
-  const initialInvested = (down + closingCosts) * Math.pow(1 + annualInvestReturn / 100, years)
-  // Monthly rent increases each year; delta vs buying cost reinvested
-  let rentalInvestment = down + closingCosts
-  let rentNow = monthlyRent
-  let buyingCost = monthlyTotal
-  let monthlyInvested = 0
-  for (let y = 0; y < years; y++) {
-    for (let m = 0; m < 12; m++) {
-      monthlyInvested += Math.max(0, buyingCost - rentNow)
-      rentalInvestment = rentalInvestment * (1 + annualInvestReturn / 100 / 12) + Math.max(0, buyingCost - rentNow)
-    }
-    rentNow *= (1 + annualRentIncrease / 100)
-  }
-  const rentNetWorth = rentalInvestment
-
-  // Total cash out of pocket
-  const buyingCashSpent = (down + closingCosts) + monthlyTotal * years * 12
-  const rentingCashSpent = monthlyRent * (Math.pow(1 + annualRentIncrease / 100, years) - 1) / (annualRentIncrease / 100) * 12 // rough
-
-  return { buyNetWorth, rentNetWorth, homeValue, remBal, equity, buyingCashSpent, rentingCashSpent: Math.round(rentingCashSpent) }
+  const cashTotal = cashItems.reduce((s, i) => s + i.amount, 0)
+  const financedTotal = financedItems.reduce((s, i) => s + i.amount, 0)
+  return { cashItems, financedItems, cashTotal, financedTotal, range: [Math.round(loan * 0.02), Math.round(loan * 0.05)] }
 }
 
 // ── Formatting ────────────────────────────────────────────────────────────────
@@ -209,7 +161,10 @@ function CurrencyInput({ value, onChange, placeholder, suffix }: {
         inputMode="numeric"
         placeholder={placeholder ?? '0'}
         value={value}
-        onChange={e => onChange(e.target.value.replace(/[^\d,]/g, ''))}
+        onChange={e => {
+          const cleaned = e.target.value.replace(/[^\d]/g, '')
+          onChange(cleaned ? Number(cleaned).toLocaleString() : '')
+        }}
         onBlur={e => {
           const n = parseCurrency(e.target.value)
           if (n > 0) onChange(n.toLocaleString())
@@ -272,7 +227,7 @@ function PaymentCalc({ prefill }: { prefill?: MortgageInput | null }) {
   const [loanType, setLoanType] = useState<LoanType>(prefill?.loan_type as LoanType ?? 'conventional')
   const [term, setTerm] = useState<'10'|'15'|'20'|'30'>('30')
   const [rate, setRate] = useState(String(CURRENT_RATES['30']))
-  const [state, setState] = useState('')
+  const [state, setState] = useState(prefill?.state ?? '')
   const [annualTax, setAnnualTax] = useState('')
   const [annualInsurance, setAnnualInsurance] = useState('')
   const [monthlyHoa, setMonthlyHoa] = useState('')
@@ -283,7 +238,9 @@ function PaymentCalc({ prefill }: { prefill?: MortgageInput | null }) {
   const [extraPayment, setExtraPayment] = useState('')
   const [showAmort, setShowAmort] = useState(false)
   const [showClosing, setShowClosing] = useState(false)
+  const [showRefi, setShowRefi] = useState(false)
   const [result, setResult] = useState<PaymentResult | null>(null)
+  const [disabledRows, setDisabledRows] = useState<Set<string>>(new Set())
 
   useEffect(() => { setRate(String(CURRENT_RATES[term])) }, [term])
 
@@ -469,32 +426,56 @@ function PaymentCalc({ prefill }: { prefill?: MortgageInput | null }) {
             )}
           </div>
 
-          <div className="calc-breakdown">
-            <div className="calc-breakdown-row header-row">
-              <span>Component</span><span>Monthly</span><span>Annual</span>
-            </div>
-            {[
-              { label: 'Principal & Interest',       value: result.pi,                  always: true  },
-              { label: `Mortgage Insurance (${['fha','usda'].includes(loanType) ? 'MIP/fee' : 'PMI'})`, value: result.mortgageInsurance, always: result.mortgageInsurance > 0 },
-              { label: 'Property Tax',               value: result.monthlyTax,          always: true  },
-              { label: "Homeowner's Insurance",      value: result.monthlyInsurance,    always: true  },
-              { label: 'HOA',                        value: result.monthlyHoa,          always: hasHoa },
-              { label: 'Utilities',                  value: result.utilities,           always: result.utilities > 0 },
-              { label: 'Maintenance Reserve (1%/yr)',value: result.maintenance,         always: includeMaintenance },
-            ].filter(r => r.always && r.value > 0).map(row => (
-              <div key={row.label} className="calc-breakdown-row">
-                <span>{row.label}</span>
-                <span>${fmt(row.value)}</span>
-                <span className="calc-annual">${fmt(row.value * 12)}</span>
+          {(() => {
+            const rows = [
+              { label: 'Principal & Interest',       value: result.pi,                  always: true, locked: true },
+              { label: `Mortgage Insurance (${['fha','usda'].includes(loanType) ? 'MIP/fee' : 'PMI'})`, value: result.mortgageInsurance, always: result.mortgageInsurance > 0, locked: false },
+              { label: 'Property Tax',               value: result.monthlyTax,          always: true, locked: false },
+              { label: "Homeowner's Insurance",      value: result.monthlyInsurance,    always: true, locked: false },
+              { label: 'HOA',                        value: result.monthlyHoa,          always: hasHoa, locked: false },
+              { label: 'Utilities',                  value: result.utilities,           always: result.utilities > 0, locked: false },
+              { label: 'Maintenance Reserve (1%/yr)',value: result.maintenance,         always: includeMaintenance, locked: false },
+            ].filter(r => r.always && r.value > 0)
+
+            const activeTotal = rows.reduce((s, r) => s + (r.locked || !disabledRows.has(r.label) ? r.value : 0), 0)
+
+            return (
+              <div className="calc-breakdown">
+                <div className="calc-breakdown-row header-row">
+                  <span>Component</span><span>Monthly</span><span>Annual</span>
+                </div>
+                {rows.map(row => {
+                  const off = !row.locked && disabledRows.has(row.label)
+                  return (
+                    <div key={row.label}
+                      className={`calc-breakdown-row${off ? ' row-disabled' : ''}${!row.locked ? ' row-toggleable' : ''}`}
+                      onClick={() => {
+                        if (row.locked) return
+                        setDisabledRows(prev => {
+                          const next = new Set(prev)
+                          if (next.has(row.label)) next.delete(row.label)
+                          else next.add(row.label)
+                          return next
+                        })
+                      }}>
+                      <span>
+                        {!row.locked && <span className={`row-toggle${off ? ' off' : ''}`}>{off ? '○' : '●'}</span>}
+                        {row.label}
+                      </span>
+                      <span>{off ? '—' : `$${fmt(row.value)}`}</span>
+                      <span className="calc-annual">{off ? '—' : `$${fmt(row.value * 12)}`}</span>
+                    </div>
+                  )
+                })}
+                <div className="calc-breakdown-divider" />
+                <div className="calc-breakdown-row total-line">
+                  <span>Total Monthly</span>
+                  <span>${fmt(activeTotal)}</span>
+                  <span className="calc-annual">${fmt(activeTotal * 12)}</span>
+                </div>
               </div>
-            ))}
-            <div className="calc-breakdown-divider" />
-            <div className="calc-breakdown-row total-line">
-              <span>Total Monthly</span>
-              <span>${fmt(result.total)}</span>
-              <span className="calc-annual">${fmt(result.total * 12)}</span>
-            </div>
-          </div>
+            )
+          })()}
 
           {/* Mortgage Insurance notes */}
           {result.mortgageInsurance > 0 && (
@@ -575,28 +556,110 @@ function PaymentCalc({ prefill }: { prefill?: MortgageInput | null }) {
             </div>
             {showClosing && (
               <div className="calc-expand-body">
-                <p className="calc-expand-desc">Typical range: ${fmt(result.closingCosts.range[0])} – ${fmt(result.closingCosts.range[1])} (2–5% of loan). These are paid at closing.</p>
-                <div className="closing-item">
+                <p className="calc-expand-desc">Typical range: ${fmt(result.closingCosts.range[0])} – ${fmt(result.closingCosts.range[1])} (2–5% of loan).</p>
+
+                <div className="closing-section-label">Cash You Need at Closing</div>
+                <div className="closing-item highlight-item">
                   <span>Down payment</span>
                   <span>${fmt(result.down)}</span>
                 </div>
-                {result.closingCosts.items.map(item => (
+                {result.closingCosts.cashItems.map(item => (
                   <div key={item.label} className="closing-item">
                     <span>{item.label}</span>
                     <span>${fmt(item.amount)}</span>
                   </div>
                 ))}
                 <div className="closing-total">
-                  <span>Estimated Closing Costs</span>
-                  <span>${fmt(result.closingCosts.total)}</span>
-                </div>
-                <div className="closing-total" style={{ marginTop: '0.5rem', borderTop: '2px solid #1d4ed8', paddingTop: '0.5rem' }}>
                   <span>Total Cash to Close</span>
-                  <span>${fmt(result.down + result.closingCosts.total)}</span>
+                  <span>${fmt(result.down + result.closingCosts.cashTotal)}</span>
                 </div>
+
+                {result.closingCosts.financedItems.length > 0 && (
+                  <>
+                    <div className="closing-section-label financed">Financed Into Your Loan (not out-of-pocket)</div>
+                    {result.closingCosts.financedItems.map(item => (
+                      <div key={item.label} className="closing-item financed-item">
+                        <span>{item.label}</span>
+                        <span>${fmt(item.amount)}</span>
+                      </div>
+                    ))}
+                    <div className="closing-financed-note">
+                      These fees are added to your loan balance — you don't pay them upfront, but they increase your monthly payment.
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
+
+          {/* FHA/VA/USDA Refinance comparison */}
+          {loanType !== 'conventional' && result.mortgageInsurance > 0 && (() => {
+            const hp = parseCurrency(homePrice)
+            const t = parseInt(term)
+            const r = parseFloat(rate)
+            const baseLoan = hp - result.down
+            const adjLoan = result.loanAdjusted
+            const pmiDropMonth = monthsUntilPmiDrops(adjLoan, hp, r, t)
+            const yearsToEquity = Math.ceil(pmiDropMonth / 12)
+
+            // Remaining balance at 80% LTV point
+            const bal80 = hp * 0.80
+
+            // Show refinance at a few rates
+            const refiRates = [r - 1, r - 0.5, r, r + 0.5, r + 1].filter(x => x > 0)
+
+            return (
+              <div className="calc-expand-section">
+                <div className="calc-expand-header" onClick={() => setShowRefi(v => !v)}>
+                  <span>🔄 Refinance Comparison (after 20% equity)</span>
+                  <span>{showRefi ? '▲' : '▼'}</span>
+                </div>
+                {showRefi && (
+                  <div className="calc-expand-body">
+                    <p className="calc-expand-desc">
+                      With {loanType.toUpperCase()}, you pay monthly {loanType === 'fha' ? 'MIP' : 'fees'} until you refinance to a conventional loan.
+                      Based on your current loan, you'll hit 20% equity in ~<strong>{yearsToEquity} years</strong>.
+                    </p>
+
+                    <div className="refi-comparison">
+                      <div className="refi-current">
+                        <div className="refi-label">Current {loanType.toUpperCase()} Payment</div>
+                        <div className="refi-value">${fmt(result.pi + result.mortgageInsurance)}<span>/mo</span></div>
+                        <div className="refi-detail">P&I ${fmt(result.pi)} + {loanType === 'fha' ? 'MIP' : 'MI'} ${fmt(result.mortgageInsurance)}</div>
+                      </div>
+
+                      <div className="refi-arrow">→</div>
+
+                      <div className="refi-scenarios">
+                        <div className="refi-label">After Refinance to Conventional (no MI)</div>
+                        <div className="refi-grid">
+                          {refiRates.map(refiRate => {
+                            const remainingYears = t - yearsToEquity
+                            const newPI = calcPI(bal80, refiRate, remainingYears > 0 ? remainingYears : 15)
+                            const savings = (result.pi + result.mortgageInsurance) - newPI
+                            return (
+                              <div key={refiRate} className={`refi-scenario${Math.abs(refiRate - r) < 0.01 ? ' current' : ''}`}>
+                                <div className="refi-scenario-rate">{refiRate.toFixed(1)}%{Math.abs(refiRate - r) < 0.01 ? ' (same)' : ''}</div>
+                                <div className="refi-scenario-payment">${fmt(newPI)}<span>/mo</span></div>
+                                <div className={`refi-scenario-savings${savings > 0 ? ' positive' : ''}`}>
+                                  {savings > 0 ? `Save $${fmt(savings)}/mo` : `+$${fmt(Math.abs(savings))}/mo`}
+                                </div>
+                                <div className="refi-scenario-term">{remainingYears > 0 ? remainingYears : 15}yr term</div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="refi-note">
+                      Refinancing has closing costs (~$3k–$6k). Factor those in when deciding. Rates shown are hypothetical.
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })()}
         </div>
       )}
     </div>
@@ -610,12 +673,13 @@ const GRID_DOWN_PCTS = [0, 3, 5, 10, 15, 20]
 
 function AffordCalc({ prefill }: { prefill?: MortgageInput | null }) {
   const [targetPayment, setTargetPayment] = useState('')
-  const [state, setState] = useState('')
+  const [state, setState] = useState(prefill?.state ?? '')
   const [loanType, setLoanType] = useState<LoanType>('conventional')
   const [term, setTerm] = useState<'15'|'30'>('30')
   const [monthlyHoa, setMonthlyHoa] = useState('0')
   const [includeUtils, setIncludeUtils] = useState(true)
   const [result, setResult] = useState<{grid: {downPct:number;rate:number;homePrice:number;hasMi:boolean}[][]}>( null!)
+  const [popup, setPopup] = useState<{downPct:number;rate:number;homePrice:number} | null>(null)
 
   const suggestedPayment = prefill?.annual_income
     ? Math.round(prefill.annual_income / 12 * 0.28) : null
@@ -730,7 +794,8 @@ function AffordCalc({ prefill }: { prefill?: MortgageInput | null }) {
                       {GRID_DOWN_PCTS[ri] === 0 ? 'No down (VA/USDA)' : `${GRID_DOWN_PCTS[ri]}% down`}
                     </td>
                     {row.map((cell, ci) => (
-                      <td key={ci} className={`afford-cell ${cellColor(cell.homePrice)}`}>
+                      <td key={ci} className={`afford-cell ${cellColor(cell.homePrice)}${cell.homePrice > 0 ? ' clickable' : ''}`}
+                        onClick={() => cell.homePrice > 0 && setPopup({ downPct: cell.downPct, rate: cell.rate, homePrice: cell.homePrice })}>
                         {cell.homePrice > 0 ? (
                           <>
                             <span className="afford-price">{fmtK(cell.homePrice)}</span>
@@ -756,192 +821,76 @@ function AffordCalc({ prefill }: { prefill?: MortgageInput | null }) {
           </div>
         </div>
       )}
-    </div>
-  )
-}
 
-// ── Rent vs Buy ───────────────────────────────────────────────────────────────
+      {popup && (() => {
+        const hp = popup.homePrice
+        const dp = popup.downPct
+        const r = popup.rate
+        const t = parseInt(term)
+        const downAmt = hp * dp / 100
+        const baseLoan = hp - downAmt
+        const adjLoan = adjustedLoanAmount(baseLoan, loanType, dp / 100)
+        const financedFee = adjLoan - baseLoan
+        const pi = calcPI(adjLoan, r, t)
+        const ltv = (baseLoan / hp) * 100
+        const mi = calcMortgageInsurance(adjLoan, ltv, loanType, t)
+        const mTax = state ? hp * STATE_DATA[state].propertyTaxRate / 12 : 0
+        const annualIns = state ? STATE_DATA[state].avgInsuranceAnnual : 1500
+        const mIns = annualIns / 12
+        const mHoa = parseCurrency(monthlyHoa)
+        const mUtils = state && includeUtils ? STATE_DATA[state].avgUtilitiesMonthly : 0
+        const totalMonthly = pi + mi + mTax + mIns + mHoa + mUtils
+        const totalInterest = pi * t * 12 - adjLoan
 
-function RentVsBuy({ prefill }: { prefill?: MortgageInput | null }) {
-  const [homePrice, setHomePrice] = useState(prefill ? fmtInput(prefill.home_price) : '')
-  const [downPct, setDownPct] = useState('10')
-  const [rate, setRate] = useState(String(CURRENT_RATES['30']))
-  const [term, setTerm] = useState('30')
-  const [state, setState] = useState('')
-  const [monthlyRent, setMonthlyRent] = useState('')
-  const [appreciation, setAppreciation] = useState('3.5')
-  const [investReturn, setInvestReturn] = useState('7.0')
-  const [rentIncrease, setRentIncrease] = useState('3.0')
-  const [loanType, setLoanType] = useState<LoanType>('conventional')
-  const [result, setResult] = useState<{yr5: ReturnType<typeof rentVsBuyAnalysis>; yr10: ReturnType<typeof rentVsBuyAnalysis>; yr20: ReturnType<typeof rentVsBuyAnalysis>; breakEven: number | null; monthlyBuy: number; monthlyRent: number} | null>(null)
+        const rows: {label: string; value: number; note?: string}[] = [
+          { label: 'Principal & Interest', value: pi },
+          ...(mi > 0 ? [{ label: `Mortgage Insurance (${['fha','usda'].includes(loanType) ? 'MIP' : 'PMI'})`, value: mi }] : []),
+          ...(mTax > 0 ? [{ label: 'Property Tax', value: mTax }] : []),
+          { label: 'Homeowner\'s Insurance', value: mIns },
+          ...(mHoa > 0 ? [{ label: 'HOA', value: mHoa }] : []),
+          ...(mUtils > 0 ? [{ label: 'Utilities', value: mUtils }] : []),
+        ]
 
-  useEffect(() => {
-    if (!state) return
-    const hp = parseCurrency(homePrice)
-    if (hp > 0) { /* auto fill not needed here */ }
-  }, [state])
+        return (
+          <div className="afford-popup-overlay" onClick={() => setPopup(null)}>
+            <div className="afford-popup" onClick={e => e.stopPropagation()}>
+              <button className="afford-popup-close" onClick={() => setPopup(null)}>✕</button>
+              <div className="afford-popup-title">{fmtK(hp)} Home</div>
+              <div className="afford-popup-subtitle">{dp}% down · {r}% rate · {t}-year {loanType}</div>
 
-  const calculate = () => {
-    const hp = parseCurrency(homePrice)
-    const down = hp * parseFloat(downPct) / 100
-    const baseLoan = hp - down
-    const adjLoan = adjustedLoanAmount(baseLoan, loanType, parseFloat(downPct) / 100)
-    const r = parseFloat(rate)
-    const t = parseInt(term)
-    const rent = parseCurrency(monthlyRent)
-    if (hp <= 0 || rent <= 0) return
-
-    const mTax = state ? hp * STATE_DATA[state].propertyTaxRate / 12 : hp * 0.01 / 12
-    const mIns = state ? STATE_DATA[state].avgInsuranceAnnual / 12 : 125
-    const mHoa = state ? STATE_DATA[state].avgHoaMonthly * 0.3 : 0 // assume 30% chance of HOA
-    const mUtils = state ? STATE_DATA[state].avgUtilitiesMonthly : 250
-    const mMaint = hp * 0.01 / 12
-    const pi = calcPI(adjLoan, r, t)
-    const mi = calcMortgageInsurance(adjLoan, (baseLoan / hp) * 100, loanType, t)
-    const monthlyBuy = pi + mi + mTax + mIns + mHoa + mUtils + mMaint
-
-    const closing = estimateClosingCosts(hp, baseLoan, loanType)
-    const params = {
-      homePrice: hp, down, closingCosts: closing.total, loanAmount: adjLoan,
-      annualRatePct: r, termYears: t, monthlyTotal: monthlyBuy,
-      monthlyRent: rent, annualAppreciation: parseFloat(appreciation),
-      annualInvestReturn: parseFloat(investReturn), annualRentIncrease: parseFloat(rentIncrease),
-    }
-
-    // Find break-even year
-    let breakEven: number | null = null
-    for (let y = 1; y <= 30; y++) {
-      const b = rentVsBuyAnalysis({ ...params, years: y })
-      if (b.buyNetWorth > b.rentNetWorth) { breakEven = y; break }
-    }
-
-    setResult({
-      yr5:  rentVsBuyAnalysis({ ...params, years: 5  }),
-      yr10: rentVsBuyAnalysis({ ...params, years: 10 }),
-      yr20: rentVsBuyAnalysis({ ...params, years: 20 }),
-      breakEven,
-      monthlyBuy,
-      monthlyRent: rent,
-    })
-  }
-
-  return (
-    <div className="calc-body">
-      <div className="calc-afford-intro">
-        Compare the true long-term cost of buying vs. renting, accounting for equity buildup, appreciation, and the opportunity cost of your down payment.
-      </div>
-
-      <div className="calc-form-grid">
-        <div className="calc-col">
-          <Field label="Home Price">
-            <CurrencyInput value={homePrice} onChange={setHomePrice} placeholder="400,000" />
-          </Field>
-          <Field label="Down Payment">
-            <div className="calc-input-wrap">
-              <input className="calc-input no-prefix" type="number" min="0" max="100" value={downPct} onChange={e => setDownPct(e.target.value)} />
-              <span className="calc-suffix">%</span>
-            </div>
-          </Field>
-          <Field label="Loan Type">
-            <SegGroup options={[{label:'Conv.',value:'conventional'},{label:'FHA',value:'fha'},{label:'VA',value:'va'},{label:'USDA',value:'usda'}]} value={loanType} onChange={v => setLoanType(v as LoanType)} />
-          </Field>
-          <Field label="Interest Rate">
-            <div className="calc-input-wrap">
-              <input className="calc-input no-prefix" type="number" step="0.05" min="1" max="20" value={rate} onChange={e => setRate(e.target.value)} />
-              <span className="calc-suffix">%</span>
-            </div>
-          </Field>
-          <StateSelect value={state} onChange={setState} label="State (optional, improves accuracy)" />
-        </div>
-
-        <div className="calc-col">
-          <Field label="Current Monthly Rent" hint="What you pay (or would pay) to rent a comparable home">
-            <CurrencyInput value={monthlyRent} onChange={setMonthlyRent} placeholder="1,800" suffix="/mo" />
-          </Field>
-          <Field label="Expected Home Appreciation" hint="Historical avg: 3–4%/yr nationally">
-            <div className="calc-input-wrap">
-              <input className="calc-input no-prefix" type="number" step="0.5" value={appreciation} onChange={e => setAppreciation(e.target.value)} />
-              <span className="calc-suffix">%/yr</span>
-            </div>
-          </Field>
-          <Field label="Expected Investment Return" hint="If down payment were invested instead (S&P 500 ~10%, conservative ~7%)">
-            <div className="calc-input-wrap">
-              <input className="calc-input no-prefix" type="number" step="0.5" value={investReturn} onChange={e => setInvestReturn(e.target.value)} />
-              <span className="calc-suffix">%/yr</span>
-            </div>
-          </Field>
-          <Field label="Annual Rent Increase" hint="Historical avg: 3%/yr">
-            <div className="calc-input-wrap">
-              <input className="calc-input no-prefix" type="number" step="0.5" value={rentIncrease} onChange={e => setRentIncrease(e.target.value)} />
-              <span className="calc-suffix">%/yr</span>
-            </div>
-          </Field>
-        </div>
-      </div>
-
-      <button className="calc-submit-btn" onClick={calculate}>Compare Rent vs. Buy →</button>
-
-      {result && (
-        <div className="rvb-result">
-          <div className="rvb-monthly-compare">
-            <div className="rvb-monthly-card buy">
-              <div className="rvb-monthly-label">Buying — Month 1</div>
-              <div className="rvb-monthly-value">${fmt(result.monthlyBuy)}<span>/mo</span></div>
-              <div className="rvb-monthly-note">true total cost incl. maintenance</div>
-            </div>
-            <div className="rvb-vs">vs</div>
-            <div className="rvb-monthly-card rent">
-              <div className="rvb-monthly-label">Renting — Month 1</div>
-              <div className="rvb-monthly-value">${fmt(result.monthlyRent)}<span>/mo</span></div>
-              <div className="rvb-monthly-note">{result.monthlyBuy > result.monthlyRent ? `$${fmt(result.monthlyBuy - result.monthlyRent)}/mo more to buy` : `$${fmt(result.monthlyRent - result.monthlyBuy)}/mo less to buy`}</div>
-            </div>
-          </div>
-
-          {result.breakEven !== null ? (
-            <div className="rvb-breakeven">
-              🎯 Buying becomes the better financial choice in approximately <strong>Year {result.breakEven}</strong>
-            </div>
-          ) : (
-            <div className="rvb-breakeven warn">
-              At these assumptions, renting may be financially superior over 30 years. Consider adjusting appreciation or investment return assumptions.
-            </div>
-          )}
-
-          <div className="rvb-grid">
-            <div className="rvb-grid-header"><span></span><span>5 Years</span><span>10 Years</span><span>20 Years</span></div>
-            {[
-              { label: '🏠 Home Equity (Buying)', buy: (r: ReturnType<typeof rentVsBuyAnalysis>) => r.equity },
-              { label: '💼 Investment (Renting)', buy: (r: ReturnType<typeof rentVsBuyAnalysis>) => r.rentNetWorth },
-            ].map(row => (
-              <div key={row.label} className="rvb-grid-row">
-                <span className="rvb-row-label">{row.label}</span>
-                {[result.yr5, result.yr10, result.yr20].map((r, i) => (
-                  <span key={i} className={`rvb-cell${row.buy(r) === Math.max(result.yr5.equity, result.yr5.rentNetWorth, result.yr10.equity, result.yr10.rentNetWorth) && i === 0 ? ' winner' : ''}`}>
-                    {fmtK(row.buy(r))}
-                  </span>
-                ))}
+              <div className="afford-popup-stats">
+                <div className="afford-popup-stat">
+                  <div className="afford-popup-stat-label">Down Payment</div>
+                  <div className="afford-popup-stat-value">${fmt(downAmt)}</div>
+                </div>
+                <div className="afford-popup-stat">
+                  <div className="afford-popup-stat-label">Loan Amount</div>
+                  <div className="afford-popup-stat-value">${fmt(financedFee > 0 ? adjLoan : baseLoan)}</div>
+                  {financedFee > 0 && <div className="afford-popup-stat-note">incl. ${fmt(financedFee)} fee</div>}
+                </div>
+                <div className="afford-popup-stat">
+                  <div className="afford-popup-stat-label">Total Interest</div>
+                  <div className="afford-popup-stat-value">${fmt(totalInterest)}</div>
+                </div>
               </div>
-            ))}
-            <div className="rvb-grid-divider" />
-            <div className="rvb-grid-row highlight">
-              <span>Net Worth Advantage</span>
-              {[result.yr5, result.yr10, result.yr20].map((r, i) => {
-                const diff = r.equity - r.rentNetWorth
-                return (
-                  <span key={i} className={diff > 0 ? 'winner' : 'loser'}>
-                    {diff > 0 ? '+' : ''}{fmtK(diff)} {diff > 0 ? '(buy)' : '(rent)'}
-                  </span>
-                )
-              })}
+
+              <div className="afford-popup-breakdown-title">Monthly Payment Breakdown</div>
+              <div className="afford-popup-breakdown">
+                {rows.map(r => (
+                  <div key={r.label} className="afford-popup-row">
+                    <span>{r.label}</span>
+                    <span>${fmt(r.value)}</span>
+                  </div>
+                ))}
+                <div className="afford-popup-row total">
+                  <span>Total Monthly</span>
+                  <span>${fmt(totalMonthly)}</span>
+                </div>
+              </div>
             </div>
           </div>
-
-          <div className="rvb-disclaimer">
-            Net worth estimates assume: {appreciation}%/yr appreciation · {investReturn}%/yr investment return · {rentIncrease}%/yr rent increase.
-            Does not include tax benefits (mortgage interest deduction), actual selling costs, or capital gains tax. Past performance ≠ future results.
-          </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }
@@ -969,14 +918,10 @@ export default function MortgageCalculator({ onBack, prefill }: Props) {
           <button className={`calc-tab${mode === 'afford' ? ' active' : ''}`} onClick={() => setMode('afford')}>
             💰 What Can I Afford?
           </button>
-          <button className={`calc-tab${mode === 'rentvsbuy' ? ' active' : ''}`} onClick={() => setMode('rentvsbuy')}>
-            ⚖️ Rent vs. Buy
-          </button>
         </div>
 
         {mode === 'payment'    && <PaymentCalc  prefill={prefill} />}
         {mode === 'afford'     && <AffordCalc   prefill={prefill} />}
-        {mode === 'rentvsbuy'  && <RentVsBuy    prefill={prefill} />}
       </div>
     </div>
   )

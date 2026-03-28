@@ -231,7 +231,8 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
   }
 
   const selectHomePrice = (price: number) => {
-    setValues(v => ({ ...v, home_price: price }))
+    const selectedState = subAnswers.state
+    setValues(v => ({ ...v, home_price: price, ...(selectedState ? { state: selectedState } : {}) }))
     setDisplayValues(prev => ({ ...prev, home_price: fmt(price) }))
     onFieldCommit('home_price', price)
     setSubFlow(null)
