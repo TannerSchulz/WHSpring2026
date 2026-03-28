@@ -1,11 +1,15 @@
 import { useState } from 'react'
 import { MortgageInput, AssessmentResponse } from '../types'
-import { getStateResources, US_STATES } from '../data/localResources'
+import { US_STATES } from '../data/localResources'
+import ActionPlanView from './ActionPlanView'
+import type { UserProfile } from '../types/profile'
 
 interface Props {
   result: AssessmentResponse
   userProfile: MortgageInput
   onBack: () => void
+  onProfileSave: (p: UserProfile) => void
+  existingProfile?: UserProfile | null
 }
 
 const SETUP_STEPS = [
@@ -14,6 +18,7 @@ const SETUP_STEPS = [
 ]
 
 interface GoalsForm {
+  name: string
   timeline: string
   firstHome: boolean
   workingWithAgent: boolean
@@ -22,7 +27,7 @@ interface GoalsForm {
 }
 
 const defaultGoals: GoalsForm = {
-  timeline: '', firstHome: true, workingWithAgent: false, topConcern: '', stateCode: '',
+  name: '', timeline: '', firstHome: true, workingWithAgent: false, topConcern: '', stateCode: '',
 }
 
 const TIMELINE_OPTIONS = [
@@ -40,309 +45,10 @@ const CONCERN_OPTIONS = [
   'Understanding the home buying process',
 ]
 
-interface SupportResource {
-  label: string
-  description: string
-  url?: string
-  action?: string
-}
-
-function getSupportResources(step: string): SupportResource[] {
-  const s = step.toLowerCase()
-  if (s.includes('credit')) return [
-    { label: '📊 Check Your Credit Report', description: 'Get your free report from all 3 bureaus — required by law once per year.', url: 'https://www.annualcreditreport.com', action: 'Visit Site' },
-    { label: '📱 Monitor Your Score', description: 'Credit Karma gives you free weekly credit score updates with tips.', url: 'https://www.creditkarma.com', action: 'Visit Site' },
-    { label: '🏛️ Talk to a HUD Counselor', description: 'Free, unbiased housing counseling from a HUD-approved advisor.', url: 'https://www.hud.gov/counseling', action: 'Find a Counselor' },
-  ]
-  if (s.includes('debt') || s.includes('dti') || s.includes('income')) return [
-    { label: '🧮 DTI Calculator', description: "Use the CFPB's tool to see exactly how your debts affect your mortgage eligibility.", url: 'https://www.consumerfinance.gov/owning-a-home/', action: 'Open Tool' },
-    { label: '🎓 Student Loan Help', description: 'Explore income-driven repayment plans to reduce your monthly student loan obligation.', url: 'https://studentaid.gov/manage-loans/repayment/plans/income-driven', action: 'Learn More' },
-    { label: '🏛️ Talk to a HUD Counselor', description: 'A counselor can help you build a personalized debt reduction plan.', url: 'https://www.hud.gov/counseling', action: 'Find a Counselor' },
-  ]
-  if (s.includes('down') || s.includes('save') || s.includes('payment')) return [
-    { label: '🏠 Down Payment Assistance', description: 'HUD lists state and local programs that can help with your down payment.', url: 'https://www.hud.gov/topics/buying_a_home', action: 'Find Programs' },
-    { label: '💰 First-Time Buyer Programs', description: 'Many states offer grants and low-interest loans specifically for first-time buyers.', url: 'https://www.consumerfinance.gov/owning-a-home/', action: 'Explore Options' },
-    { label: '📈 High-Yield Savings', description: 'Park your down payment in a high-yield savings account to earn more while you save.', action: 'Search "HYSA" at your bank' },
-  ]
-  if (s.includes('employ') || s.includes('job') || s.includes('work')) return [
-    { label: '📄 What Lenders Look For', description: "The CFPB explains exactly what employment documentation you'll need.", url: 'https://www.consumerfinance.gov/owning-a-home/', action: 'Read Guide' },
-    { label: '🏛️ Talk to a HUD Counselor', description: 'A counselor can advise on how your employment situation affects your options.', url: 'https://www.hud.gov/counseling', action: 'Find a Counselor' },
-  ]
-  if (s.includes('pre-approv') || s.includes('lender') || s.includes('approv')) return [
-    { label: '🏦 Compare Lenders', description: 'Bankrate lets you compare current mortgage rates from multiple lenders.', url: 'https://www.bankrate.com/mortgages/mortgage-rates/', action: 'Compare Rates' },
-    { label: '🤝 Find a Credit Union', description: 'Credit unions often offer lower rates than traditional banks for members.', url: 'https://www.mycreditunion.gov/about-credit-unions/credit-union-locator', action: 'Find One Near Me' },
-    { label: '📋 Document Checklist', description: "The CFPB's mortgage checklist helps you gather everything lenders need.", url: 'https://www.consumerfinance.gov/owning-a-home/', action: 'Get Checklist' },
-  ]
-  return [
-    { label: '🏛️ Talk to a HUD Counselor', description: 'Free, unbiased mortgage counseling from a certified advisor.', url: 'https://www.hud.gov/counseling', action: 'Find a Counselor' },
-    { label: '📚 CFPB Home Buying Guide', description: "The Consumer Financial Protection Bureau's free guide to buying a home.", url: 'https://www.consumerfinance.gov/owning-a-home/', action: 'Read Guide' },
-  ]
-}
-
-interface ActionStep { text: string; done: boolean; expanded: boolean }
-
-function ActionPlanView({ result, stateCode, onBack }: { result: AssessmentResponse; stateCode: string; onBack: () => void }) {
-  const [steps, setSteps] = useState<ActionStep[]>(
-    result.action_steps.map(text => ({ text, done: false, expanded: false }))
-  )
-  const localRes = getStateResources(stateCode)
-  const [showAccountForm, setShowAccountForm] = useState(false)
-  const [accountForm, setAccountForm] = useState({ name: '', email: '' })
-  const [accountCreated, setAccountCreated] = useState(false)
-
-  const toggleDone = (i: number) =>
-    setSteps(s => s.map((step, idx) => idx === i ? { ...step, done: !step.done } : step))
-  const toggleExpand = (i: number) =>
-    setSteps(s => s.map((step, idx) => idx === i ? { ...step, expanded: !step.expanded } : step))
-
-  const doneCount = steps.filter(s => s.done).length
-
-  const handleCreateAccount = () => {
-    if (!accountForm.name || !accountForm.email) return
-    setAccountCreated(true)
-    setShowAccountForm(false)
-  }
-
-  return (
-    <div className="setup-page">
-      <button className="help-back-btn" onClick={onBack}>← Back to Results</button>
-
-      <div className="plan-welcome">
-        <div className="plan-welcome-icon">🗺️</div>
-        <div>
-          <h2 className="plan-welcome-title">Your Mortgage Action Plan</h2>
-          <p className="plan-welcome-sub">Work through these steps at your own pace. Expand each one for tools and resources.</p>
-        </div>
-      </div>
-
-      {/* Progress */}
-      <div className="plan-progress-card">
-        <div className="plan-progress-header">
-          <span className="plan-progress-label">Your Progress</span>
-          <span className="plan-progress-count">{doneCount} of {steps.length} steps complete</span>
-        </div>
-        <div className="plan-progress-bar">
-          <div className="plan-progress-fill" style={{ width: `${(doneCount / steps.length) * 100}%` }} />
-        </div>
-        {doneCount === steps.length && (
-          <div className="plan-all-done">🏆 You've completed all your steps! Consider getting pre-approved next.</div>
-        )}
-      </div>
-
-      {/* Steps */}
-      <div className="plan-steps">
-        {steps.map((step, i) => (
-          <div key={i} className={`plan-step-card${step.done ? ' plan-step--done' : ''}${i === 0 ? ' plan-step-card--featured' : ''}`}>
-            <div className="plan-step-top">
-              <button className="plan-check-btn" onClick={() => toggleDone(i)}>
-                {step.done ? '✓' : ''}
-              </button>
-              <div className="plan-step-content">
-                <div className="plan-step-num">
-                  Step {i + 1}
-                  {i === 0 && <span className="plan-step-badge">Start Here</span>}
-                </div>
-                <div className="plan-step-text">{step.text}</div>
-              </div>
-              <button className="plan-expand-btn" onClick={() => toggleExpand(i)}>
-                {step.expanded ? '▲' : '▼'}
-              </button>
-            </div>
-            {step.expanded && (
-              <div className="plan-step-resources">
-                {/* Step 1 gets expanded local resources */}
-                {i === 0 && (
-                  <div className="local-resources-section">
-                    <div className="local-res-heading">
-                      <span>📍</span>
-                      <span>Local Resources for {localRes.stateName}</span>
-                    </div>
-
-                    {/* Housing Authority */}
-                    <div className="local-res-block">
-                      <div className="local-res-block-title">🏛️ State Housing Authority</div>
-                      <div className="plan-resource-item local-res-highlight">
-                        <div className="plan-resource-header">
-                          <span className="plan-resource-name">{localRes.housingAuthority.name}</span>
-                          <a href={localRes.housingAuthority.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Visit Site →</a>
-                        </div>
-                        <p className="plan-resource-desc">{localRes.housingAuthority.description}</p>
-                      </div>
-                    </div>
-
-                    {/* First-Time Buyer Programs */}
-                    {localRes.firstTimeBuyerPrograms.length > 0 && (
-                      <div className="local-res-block">
-                        <div className="local-res-block-title">🏠 First-Time Buyer Programs</div>
-                        <div className="plan-resource-list">
-                          {localRes.firstTimeBuyerPrograms.map((res, ri) => (
-                            <div key={ri} className="plan-resource-item">
-                              <div className="plan-resource-header">
-                                <span className="plan-resource-name">{res.label}</span>
-                                <a href={res.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Learn More →</a>
-                              </div>
-                              <p className="plan-resource-desc">{res.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Down Payment Assistance */}
-                    {localRes.downPaymentAssistance.length > 0 && (
-                      <div className="local-res-block">
-                        <div className="local-res-block-title">💰 Down Payment Assistance</div>
-                        <div className="plan-resource-list">
-                          {localRes.downPaymentAssistance.map((res, ri) => (
-                            <div key={ri} className="plan-resource-item">
-                              <div className="plan-resource-header">
-                                <span className="plan-resource-name">{res.label}</span>
-                                <a href={res.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Apply →</a>
-                              </div>
-                              <p className="plan-resource-desc">{res.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* HUD Counseling */}
-                    <div className="local-res-block">
-                      <div className="local-res-block-title">🤝 Free HUD Counseling in {localRes.stateName}</div>
-                      <div className="plan-resource-item">
-                        <div className="plan-resource-header">
-                          <span className="plan-resource-name">HUD-Approved Housing Counselors</span>
-                          <a href={localRes.hudCounselingUrl} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Find Near Me →</a>
-                        </div>
-                        <p className="plan-resource-desc">Get free, unbiased mortgage advice from a certified counselor in {localRes.stateName}. No cost, no sales pitch.</p>
-                      </div>
-                    </div>
-
-                    {/* Additional Resources */}
-                    {localRes.additionalResources.length > 0 && (
-                      <div className="local-res-block">
-                        <div className="local-res-block-title">📚 More Local Resources</div>
-                        <div className="plan-resource-list">
-                          {localRes.additionalResources.map((res, ri) => (
-                            <div key={ri} className="plan-resource-item">
-                              <div className="plan-resource-header">
-                                <span className="plan-resource-name">{res.label}</span>
-                                <a href={res.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Visit →</a>
-                              </div>
-                              <p className="plan-resource-desc">{res.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Generic support resources for all steps */}
-                <div className="plan-resources-label">{i === 0 ? 'General support resources' : 'Ways we can support you'}</div>
-                <div className="plan-resource-list">
-                  {getSupportResources(step.text).map((res, ri) => (
-                    <div key={ri} className="plan-resource-item">
-                      <div className="plan-resource-header">
-                        <span className="plan-resource-name">{res.label}</span>
-                        {res.url
-                          ? <a href={res.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">{res.action} →</a>
-                          : res.action && <span className="plan-resource-note">{res.action}</span>
-                        }
-                      </div>
-                      <p className="plan-resource-desc">{res.description}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-
-      {/* Support footer */}
-      <div className="plan-support-footer">
-        <div className="plan-support-item">
-          <span className="plan-support-icon">🏛️</span>
-          <div>
-            <div className="plan-support-title">Free HUD Counseling</div>
-            <div className="plan-support-desc">Speak with a certified, unbiased mortgage advisor at no cost.</div>
-          </div>
-          <a href="https://www.hud.gov/counseling" target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Find One →</a>
-        </div>
-        <div className="plan-support-item">
-          <span className="plan-support-icon">📞</span>
-          <div>
-            <div className="plan-support-title">CFPB Helpline</div>
-            <div className="plan-support-desc">Call 1-855-411-2372 for free mortgage questions, Mon–Fri 8am–8pm ET.</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Account CTA */}
-      {!accountCreated ? (
-        <div className="account-cta-card">
-          {!showAccountForm ? (
-            <>
-              <div className="account-cta-left">
-                <div className="account-cta-icon">🔔</div>
-                <div>
-                  <div className="account-cta-title">Want to track your progress?</div>
-                  <div className="account-cta-desc">Create a free account to save your plan, get reminders, and access useful tools as you work through each step.</div>
-                </div>
-              </div>
-              <button className="btn-create-account" onClick={() => setShowAccountForm(true)}>
-                Create Free Account
-              </button>
-            </>
-          ) : (
-            <div className="account-form" style={{ width: '100%' }}>
-              <div className="account-form-title">Create your free account</div>
-              <div className="account-form-fields">
-                <input
-                  type="text"
-                  placeholder="Your name"
-                  value={accountForm.name}
-                  onChange={e => setAccountForm(f => ({ ...f, name: e.target.value }))}
-                  autoFocus
-                />
-                <input
-                  type="email"
-                  placeholder="Email address"
-                  value={accountForm.email}
-                  onChange={e => setAccountForm(f => ({ ...f, email: e.target.value }))}
-                />
-              </div>
-              <div className="account-form-actions">
-                <button className="btn-back" onClick={() => setShowAccountForm(false)}>Cancel</button>
-                <button
-                  className="btn-next"
-                  onClick={handleCreateAccount}
-                  disabled={!accountForm.name || !accountForm.email}
-                  style={{ flex: 1 }}
-                >
-                  Create Account →
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      ) : (
-        <div className="account-created-banner">
-          <span>✓</span>
-          <div>
-            <strong>Account created!</strong> We'll send your plan and progress updates to {accountForm.email}.
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-export default function AccountSetupPage({ result, userProfile, onBack }: Props) {
+export default function AccountSetupPage({ result, userProfile, onBack, onProfileSave, existingProfile }: Props) {
   const [setupStep, setSetupStep] = useState(0)
   const [goals, setGoals] = useState<GoalsForm>(defaultGoals)
-  const [submitted, setSubmitted] = useState(false)
+  const [activeProfile, setActiveProfile] = useState<UserProfile | null>(existingProfile ?? null)
   const [animating, setAnimating] = useState(false)
 
   const set = (field: keyof GoalsForm, value: string | boolean) =>
@@ -353,7 +59,7 @@ export default function AccountSetupPage({ result, userProfile, onBack }: Props)
       setAnimating(true)
       setTimeout(() => { setSetupStep(s => s + 1); setAnimating(false) }, 280)
     } else {
-      setSubmitted(true)
+      buildProfile()
     }
   }
 
@@ -363,8 +69,42 @@ export default function AccountSetupPage({ result, userProfile, onBack }: Props)
     setTimeout(() => { setSetupStep(s => s - 1); setAnimating(false) }, 280)
   }
 
-  if (submitted) {
-    return <ActionPlanView result={result} stateCode={goals.stateCode} onBack={onBack} />
+  const buildProfile = () => {
+    const now = new Date().toISOString()
+    const profile: UserProfile = {
+      id: crypto.randomUUID(),
+      name: goals.name.trim() || 'Guest',
+      email: '',
+      createdAt: now,
+      lastUpdated: now,
+      stateCode: goals.stateCode,
+      mortgageInput: userProfile,
+      assessment: result,
+      goals: {
+        timeline: goals.timeline,
+        firstHome: goals.firstHome,
+        workingWithAgent: goals.workingWithAgent,
+        topConcern: goals.topConcern,
+      },
+      stepProgress: result.action_steps.map(() => false),
+    }
+    onProfileSave(profile)
+    setActiveProfile(profile)
+  }
+
+  const handleProfileUpdate = (p: UserProfile) => {
+    setActiveProfile(p)
+    onProfileSave(p)
+  }
+
+  if (activeProfile) {
+    return (
+      <ActionPlanView
+        profile={activeProfile}
+        onProfileUpdate={handleProfileUpdate}
+        onBack={onBack}
+      />
+    )
   }
 
   return (
@@ -390,7 +130,20 @@ export default function AccountSetupPage({ result, userProfile, onBack }: Props)
         {setupStep === 0 && (
           <div className="setup-step">
             <div className="setup-step-heading">🎯 What are your goals?</div>
+
             <div className="setup-field">
+              <label>What should we call you? <span style={{ fontWeight: 400, opacity: 0.6 }}>(optional)</span></label>
+              <input
+                type="text"
+                className="setup-text-input"
+                placeholder="Your name"
+                value={goals.name}
+                onChange={e => set('name', e.target.value)}
+                autoComplete="given-name"
+              />
+            </div>
+
+            <div className="setup-field" style={{ marginTop: '1.25rem' }}>
               <label>When are you hoping to buy?</label>
               <div className="setup-options">
                 {TIMELINE_OPTIONS.map(opt => (
@@ -398,6 +151,7 @@ export default function AccountSetupPage({ result, userProfile, onBack }: Props)
                 ))}
               </div>
             </div>
+
             <div className="setup-field" style={{ marginTop: '1.25rem' }}>
               <label>Is this your first home?</label>
               <div className="setup-toggle-group">
@@ -405,6 +159,7 @@ export default function AccountSetupPage({ result, userProfile, onBack }: Props)
                 <button type="button" className={`setup-toggle${!goals.firstHome ? ' selected' : ''}`} onClick={() => set('firstHome', false)}>No, I've owned before</button>
               </div>
             </div>
+
             <div className="setup-field" style={{ marginTop: '1.25rem' }}>
               <label>Are you working with a real estate agent?</label>
               <div className="setup-toggle-group">
@@ -412,8 +167,9 @@ export default function AccountSetupPage({ result, userProfile, onBack }: Props)
                 <button type="button" className={`setup-toggle${!goals.workingWithAgent ? ' selected' : ''}`} onClick={() => set('workingWithAgent', false)}>Not yet</button>
               </div>
             </div>
+
             <div className="setup-field" style={{ marginTop: '1.25rem' }}>
-              <label>What state are you buying in? <span style={{ fontWeight: 400, opacity: 0.7 }}>(for local resources)</span></label>
+              <label>What state are you buying in? <span style={{ fontWeight: 400, opacity: 0.6 }}>(for local resources)</span></label>
               <select
                 className="setup-select"
                 value={goals.stateCode}
