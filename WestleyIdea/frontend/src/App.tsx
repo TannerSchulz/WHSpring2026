@@ -4,10 +4,13 @@ import AssessmentResult from './components/AssessmentResult'
 import ValueTracker, { TrackerEntry } from './components/ValueTracker'
 import LoadingScreen from './components/LoadingScreen'
 import AccountSetupPage from './components/AccountSetupPage'
+import ActionPlanView from './components/ActionPlanView'
 import MortgageCalculator from './components/MortgageCalculator'
+import ProfileWidget from './components/ProfileWidget'
 import { MortgageInput, AssessmentResponse } from './types'
+import { useProfile } from './hooks/useProfile'
 
-type Stage = 'form' | 'loading' | 'result' | 'error' | 'help' | 'calculator'
+type Stage = 'form' | 'loading' | 'result' | 'error' | 'help' | 'calculator' | 'resume'
 
 export default function App() {
   const [stage, setStage] = useState<Stage>('form')
@@ -15,6 +18,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [trackerEntries, setTrackerEntries] = useState<TrackerEntry[]>([])
   const [lastProfile, setLastProfile] = useState<MortgageInput | null>(null)
+  const { profile, save: saveProfile, clear: clearProfile } = useProfile()
 
   const handleFieldCommit = (field: string, value: string | number) => {
     setTrackerEntries(prev => {
@@ -67,6 +71,15 @@ export default function App() {
 
   return (
     <div className="app">
+      {/* Persistent profile widget — top-right corner */}
+      {profile && (
+        <ProfileWidget
+          profile={profile}
+          onResume={() => setStage('resume')}
+          onClear={() => { clearProfile(); setStage('form') }}
+        />
+      )}
+
       {inNarrowFlow && (
         <header className="app-header">
           <h1>Mortgage<span>AI</span></h1>
@@ -111,6 +124,16 @@ export default function App() {
           result={result}
           userProfile={lastProfile}
           onBack={() => setStage('result')}
+          onProfileSave={saveProfile}
+          existingProfile={profile}
+        />
+      )}
+
+      {stage === 'resume' && profile && (
+        <ActionPlanView
+          profile={profile}
+          onProfileUpdate={p => { saveProfile(p) }}
+          onBack={() => setStage('form')}
         />
       )}
 
