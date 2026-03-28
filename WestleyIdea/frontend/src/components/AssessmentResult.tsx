@@ -1,5 +1,10 @@
 import { AssessmentResponse } from '../types'
 
+function bold(text: string) {
+  const parts = text.split(/\*\*(.*?)\*\*/g)
+  return <>{parts.map((p, i) => i % 2 === 1 ? <strong key={i}>{p}</strong> : p)}</>
+}
+
 interface Props {
   result: AssessmentResponse
   onRestart: () => void
@@ -27,7 +32,7 @@ export default function AssessmentResult({ result, onRestart, onGetStarted, onOp
           </div>
         )}
 
-        <p className="result-summary">{result.summary}</p>
+        <p className="result-summary">{bold(result.summary)}</p>
 
         <div className="metrics">
           <div className="metric">
@@ -50,7 +55,7 @@ export default function AssessmentResult({ result, onRestart, onGetStarted, onOp
           <>
             <div className="section-label">Key Factors</div>
             <ul className="detail-list">
-              {result.details.map((d, i) => <li key={i}>{d}</li>)}
+              {result.details.map((d, i) => <li key={i}>{bold(d)}</li>)}
             </ul>
           </>
         )}
@@ -59,7 +64,7 @@ export default function AssessmentResult({ result, onRestart, onGetStarted, onOp
           {q ? 'Recommended Next Steps' : 'Steps to Improve Your Chances'}
         </div>
         <ol className="steps-list">
-          {result.action_steps.map((s, i) => <li key={i}>{s}</li>)}
+          {result.action_steps.map((s, i) => <li key={i}>{bold(s)}</li>)}
         </ol>
 
         {/* Two-path CTA section */}

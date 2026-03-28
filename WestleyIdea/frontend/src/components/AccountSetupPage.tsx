@@ -179,7 +179,7 @@ function ActionPlanView({ result, onBack }: { result: AssessmentResponse; onBack
           <span className="plan-support-icon">📞</span>
           <div>
             <div className="plan-support-title">CFPB Helpline</div>
-            <div className="plan-support-desc">**1-855-411-2372** — free mortgage help, Mon–Fri 8am–8pm ET.</div>
+            <div className="plan-support-desc"><strong>1-855-411-2372</strong> — free mortgage help, Mon–Fri 8am–8pm ET.</div>
           </div>
         </div>
       </div>

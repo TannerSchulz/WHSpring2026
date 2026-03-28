@@ -1,6 +1,11 @@
 import { useEffect, useState } from 'react'
 import { MortgageInput, StepHelpResponse, ChecklistItem } from '../types'
 
+function bold(text: string) {
+  const parts = text.split(/\*\*(.*?)\*\*/g)
+  return <>{parts.map((p, i) => i % 2 === 1 ? <strong key={i}>{p}</strong> : p)}</>
+}
+
 interface Props {
   stepText: string
   userProfile: MortgageInput
@@ -63,7 +68,7 @@ export default function StepHelpPage({ stepText, userProfile, onBack }: Props) {
             <div className="help-step-label">You're working on</div>
             <div className="help-step-text">"{stepText}"</div>
             <h1 className="help-title">{data.title}</h1>
-            <p className="help-explanation">{data.explanation}</p>
+            <p className="help-explanation">{bold(data.explanation)}</p>
             {data.demo_mode && (
               <div className="demo-notice" style={{ marginTop: '0.75rem' }}>
                 Demo mode — guidance based on standard mortgage best practices.
@@ -88,11 +93,11 @@ export default function StepHelpPage({ stepText, userProfile, onBack }: Props) {
                   </button>
                   <div className="help-check-body">
                     <button className="help-check-task" onClick={() => setExpanded(expanded === i ? null : i)}>
-                      <span>{item.task}</span>
+                      <span>{bold(item.task)}</span>
                       <span className="help-expand-icon">{expanded === i ? '▲' : '▼'}</span>
                     </button>
                     {expanded === i && (
-                      <div className="help-check-detail">{item.detail}</div>
+                      <div className="help-check-detail">{bold(item.detail)}</div>
                     )}
                   </div>
                 </li>
@@ -120,7 +125,7 @@ export default function StepHelpPage({ stepText, userProfile, onBack }: Props) {
               {data.tips.map((tip, i) => (
                 <li key={i} className="help-tip-item">
                   <span className="help-tip-num">{i + 1}</span>
-                  <span>{tip}</span>
+                  <span>{bold(tip)}</span>
                 </li>
               ))}
             </ul>
