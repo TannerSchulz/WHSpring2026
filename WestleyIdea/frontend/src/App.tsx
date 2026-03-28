@@ -4,9 +4,10 @@ import AssessmentResult from './components/AssessmentResult'
 import ValueTracker, { TrackerEntry } from './components/ValueTracker'
 import LoadingScreen from './components/LoadingScreen'
 import AccountSetupPage from './components/AccountSetupPage'
+import MortgageCalculator from './components/MortgageCalculator'
 import { MortgageInput, AssessmentResponse } from './types'
 
-type Stage = 'form' | 'loading' | 'result' | 'error' | 'help'
+type Stage = 'form' | 'loading' | 'result' | 'error' | 'help' | 'calculator'
 
 export default function App() {
   const [stage, setStage] = useState<Stage>('form')
@@ -14,6 +15,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [trackerEntries, setTrackerEntries] = useState<TrackerEntry[]>([])
   const [lastProfile, setLastProfile] = useState<MortgageInput | null>(null)
+
   const handleFieldCommit = (field: string, value: string | number) => {
     setTrackerEntries(prev => {
       const filtered = prev.filter(e => e.field !== field)
@@ -25,7 +27,6 @@ export default function App() {
     setLastProfile(data)
     setStage('loading')
     setError(null)
-
     const minDelay = new Promise(res => setTimeout(res, 7000))
 
     try {
@@ -61,49 +62,64 @@ export default function App() {
     setLastProfile(null)
   }
 
-  const showTracker = stage === 'form' || stage === 'loading' || stage === 'result'
+  const inNarrowFlow = ['form', 'loading', 'result', 'error'].includes(stage)
+  const showTracker = ['form', 'loading', 'result'].includes(stage)
 
   return (
     <div className="app">
-      {stage !== 'help' && (
+      {inNarrowFlow && (
         <header className="app-header">
           <h1>Mortgage<span>AI</span></h1>
           <p>Find out if you qualify for a home loan in minutes</p>
         </header>
       )}
 
-      <div className="quiz-main">
-        {stage === 'form' && (
-          <MortgageForm onSubmit={handleSubmit} loading={false} onFieldCommit={handleFieldCommit} />
-        )}
+      {inNarrowFlow && (
+        <div className="quiz-main">
+          {stage === 'form' && (
+            <MortgageForm onSubmit={handleSubmit} loading={false} onFieldCommit={handleFieldCommit} />
+          )}
 
-        {stage === 'loading' && <LoadingScreen />}
+          {stage === 'loading' && <LoadingScreen />}
 
-        {stage === 'result' && result && (
-          <AssessmentResult result={result} onRestart={restart} onGetStarted={() => setStage('help')} />
-        )}
+          {stage === 'result' && result && (
+            <AssessmentResult
+              result={result}
+              onRestart={restart}
+              onGetStarted={() => setStage('help')}
+              onOpenCalculator={() => setStage('calculator')}
+            />
+          )}
 
-        {stage === 'error' && (
-          <div className="card">
-            <div className="error-card">
-              <div className="error-icon">⚠️</div>
-              <h2>Something went wrong</h2>
-              <p>{error}</p>
-              <button className="btn-next" style={{ width: '100%' }} onClick={restart}>
-                Try Again
-              </button>
+          {stage === 'error' && (
+            <div className="card">
+              <div className="error-card">
+                <div className="error-icon">⚠️</div>
+                <h2>Something went wrong</h2>
+                <p>{error}</p>
+                <button className="btn-next" style={{ width: '100%' }} onClick={restart}>
+                  Try Again
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
+      )}
 
-        {stage === 'help' && result && lastProfile && (
-          <AccountSetupPage
-            result={result}
-            userProfile={lastProfile}
-            onBack={() => setStage('result')}
-          />
-        )}
-      </div>
+      {stage === 'help' && result && lastProfile && (
+        <AccountSetupPage
+          result={result}
+          userProfile={lastProfile}
+          onBack={() => setStage('result')}
+        />
+      )}
+
+      {stage === 'calculator' && (
+        <MortgageCalculator
+          onBack={() => setStage(result ? 'result' : 'form')}
+          prefill={lastProfile}
+        />
+      )}
 
       {showTracker && (
         <div className="tracker-fixed">
