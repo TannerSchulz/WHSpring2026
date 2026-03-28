@@ -1291,7 +1291,7 @@ body::after {
   min-width: 0;
 }
 
-/* ── Step focus card (left panel) ─────────────────────────────── */
+/* ── Step focus card (single unified card) ─────────────────────── */
 .step-focus-card {
   background: #ffffff;
   border-radius: var(--radius);
@@ -1304,7 +1304,7 @@ body::after {
   display: flex;
   align-items: center;
   gap: 0.6rem;
-  margin-bottom: 0.85rem;
+  margin-bottom: 0.75rem;
 }
 
 .step-focus-label {
@@ -1329,16 +1329,96 @@ body::after {
   font-weight: 700;
   color: #111827;
   line-height: 1.45;
-  margin: 0 0 1.5rem;
+  margin: 0;
 }
 
-.step-focus-footer {
+.step-focus-divider {
+  height: 1px;
+  background: #f3f4f6;
+  margin: 1.25rem 0;
+}
+
+/* Resources heading inside card */
+.step-resources-heading {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+  margin-bottom: 1rem;
+}
+
+/* Resource list */
+.step-resource-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.step-resource-item {
+  padding: 0.9rem 0;
+  border-bottom: 1px solid #f3f4f6;
+}
+.step-resource-item:last-child { border-bottom: none; padding-bottom: 0; }
+.step-resource-item:first-child { padding-top: 0; }
+
+.step-resource-top {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.3rem;
+}
+
+.step-resource-icon {
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  width: 1.3rem;
+  text-align: center;
+}
+
+.step-resource-label {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #1f2937;
+  flex: 1;
+  min-width: 0;
+}
+
+.step-resource-desc {
+  font-size: 0.8rem;
+  color: #6b7280;
+  line-height: 1.55;
+  margin: 0;
+  padding-left: 1.95rem; /* align under label */
+}
+
+.step-resource-link {
+  flex-shrink: 0;
+  font-size: 0.74rem;
+  font-weight: 700;
+  color: var(--primary);
+  background: rgba(99,102,241,0.09);
+  border-radius: 20px;
+  padding: 0.22rem 0.65rem;
+  text-decoration: none;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.step-resource-link:hover { background: rgba(99,102,241,0.18); }
+
+.step-resource-note {
+  flex-shrink: 0;
+  font-size: 0.74rem;
+  color: #9ca3af;
+  font-style: italic;
+}
+
+/* Action bar — below resources */
+.step-actions-bar {
   display: flex;
   align-items: center;
   gap: 0.75rem;
   flex-wrap: wrap;
-  border-top: 1px solid #f3f4f6;
-  padding-top: 1.1rem;
 }
 
 .step-mark-btn {
@@ -1381,66 +1461,6 @@ body::after {
   color: #fff;
 }
 .step-nav-btn--fwd:hover:not(:disabled) { background: var(--primary-dark); border-color: var(--primary-dark); }
-
-/* ── Resource rows card ────────────────────────────────────────── */
-.step-resources-card {
-  background: #ffffff;
-  border-radius: var(--radius);
-  padding: 1.25rem 1.5rem;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.12);
-  animation: fadeUp 0.35s ease both;
-}
-
-.step-resources-heading {
-  font-size: 0.72rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-  color: #9ca3af;
-  margin-bottom: 0.85rem;
-}
-
-.step-resource-rows { display: flex; flex-direction: column; }
-
-.step-resource-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 0;
-  border-bottom: 1px solid #f3f4f6;
-}
-.step-resource-row:last-child { border-bottom: none; padding-bottom: 0; }
-.step-resource-row:first-child { padding-top: 0; }
-
-.step-resource-icon { font-size: 1.1rem; flex-shrink: 0; width: 1.4rem; text-align: center; }
-
-.step-resource-label {
-  font-size: 0.88rem;
-  font-weight: 600;
-  color: #1f2937;
-  flex: 1;
-  min-width: 0;
-}
-
-.step-resource-link {
-  flex-shrink: 0;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: var(--primary);
-  background: rgba(99,102,241,0.08);
-  border-radius: 20px;
-  padding: 0.2rem 0.6rem;
-  text-decoration: none;
-  transition: background 0.15s;
-}
-.step-resource-link:hover { background: rgba(99,102,241,0.16); }
-
-.step-resource-note {
-  flex-shrink: 0;
-  font-size: 0.75rem;
-  color: #9ca3af;
-  font-style: italic;
-}
 
 /* ── Save CTA ──────────────────────────────────────────────────── */
 .plan-save-cta {
