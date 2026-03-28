@@ -41,7 +41,7 @@ function getSupportResources(step: string): SupportResource[] {
   ]
 }
 
-interface ActionStep { text: string; done: boolean; expanded: boolean }
+interface StepState { text: string; done: boolean }
 
 interface Props {
   profile: UserProfile
@@ -53,13 +53,18 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack }: Pro
   const { assessment: result, stateCode, name } = profile
   const localRes = getStateResources(stateCode)
 
-  const [steps, setSteps] = useState<ActionStep[]>(() =>
+  const [steps, setSteps] = useState<StepState[]>(() =>
     result.action_steps.map((text, i) => ({
       text,
       done: profile.stepProgress[i] ?? false,
-      expanded: false,
     }))
   )
+
+  // Which step is focused in the left panel — default to first incomplete
+  const [activeIdx, setActiveIdx] = useState(() => {
+    const first = steps.findIndex(s => !s.done)
+    return first === -1 ? 0 : first
+  })
 
   const [showEmailForm, setShowEmailForm] = useState(false)
   const [emailInput, setEmailInput] = useState(profile.email || '')
@@ -69,18 +74,12 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack }: Pro
     const updated = steps.map((s, idx) => idx === i ? { ...s, done: !s.done } : s)
     setSteps(updated)
     onProfileUpdate({ ...profile, stepProgress: updated.map(s => s.done) })
+    // Advance to next incomplete step after marking done
+    if (!steps[i].done) {
+      const next = updated.findIndex((s, idx) => idx > i && !s.done)
+      if (next !== -1) setActiveIdx(next)
+    }
   }
-
-  const toggleExpand = (i: number) =>
-    setSteps(s => s.map((step, idx) => idx === i ? { ...step, expanded: !step.expanded } : step))
-
-  const doneCount = steps.filter(s => s.done).length
-  const pct = steps.length > 0 ? Math.round((doneCount / steps.length) * 100) : 0
-  const circumference = 2 * Math.PI * 22  // r=22 → ~138.2
-
-  const initials = name
-    ? name.trim().split(/\s+/).map(w => w[0]).join('').slice(0, 2).toUpperCase()
-    : '?'
 
   const handleSaveEmail = () => {
     if (!emailInput.trim()) return
@@ -89,188 +88,170 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack }: Pro
     setShowEmailForm(false)
   }
 
+  const doneCount = steps.filter(s => s.done).length
+  const pct = steps.length > 0 ? Math.round((doneCount / steps.length) * 100) : 0
+  const active = steps[activeIdx]
+  const allDone = doneCount === steps.length
+
   return (
-    <div className="setup-page">
-      <button className="help-back-btn" onClick={onBack}>← Back to Results</button>
-
-      {/* ── Profile Card ────────────────────────────────────── */}
-      <div className="profile-card">
-        <div className="profile-avatar">{initials}</div>
-        <div className="profile-info">
-          <div className="profile-name">{name || 'Your Profile'}</div>
-          <div className="profile-meta">
-            {stateCode && (
-              <span className="profile-tag">📍 {localRes.stateName}</span>
-            )}
-            <span className={`profile-tag ${result.qualifies ? 'profile-tag--green' : 'profile-tag--yellow'}`}>
-              {result.qualifies ? '✓ Likely Qualifies' : '⚠ Needs Work'}
-            </span>
-            <span className="profile-tag">
-              Since {new Date(profile.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-            </span>
-          </div>
-          {profile.goals.topConcern && (
-            <div className="profile-concern">
-              <span className="profile-concern-label">Focus:</span> {profile.goals.topConcern}
+    <div className="plan-layout">
+      {/* ── Top bar ──────────────────────────────────────────── */}
+      <div className="plan-topbar">
+        <button className="help-back-btn" onClick={onBack}>← Back to Results</button>
+        <div className="plan-topbar-title">
+          <span className="plan-topbar-icon">🗺️</span>
+          <div>
+            <div className="plan-topbar-heading">
+              {name && name !== 'Guest' ? `${name.split(' ')[0]}'s` : 'Your'} Mortgage Action Plan
             </div>
-          )}
-        </div>
-        <div className="profile-ring-wrap">
-          <svg width="56" height="56" viewBox="0 0 52 52">
-            <circle cx="26" cy="26" r="22" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="4" />
-            <circle
-              cx="26" cy="26" r="22"
-              fill="none"
-              stroke="url(#ringGrad)"
-              strokeWidth="4"
-              strokeDasharray={`${(pct / 100) * circumference} ${circumference}`}
-              strokeLinecap="round"
-              transform="rotate(-90 26 26)"
-            />
-            <defs>
-              <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#6366f1" />
-                <stop offset="100%" stopColor="#8b5cf6" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <div className="profile-ring-label">
-            <span className="profile-ring-pct">{pct}%</span>
+            <div className="plan-topbar-sub">
+              {stateCode && `📍 ${localRes.stateName} · `}
+              <span className={result.qualifies ? 'plan-status-green' : 'plan-status-yellow'}>
+                {result.qualifies ? '✓ Likely Qualifies' : '⚠ Needs Work'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── Plan header ─────────────────────────────────────── */}
-      <div className="plan-welcome">
-        <div className="plan-welcome-icon">🗺️</div>
-        <div>
-          <h2 className="plan-welcome-title">Your Mortgage Action Plan</h2>
-          <p className="plan-welcome-sub">Work through these steps at your own pace. Expand each one for tools and resources.</p>
-        </div>
-      </div>
+      {/* ── Two-column body ──────────────────────────────────── */}
+      <div className="plan-body">
 
-      {/* ── Progress bar ────────────────────────────────────── */}
-      <div className="plan-progress-card">
-        <div className="plan-progress-header">
-          <span className="plan-progress-label">Your Progress</span>
-          <span className="plan-progress-count">{doneCount} of {steps.length} steps complete</span>
-        </div>
-        <div className="plan-progress-bar">
-          <div className="plan-progress-fill" style={{ width: `${(doneCount / steps.length) * 100}%` }} />
-        </div>
-        {doneCount === steps.length && (
-          <div className="plan-all-done">🏆 You've completed all your steps! Consider getting pre-approved next.</div>
-        )}
-      </div>
+        {/* ════ LEFT: Current Step Detail ════════════════════ */}
+        <div className="plan-main">
 
-      {/* ── Steps ───────────────────────────────────────────── */}
-      <div className="plan-steps">
-        {steps.map((step, i) => (
-          <div key={i} className={`plan-step-card${step.done ? ' plan-step--done' : ''}${i === 0 ? ' plan-step-card--featured' : ''}`}>
-            <div className="plan-step-top">
-              <button className="plan-check-btn" onClick={() => toggleDone(i)}>
-                {step.done ? '✓' : ''}
-              </button>
-              <div className="plan-step-content">
-                <div className="plan-step-num">
-                  Step {i + 1}
-                  {i === 0 && <span className="plan-step-badge">Start Here</span>}
+          {allDone ? (
+            <div className="plan-all-done-card">
+              <div className="plan-done-icon">🏆</div>
+              <h2>All steps complete!</h2>
+              <p>You've finished every step in your action plan. Your next move is to get pre-approved with a lender.</p>
+              <a href="https://www.bankrate.com/mortgages/mortgage-rates/" target="_blank" rel="noopener noreferrer" className="plan-resource-btn" style={{ fontSize: '0.9rem', padding: '0.6rem 1.25rem' }}>
+                Compare Lenders →
+              </a>
+            </div>
+          ) : (
+            <>
+              {/* Step header */}
+              <div className="plan-step-header">
+                <div className="plan-step-label-row">
+                  <span className="plan-step-label">Step {activeIdx + 1} of {steps.length}</span>
+                  {activeIdx === 0 && !active.done && <span className="plan-step-badge">Start Here</span>}
+                  {active.done && <span className="plan-step-badge plan-step-badge--done">✓ Complete</span>}
                 </div>
-                <div className="plan-step-text">{step.text}</div>
-              </div>
-              <button className="plan-expand-btn" onClick={() => toggleExpand(i)}>
-                {step.expanded ? '▲' : '▼'}
-              </button>
-            </div>
+                <h2 className="plan-step-title">{active.text}</h2>
 
-            {step.expanded && (
-              <div className="plan-step-resources">
-                {/* Step 1: show local resources */}
-                {i === 0 && (
-                  <div className="local-resources-section">
-                    <div className="local-res-heading">
-                      <span>📍</span>
-                      <span>Local Resources for {localRes.stateName}</span>
-                    </div>
-
-                    <div className="local-res-block">
-                      <div className="local-res-block-title">🏛️ State Housing Authority</div>
-                      <div className="plan-resource-item local-res-highlight">
-                        <div className="plan-resource-header">
-                          <span className="plan-resource-name">{localRes.housingAuthority.name}</span>
-                          <a href={localRes.housingAuthority.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Visit Site →</a>
-                        </div>
-                        <p className="plan-resource-desc">{localRes.housingAuthority.description}</p>
-                      </div>
-                    </div>
-
-                    {localRes.firstTimeBuyerPrograms.length > 0 && (
-                      <div className="local-res-block">
-                        <div className="local-res-block-title">🏠 First-Time Buyer Programs</div>
-                        <div className="plan-resource-list">
-                          {localRes.firstTimeBuyerPrograms.map((res, ri) => (
-                            <div key={ri} className="plan-resource-item">
-                              <div className="plan-resource-header">
-                                <span className="plan-resource-name">{res.label}</span>
-                                <a href={res.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Learn More →</a>
-                              </div>
-                              <p className="plan-resource-desc">{res.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {localRes.downPaymentAssistance.length > 0 && (
-                      <div className="local-res-block">
-                        <div className="local-res-block-title">💰 Down Payment Assistance</div>
-                        <div className="plan-resource-list">
-                          {localRes.downPaymentAssistance.map((res, ri) => (
-                            <div key={ri} className="plan-resource-item">
-                              <div className="plan-resource-header">
-                                <span className="plan-resource-name">{res.label}</span>
-                                <a href={res.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Apply →</a>
-                              </div>
-                              <p className="plan-resource-desc">{res.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="local-res-block">
-                      <div className="local-res-block-title">🤝 Free HUD Counseling in {localRes.stateName}</div>
-                      <div className="plan-resource-item">
-                        <div className="plan-resource-header">
-                          <span className="plan-resource-name">HUD-Approved Housing Counselors</span>
-                          <a href={localRes.hudCounselingUrl} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Find Near Me →</a>
-                        </div>
-                        <p className="plan-resource-desc">Free, unbiased mortgage advice from a certified counselor in {localRes.stateName}. No cost, no sales pitch.</p>
-                      </div>
-                    </div>
-
-                    {localRes.additionalResources.length > 0 && (
-                      <div className="local-res-block">
-                        <div className="local-res-block-title">📚 More Local Resources</div>
-                        <div className="plan-resource-list">
-                          {localRes.additionalResources.map((res, ri) => (
-                            <div key={ri} className="plan-resource-item">
-                              <div className="plan-resource-header">
-                                <span className="plan-resource-name">{res.label}</span>
-                                <a href={res.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Visit →</a>
-                              </div>
-                              <p className="plan-resource-desc">{res.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
+                <div className="plan-step-actions">
+                  <button
+                    className={`plan-mark-btn${active.done ? ' plan-mark-btn--done' : ''}`}
+                    onClick={() => toggleDone(activeIdx)}
+                  >
+                    {active.done ? '↩ Mark Incomplete' : '✓ Mark as Done'}
+                  </button>
+                  <div className="plan-nav-btns">
+                    <button
+                      className="plan-nav-btn"
+                      onClick={() => setActiveIdx(i => Math.max(0, i - 1))}
+                      disabled={activeIdx === 0}
+                    >← Prev</button>
+                    <button
+                      className="plan-nav-btn plan-nav-btn--next"
+                      onClick={() => setActiveIdx(i => Math.min(steps.length - 1, i + 1))}
+                      disabled={activeIdx === steps.length - 1}
+                    >Next →</button>
                   </div>
-                )}
+                </div>
+              </div>
 
-                <div className="plan-resources-label">{i === 0 ? 'General support resources' : 'Ways we can support you'}</div>
+              {/* Local resources for step 1 */}
+              {activeIdx === 0 && (
+                <div className="local-resources-section" style={{ marginBottom: '1.25rem' }}>
+                  <div className="local-res-heading">
+                    <span>📍</span>
+                    <span>Local Resources for {localRes.stateName}</span>
+                  </div>
+
+                  <div className="local-res-block">
+                    <div className="local-res-block-title">🏛️ State Housing Authority</div>
+                    <div className="plan-resource-item local-res-highlight">
+                      <div className="plan-resource-header">
+                        <span className="plan-resource-name">{localRes.housingAuthority.name}</span>
+                        <a href={localRes.housingAuthority.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Visit Site →</a>
+                      </div>
+                      <p className="plan-resource-desc">{localRes.housingAuthority.description}</p>
+                    </div>
+                  </div>
+
+                  {localRes.firstTimeBuyerPrograms.length > 0 && (
+                    <div className="local-res-block">
+                      <div className="local-res-block-title">🏠 First-Time Buyer Programs</div>
+                      <div className="plan-resource-list">
+                        {localRes.firstTimeBuyerPrograms.map((res, ri) => (
+                          <div key={ri} className="plan-resource-item">
+                            <div className="plan-resource-header">
+                              <span className="plan-resource-name">{res.label}</span>
+                              <a href={res.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Learn More →</a>
+                            </div>
+                            <p className="plan-resource-desc">{res.description}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {localRes.downPaymentAssistance.length > 0 && (
+                    <div className="local-res-block">
+                      <div className="local-res-block-title">💰 Down Payment Assistance</div>
+                      <div className="plan-resource-list">
+                        {localRes.downPaymentAssistance.map((res, ri) => (
+                          <div key={ri} className="plan-resource-item">
+                            <div className="plan-resource-header">
+                              <span className="plan-resource-name">{res.label}</span>
+                              <a href={res.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Apply →</a>
+                            </div>
+                            <p className="plan-resource-desc">{res.description}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="local-res-block">
+                    <div className="local-res-block-title">🤝 Free HUD Counseling in {localRes.stateName}</div>
+                    <div className="plan-resource-item">
+                      <div className="plan-resource-header">
+                        <span className="plan-resource-name">HUD-Approved Housing Counselors</span>
+                        <a href={localRes.hudCounselingUrl} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Find Near Me →</a>
+                      </div>
+                      <p className="plan-resource-desc">Free, unbiased mortgage advice from a certified counselor in {localRes.stateName}. No cost, no sales pitch.</p>
+                    </div>
+                  </div>
+
+                  {localRes.additionalResources.length > 0 && (
+                    <div className="local-res-block">
+                      <div className="local-res-block-title">📚 More Local Resources</div>
+                      <div className="plan-resource-list">
+                        {localRes.additionalResources.map((res, ri) => (
+                          <div key={ri} className="plan-resource-item">
+                            <div className="plan-resource-header">
+                              <span className="plan-resource-name">{res.label}</span>
+                              <a href={res.url} target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Visit →</a>
+                            </div>
+                            <p className="plan-resource-desc">{res.description}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Support resources */}
+              <div className="plan-resources-section">
+                <div className="plan-resources-label">
+                  {activeIdx === 0 ? 'General support resources' : 'Ways we can support you'}
+                </div>
                 <div className="plan-resource-list">
-                  {getSupportResources(step.text).map((res, ri) => (
+                  {getSupportResources(active.text).map((res, ri) => (
                     <div key={ri} className="plan-resource-item">
                       <div className="plan-resource-header">
                         <span className="plan-resource-name">{res.label}</span>
@@ -284,81 +265,133 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack }: Pro
                   ))}
                 </div>
               </div>
-            )}
-          </div>
-        ))}
-      </div>
 
-      {/* ── Support footer ──────────────────────────────────── */}
-      <div className="plan-support-footer">
-        <div className="plan-support-item">
-          <span className="plan-support-icon">🏛️</span>
-          <div>
-            <div className="plan-support-title">Free HUD Counseling</div>
-            <div className="plan-support-desc">Speak with a certified, unbiased mortgage advisor at no cost.</div>
-          </div>
-          <a href="https://www.hud.gov/counseling" target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Find One →</a>
-        </div>
-        <div className="plan-support-item">
-          <span className="plan-support-icon">📞</span>
-          <div>
-            <div className="plan-support-title">CFPB Helpline</div>
-            <div className="plan-support-desc">Call 1-855-411-2372 for free mortgage questions, Mon–Fri 8am–8pm ET.</div>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Save progress / account CTA ─────────────────────── */}
-      {!emailSaved ? (
-        <div className="account-cta-card">
-          {!showEmailForm ? (
-            <>
-              <div className="account-cta-left">
-                <div className="account-cta-icon">🔔</div>
-                <div>
-                  <div className="account-cta-title">Save your progress</div>
-                  <div className="account-cta-desc">Add your email to save this plan and get reminders as you work through each step.</div>
+              {/* Support footer */}
+              <div className="plan-support-footer">
+                <div className="plan-support-item">
+                  <span className="plan-support-icon">🏛️</span>
+                  <div>
+                    <div className="plan-support-title">Free HUD Counseling</div>
+                    <div className="plan-support-desc">Speak with a certified, unbiased mortgage advisor at no cost.</div>
+                  </div>
+                  <a href="https://www.hud.gov/counseling" target="_blank" rel="noopener noreferrer" className="plan-resource-btn">Find One →</a>
+                </div>
+                <div className="plan-support-item">
+                  <span className="plan-support-icon">📞</span>
+                  <div>
+                    <div className="plan-support-title">CFPB Helpline</div>
+                    <div className="plan-support-desc">Call 1-855-411-2372 for free mortgage questions, Mon–Fri 8am–8pm ET.</div>
+                  </div>
                 </div>
               </div>
-              <button className="btn-create-account" onClick={() => setShowEmailForm(true)}>
-                Save My Plan
-              </button>
             </>
+          )}
+
+          {/* ── Save progress CTA ────────────────────────────── */}
+          {!emailSaved ? (
+            <div className="account-cta-card">
+              {!showEmailForm ? (
+                <>
+                  <div className="account-cta-left">
+                    <div className="account-cta-icon">🔔</div>
+                    <div>
+                      <div className="account-cta-title">Save your progress</div>
+                      <div className="account-cta-desc">Add your email to save this plan and get reminders as you work through each step.</div>
+                    </div>
+                  </div>
+                  <button className="btn-create-account" onClick={() => setShowEmailForm(true)}>
+                    Save My Plan
+                  </button>
+                </>
+              ) : (
+                <div className="account-form" style={{ width: '100%' }}>
+                  <div className="account-form-title">Save your plan to {name ? name.split(' ')[0] : 'your'}'s profile</div>
+                  <div className="account-form-fields">
+                    <input
+                      type="email"
+                      placeholder="Email address"
+                      value={emailInput}
+                      onChange={e => setEmailInput(e.target.value)}
+                      autoFocus
+                      onKeyDown={e => e.key === 'Enter' && handleSaveEmail()}
+                    />
+                  </div>
+                  <div className="account-form-actions">
+                    <button className="btn-back" onClick={() => setShowEmailForm(false)}>Cancel</button>
+                    <button className="btn-next" onClick={handleSaveEmail} disabled={!emailInput.trim()} style={{ flex: 1 }}>
+                      Save →
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           ) : (
-            <div className="account-form" style={{ width: '100%' }}>
-              <div className="account-form-title">Save your plan to {name ? name.split(' ')[0] : 'your'}'s profile</div>
-              <div className="account-form-fields">
-                <input
-                  type="email"
-                  placeholder="Email address"
-                  value={emailInput}
-                  onChange={e => setEmailInput(e.target.value)}
-                  autoFocus
-                  onKeyDown={e => e.key === 'Enter' && handleSaveEmail()}
-                />
-              </div>
-              <div className="account-form-actions">
-                <button className="btn-back" onClick={() => setShowEmailForm(false)}>Cancel</button>
-                <button
-                  className="btn-next"
-                  onClick={handleSaveEmail}
-                  disabled={!emailInput.trim()}
-                  style={{ flex: 1 }}
-                >
-                  Save →
-                </button>
-              </div>
+            <div className="account-created-banner">
+              <span>✓</span>
+              <div><strong>Plan saved!</strong> Progress is tracked to {profile.email}.</div>
             </div>
           )}
         </div>
-      ) : (
-        <div className="account-created-banner">
-          <span>✓</span>
-          <div>
-            <strong>Plan saved!</strong> Progress is tracked to {profile.email}.
+
+        {/* ════ RIGHT: Progress Sidebar ══════════════════════ */}
+        <aside className="plan-sidebar">
+          {/* Overall progress */}
+          <div className="sidebar-progress-card">
+            <div className="sidebar-progress-header">
+              <span className="sidebar-progress-title">Your Progress</span>
+              <span className="sidebar-progress-count">{doneCount}/{steps.length}</span>
+            </div>
+            <div className="sidebar-progress-track">
+              <div className="sidebar-progress-fill" style={{ width: `${pct}%` }} />
+            </div>
+            <div className="sidebar-progress-pct">{pct}% complete</div>
           </div>
-        </div>
-      )}
+
+          {/* Step list */}
+          <div className="sidebar-steps">
+            {steps.map((step, i) => {
+              const isActive = i === activeIdx
+              const isDone = step.done
+              return (
+                <button
+                  key={i}
+                  className={`sidebar-step${isActive ? ' sidebar-step--active' : ''}${isDone ? ' sidebar-step--done' : ''}`}
+                  onClick={() => setActiveIdx(i)}
+                >
+                  {/* Connector line */}
+                  {i < steps.length - 1 && <div className="sidebar-step-line" />}
+
+                  <div className={`sidebar-step-circle${isDone ? ' done' : isActive ? ' active' : ''}`}>
+                    {isDone ? '✓' : i + 1}
+                  </div>
+                  <div className="sidebar-step-body">
+                    <div className="sidebar-step-num">Step {i + 1}</div>
+                    <div className="sidebar-step-text">{step.text}</div>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Quick stats */}
+          <div className="sidebar-stats">
+            <div className="sidebar-stat">
+              <span className="sidebar-stat-val">{result.dti_ratio}%</span>
+              <span className="sidebar-stat-label">DTI Ratio</span>
+            </div>
+            <div className="sidebar-stat">
+              <span className="sidebar-stat-val">{result.ltv_ratio}%</span>
+              <span className="sidebar-stat-label">LTV Ratio</span>
+            </div>
+            {result.estimated_monthly_payment && (
+              <div className="sidebar-stat">
+                <span className="sidebar-stat-val">${result.estimated_monthly_payment.toLocaleString()}</span>
+                <span className="sidebar-stat-label">Est./mo</span>
+              </div>
+            )}
+          </div>
+        </aside>
+      </div>
     </div>
   )
 }
