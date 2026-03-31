@@ -29,6 +29,8 @@ export default function LoadingScreen() {
 
   return (
     <div className="loading-screen">
+      <div className="ls-brand">Mortgage<span>AI</span></div>
+
       {/* Orbiting ring */}
       <div className="ls-orbit-wrap">
         <div className="ls-orbit" />

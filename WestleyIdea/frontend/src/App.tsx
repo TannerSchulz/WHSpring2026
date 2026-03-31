@@ -17,7 +17,7 @@ const DEMO_INPUT: MortgageInput = {
   home_price: 420000,
   employment_years: 3.5,
   loan_type: 'conventional',
-  state: 'TX',
+  state: 'UT',
 }
 
 export default function App() {
@@ -27,6 +27,7 @@ export default function App() {
   const [trackerEntries, setTrackerEntries] = useState<TrackerEntry[]>([])
   const [lastProfile, setLastProfile] = useState<MortgageInput | null>(null)
   const [demoMode, setDemoMode] = useState(false)
+  const [isDemoRun, setIsDemoRun] = useState(false)
   const { profile, save: saveProfile, clear: clearProfile } = useProfile()
 
   const handleFieldCommit = (field: string, value: string | number) => {
@@ -75,15 +76,21 @@ export default function App() {
     setTrackerEntries([])
     setLastProfile(null)
     setDemoMode(false)
+    setIsDemoRun(false)
   }
 
   const startDemo = () => {
     restart()
-    setTimeout(() => setDemoMode(true), 50)
+    setTimeout(() => {
+      setDemoMode(true)
+      setIsDemoRun(true)
+    }, 50)
   }
 
+  // Header shown on form and error — NOT during loading (LoadingScreen has its own branding)
+  const showHeader = ['form', 'error'].includes(stage)
   const inNarrowFlow = ['form', 'loading', 'error'].includes(stage)
-  const showTracker = ['form', 'loading'].includes(stage)
+  const showTracker = stage === 'form'
 
   return (
     <div className="app">
@@ -105,7 +112,7 @@ export default function App() {
         </button>
       )}
 
-      {inNarrowFlow && (
+      {showHeader && (
         <header className="app-header">
           <h1>Mortgage<span>AI</span></h1>
           <p>Find out if you qualify for a home loan in minutes</p>
@@ -148,6 +155,7 @@ export default function App() {
           onBack={restart}
           onProfileSave={saveProfile}
           existingProfile={profile}
+          isDemoRun={isDemoRun}
         />
       )}
 

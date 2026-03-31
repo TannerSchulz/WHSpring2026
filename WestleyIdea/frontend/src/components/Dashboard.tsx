@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import AccountSetupPage from './AccountSetupPage'
 import ActionPlanView from './ActionPlanView'
 import MortgageCalculator from './MortgageCalculator'
@@ -12,6 +12,7 @@ interface Props {
   onProfileSave: (p: UserProfile) => void
   existingProfile?: UserProfile | null
   initialTab?: 'plan' | 'calculator'
+  isDemoRun?: boolean
 }
 
 type Tab = 'plan' | 'calculator'
@@ -23,16 +24,23 @@ export default function Dashboard({
   onProfileSave,
   existingProfile,
   initialTab = 'plan',
+  isDemoRun = false,
 }: Props) {
   const [tab, setTab] = useState<Tab>(initialTab)
   const [savedProfile, setSavedProfile] = useState<UserProfile | null>(existingProfile ?? null)
+
+  // Demo: pause on Action Plan then switch to Calculator
+  useEffect(() => {
+    if (!isDemoRun) return
+    const t = setTimeout(() => setTab('calculator'), 3000)
+    return () => clearTimeout(t)
+  }, [isDemoRun])
 
   const handleProfileSave = (p: UserProfile) => {
     setSavedProfile(p)
     onProfileSave(p)
   }
 
-  // Build prefill for calculator merging profile state
   const calcPrefill: MortgageInput = savedProfile
     ? { ...savedProfile.mortgageInput, state: savedProfile.stateCode || savedProfile.mortgageInput.state }
     : lastProfile
@@ -40,7 +48,7 @@ export default function Dashboard({
   return (
     <div className="dashboard-shell">
       <div className="dashboard-topbar">
-        <button className="help-back-btn" onClick={onBack}>← Results</button>
+        <button className="help-back-btn" onClick={onBack}>← Back</button>
         <div className="dashboard-tabs">
           <button
             className={`dashboard-tab${tab === 'plan' ? ' active' : ''}`}
@@ -81,6 +89,7 @@ export default function Dashboard({
           <MortgageCalculator
             onBack={() => setTab('plan')}
             prefill={calcPrefill}
+            isDemoRun={isDemoRun}
           />
         )}
       </div>

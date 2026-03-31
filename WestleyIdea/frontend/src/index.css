@@ -599,6 +599,18 @@ body::after {
   50%       { opacity: 1;   transform: scale(1.6); box-shadow: 0 0 6px rgba(165,180,252,0.8); }
 }
 
+.ls-brand {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: white;
+  letter-spacing: -0.02em;
+  margin-bottom: 2rem;
+  text-align: center;
+}
+.ls-brand span {
+  color: var(--primary-light);
+}
+
 .ls-title {
   font-size: 1.5rem;
   font-weight: 800;
