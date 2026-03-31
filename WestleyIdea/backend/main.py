@@ -446,11 +446,14 @@ class MarketRatesResponse(BaseModel):
     property_tax_rate: float  # annual, as decimal e.g. 0.018
     avg_insurance_annual: int
     avg_hoa_monthly: int = 0
+    avg_utilities_monthly: int = 0
     insights: str
+    rate_reasoning: str = ""
     rate_source: str | None = None
     tax_source: str | None = None
     insurance_source: str | None = None
     hoa_source: str | None = None
+    utilities_source: str | None = None
     demo_mode: bool = False
 
 
@@ -477,14 +480,17 @@ For each value, provide a source citation ONLY if you know a real, specific sour
 
 Respond ONLY with this JSON (no markdown, no explanation):
 {{
-  "interest_rate": <float, e.g. 6.75>,
-  "rate_source": <string or null, e.g. "Freddie Mac Primary Mortgage Market Survey (PMMS)">,
+  "interest_rate": <float, e.g. 6.25>,
+  "rate_reasoning": "<one short sentence: why this rate for this credit tier and loan type>",
+  "rate_source": <string or null — real public source only, e.g. "Freddie Mac PMMS">,
   "property_tax_rate": <effective annual rate as decimal, e.g. 0.0057>,
   "tax_source": <string or null, e.g. "Utah State Tax Commission 2024">,
   "avg_insurance_annual": <integer dollars, e.g. 1100>,
   "insurance_source": <string or null, e.g. "Insurance Information Institute 2024">,
-  "avg_hoa_monthly": <integer dollars for typical HOA in this state, 0 if rural/no data>,
+  "avg_hoa_monthly": <integer — typical HOA for this state's metro areas, 0 if mostly rural>,
   "hoa_source": <string or null>,
+  "avg_utilities_monthly": <integer — avg monthly electric+gas+water for this state>,
+  "utilities_source": <string or null, e.g. "U.S. Energy Information Administration 2024">,
   "insights": "<one sentence about what makes housing costs in this state notable>"
 }}"""
 
@@ -501,11 +507,14 @@ Respond ONLY with this JSON (no markdown, no explanation):
                 property_tax_rate=float(ai_response["property_tax_rate"]),
                 avg_insurance_annual=int(ai_response["avg_insurance_annual"]),
                 avg_hoa_monthly=int(ai_response.get("avg_hoa_monthly", 0)),
+                avg_utilities_monthly=int(ai_response.get("avg_utilities_monthly", 0)),
                 insights=ai_response["insights"],
+                rate_reasoning=ai_response.get("rate_reasoning", ""),
                 rate_source=ai_response.get("rate_source") or None,
                 tax_source=ai_response.get("tax_source") or None,
                 insurance_source=ai_response.get("insurance_source") or None,
                 hoa_source=ai_response.get("hoa_source") or None,
+                utilities_source=ai_response.get("utilities_source") or None,
                 demo_mode=False,
             )
         except Exception:

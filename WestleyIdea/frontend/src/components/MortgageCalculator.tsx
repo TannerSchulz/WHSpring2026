@@ -105,16 +105,19 @@ function estimateClosingCosts(homePrice: number, loan: number, loanType: LoanTyp
   range: [number, number]
 } {
   const cashItems = [
-    { label: 'Loan origination fee (0.5–1%)',  amount: Math.round(loan * 0.0075) },
-    { label: 'Appraisal',                       amount: 550 },
-    { label: 'Home inspection',                 amount: 400 },
-    { label: 'Title insurance',                 amount: Math.round(homePrice * 0.005) },
-    { label: 'Title search & attorney',         amount: 850 },
-    { label: 'Recording fees',                  amount: 250 },
-    { label: 'Credit report',                   amount: 50 },
+    { label: 'Loan origination fee (0.5–1%)',          amount: Math.round(loan * 0.0075) },
+    { label: 'Underwriting & processing',               amount: 695 },
+    { label: 'Appraisal',                               amount: 500 },
+    { label: 'Home inspection',                         amount: 450 },
+    { label: "Lender's title insurance (~0.4% of loan)", amount: Math.round(loan * 0.004) },
+    { label: "Owner's title insurance (recommended)",   amount: Math.round(homePrice * 0.003) },
+    { label: 'Title search & settlement fee',           amount: 600 },
+    { label: 'Recording fees',                          amount: 250 },
+    { label: 'Credit report',                           amount: 45 },
   ]
-  const prepaidEscrow = Math.round(homePrice * 0.012)
-  cashItems.push({ label: 'Prepaid items & escrow setup (est.)', amount: prepaidEscrow })
+  // Prepaid: first-year homeowners insurance + prepaid interest (15 days) + 2–3 mo escrow reserves
+  const prepaidEscrow = Math.round(homePrice * 0.01)
+  cashItems.push({ label: 'Prepaid insurance, interest & escrow reserves', amount: prepaidEscrow })
 
   const financedItems: { label: string; amount: number }[] = []
   if (loanType === 'fha') financedItems.push({ label: 'FHA upfront MIP (1.75%)', amount: Math.round(loan * 0.0175) })
@@ -245,16 +248,19 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
   const [result, setResult] = useState<PaymentResult | null>(null)
   const [disabledRows, setDisabledRows] = useState<Set<string>>(new Set())
   const [aiLoading, setAiLoading] = useState(false)
-  const [aiInsight, setAiInsight] = useState<string | null>(null)
-  const [aiSources, setAiSources] = useState<{rate?:string|null; tax?:string|null; insurance?:string|null; hoa?:string|null} | null>(null)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [aiCard, setAiCard] = useState<{
+    stateName: string; rate: number; taxRate: number; insurance: number
+    hoa: number; utilities: number; reasoning: string; demoMode: boolean
+    sources: { rate?: string|null; tax?: string|null; insurance?: string|null; utilities?: string|null }
+  } | null>(null)
   const [autoCalcPending, setAutoCalcPending] = useState(false)
   const calculateRef = useRef<() => void>(() => {})
 
   const fetchAIRates = async () => {
     if (!state) return
     setAiLoading(true)
-    setAiInsight(null)
-    setAiSources(null)
+    setAiError(null)
     try {
       const res = await fetch('/api/market-rates', {
         method: 'POST',
@@ -273,15 +279,20 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
       const hp = parseCurrency(homePrice)
       if (hp > 0) setAnnualTax(fmtInput(Math.round(hp * data.property_tax_rate)))
       setAnnualInsurance(fmtInput(data.avg_insurance_annual))
-      if (data.avg_hoa_monthly > 0) {
-        setHasHoa(true)
-        setMonthlyHoa(fmtInput(data.avg_hoa_monthly))
-      }
-      setAiInsight(data.insights + (data.demo_mode ? ' (demo mode — enable API key for live data)' : ''))
-      setAiSources({ rate: data.rate_source, tax: data.tax_source, insurance: data.insurance_source, hoa: data.hoa_source })
+      if (data.avg_hoa_monthly > 0) { setHasHoa(true); setMonthlyHoa(fmtInput(data.avg_hoa_monthly)) }
+      if (data.avg_utilities_monthly > 0) setUtilities(fmtInput(data.avg_utilities_monthly))
+      setAiCard({
+        stateName: STATE_DATA[state]?.name ?? state,
+        rate: data.interest_rate, taxRate: data.property_tax_rate,
+        insurance: data.avg_insurance_annual, hoa: data.avg_hoa_monthly,
+        utilities: data.avg_utilities_monthly,
+        reasoning: data.rate_reasoning || data.insights,
+        demoMode: data.demo_mode,
+        sources: { rate: data.rate_source, tax: data.tax_source, insurance: data.insurance_source, utilities: data.utilities_source },
+      })
       setAutoCalcPending(true)
     } catch {
-      setAiInsight('Could not fetch AI rates — check that the backend is running with a valid API key.')
+      setAiError('Could not fetch AI rates — check that the backend is running with a valid API key.')
     } finally {
       setAiLoading(false)
     }
@@ -385,17 +396,44 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
           {aiLoading ? '⏳ Claude is researching rates...' : '🤖 Have Claude Research Rates for You'}
         </button>
       </div>
-      {aiInsight && (
-        <div className="calc-ai-insight">
-          <div>{aiInsight}</div>
-          {aiSources && (
-            <div className="calc-ai-sources">
-              {aiSources.rate && <span>Rate: {aiSources.rate}</span>}
-              {aiSources.tax && <span>Tax: {aiSources.tax}</span>}
-              {aiSources.insurance && <span>Insurance: {aiSources.insurance}</span>}
-              {aiSources.hoa && <span>HOA: {aiSources.hoa}</span>}
+      {aiError && <div className="calc-ai-insight" style={{borderLeftColor:'#ef4444',background:'#fef2f2',color:'#dc2626'}}>{aiError}</div>}
+      {aiCard && (
+        <div className="calc-ai-card">
+          <div className="calc-ai-card-header">
+            🤖 Claude's Researched Rates — {aiCard.stateName}{aiCard.demoMode ? ' (demo)' : ''}
+          </div>
+          <div className="calc-ai-card-grid">
+            <div className="calc-ai-row">
+              <span className="calc-ai-label">Interest Rate</span>
+              <span className="calc-ai-val">{aiCard.rate}%</span>
+              <span className="calc-ai-src">{aiCard.sources.rate ?? ''}</span>
             </div>
-          )}
+            <div className="calc-ai-row">
+              <span className="calc-ai-label">Property Tax</span>
+              <span className="calc-ai-val">{(aiCard.taxRate * 100).toFixed(2)}%/yr</span>
+              <span className="calc-ai-src">{aiCard.sources.tax ?? ''}</span>
+            </div>
+            <div className="calc-ai-row">
+              <span className="calc-ai-label">Homeowners Ins.</span>
+              <span className="calc-ai-val">${fmt(aiCard.insurance)}/yr</span>
+              <span className="calc-ai-src">{aiCard.sources.insurance ?? ''}</span>
+            </div>
+            {aiCard.utilities > 0 && (
+              <div className="calc-ai-row">
+                <span className="calc-ai-label">Avg Utilities</span>
+                <span className="calc-ai-val">${fmt(aiCard.utilities)}/mo</span>
+                <span className="calc-ai-src">{aiCard.sources.utilities ?? ''}</span>
+              </div>
+            )}
+            {aiCard.hoa > 0 && (
+              <div className="calc-ai-row">
+                <span className="calc-ai-label">Avg HOA</span>
+                <span className="calc-ai-val">${fmt(aiCard.hoa)}/mo</span>
+                <span className="calc-ai-src"></span>
+              </div>
+            )}
+          </div>
+          {aiCard.reasoning && <div className="calc-ai-reasoning">{aiCard.reasoning}</div>}
         </div>
       )}
 
@@ -772,15 +810,18 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
   const [aiInsuranceAnnual, setAiInsuranceAnnual] = useState<number | null>(null)
   const [aiRate, setAiRate] = useState<number | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
-  const [aiInsight, setAiInsight] = useState<string | null>(null)
-  const [aiSources, setAiSources] = useState<{rate?:string|null; tax?:string|null; insurance?:string|null; hoa?:string|null} | null>(null)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [aiCard, setAiCard] = useState<{
+    stateName: string; rate: number; taxRate: number; insurance: number
+    utilities: number; reasoning: string; demoMode: boolean
+    sources: { rate?: string|null; tax?: string|null; insurance?: string|null; utilities?: string|null }
+  } | null>(null)
   const [autoCalcPending, setAutoCalcPending] = useState(false)
 
   const fetchAIRates = async () => {
     if (!state) return
     setAiLoading(true)
-    setAiInsight(null)
-    setAiSources(null)
+    setAiError(null)
     try {
       const res = await fetch('/api/market-rates', {
         method: 'POST',
@@ -798,11 +839,17 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
       setAiTaxRate(data.property_tax_rate)
       setAiInsuranceAnnual(data.avg_insurance_annual)
       setAiRate(data.interest_rate)
-      setAiInsight(data.insights + (data.demo_mode ? ' (demo mode — enable API key for live data)' : ''))
-      setAiSources({ rate: data.rate_source, tax: data.tax_source, insurance: data.insurance_source, hoa: data.hoa_source })
+      setAiCard({
+        stateName: STATE_DATA[state]?.name ?? state,
+        rate: data.interest_rate, taxRate: data.property_tax_rate,
+        insurance: data.avg_insurance_annual, utilities: data.avg_utilities_monthly,
+        reasoning: data.rate_reasoning || data.insights,
+        demoMode: data.demo_mode,
+        sources: { rate: data.rate_source, tax: data.tax_source, insurance: data.insurance_source, utilities: data.utilities_source },
+      })
       setAutoCalcPending(true)
     } catch {
-      setAiInsight('Could not fetch AI rates — check that the backend is running with a valid API key.')
+      setAiError('Could not fetch AI rates — check that the backend is running with a valid API key.')
     } finally {
       setAiLoading(false)
     }
@@ -894,16 +941,37 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
           {aiLoading ? '⏳ Claude is researching rates...' : '🤖 Have Claude Research Rates for You'}
         </button>
       </div>
-      {aiInsight && (
-        <div className="calc-ai-insight">
-          <div>{aiInsight}</div>
-          {aiRate && <div style={{marginTop:'0.25rem', fontWeight:600}}>Claude's researched rate for your profile: <strong>{aiRate}%</strong> {aiSources?.rate ? `(${aiSources.rate})` : ''}</div>}
-          {aiSources && (
-            <div className="calc-ai-sources">
-              {aiSources.tax && <span>Tax: {aiSources.tax}</span>}
-              {aiSources.insurance && <span>Insurance: {aiSources.insurance}</span>}
+      {aiError && <div className="calc-ai-insight" style={{borderLeftColor:'#ef4444',background:'#fef2f2',color:'#dc2626'}}>{aiError}</div>}
+      {aiCard && (
+        <div className="calc-ai-card">
+          <div className="calc-ai-card-header">
+            🤖 Claude's Researched Rates — {aiCard.stateName}{aiCard.demoMode ? ' (demo)' : ''}
+          </div>
+          <div className="calc-ai-card-grid">
+            <div className="calc-ai-row">
+              <span className="calc-ai-label">Interest Rate</span>
+              <span className="calc-ai-val">{aiCard.rate}% <span className="calc-ai-note">(highlighted in grid)</span></span>
+              <span className="calc-ai-src">{aiCard.sources.rate ?? ''}</span>
             </div>
-          )}
+            <div className="calc-ai-row">
+              <span className="calc-ai-label">Property Tax</span>
+              <span className="calc-ai-val">{(aiCard.taxRate * 100).toFixed(2)}%/yr</span>
+              <span className="calc-ai-src">{aiCard.sources.tax ?? ''}</span>
+            </div>
+            <div className="calc-ai-row">
+              <span className="calc-ai-label">Homeowners Ins.</span>
+              <span className="calc-ai-val">${fmt(aiCard.insurance)}/yr</span>
+              <span className="calc-ai-src">{aiCard.sources.insurance ?? ''}</span>
+            </div>
+            {aiCard.utilities > 0 && (
+              <div className="calc-ai-row">
+                <span className="calc-ai-label">Avg Utilities</span>
+                <span className="calc-ai-val">${fmt(aiCard.utilities)}/mo</span>
+                <span className="calc-ai-src">{aiCard.sources.utilities ?? ''}</span>
+              </div>
+            )}
+          </div>
+          {aiCard.reasoning && <div className="calc-ai-reasoning">{aiCard.reasoning}</div>}
         </div>
       )}
 

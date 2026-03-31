@@ -507,7 +507,12 @@ body::after {
 .loading-screen {
   width: 100%;
   max-width: 460px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
   text-align: center;
+  min-height: calc(100vh - 6rem);
   animation: fadeUp 0.5s ease both;
 }
 
@@ -5002,6 +5007,74 @@ body::after {
 .calc-ai-sources span::before {
   content: '↳ ';
   opacity: 0.6;
+}
+
+/* ── AI rates data card ──────────────────────────────────────────────────────── */
+
+.calc-ai-card {
+  margin-bottom: 1.25rem;
+  border: 1px solid #c7d2fe;
+  border-radius: 0.6rem;
+  overflow: hidden;
+  font-size: 0.82rem;
+}
+
+.calc-ai-card-header {
+  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+  color: white;
+  padding: 0.5rem 0.9rem;
+  font-weight: 600;
+  font-size: 0.8rem;
+  letter-spacing: 0.01em;
+}
+
+.calc-ai-card-grid {
+  background: #f5f3ff;
+}
+
+.calc-ai-row {
+  display: grid;
+  grid-template-columns: 130px 110px 1fr;
+  align-items: center;
+  padding: 0.35rem 0.9rem;
+  border-bottom: 1px solid #e0d9fc;
+  gap: 0.5rem;
+}
+
+.calc-ai-row:last-child { border-bottom: none; }
+
+.calc-ai-label {
+  color: #6b7280;
+  font-size: 0.78rem;
+}
+
+.calc-ai-val {
+  font-weight: 700;
+  color: #1e1b4b;
+}
+
+.calc-ai-note {
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: #059669;
+}
+
+.calc-ai-src {
+  color: #9ca3af;
+  font-size: 0.72rem;
+  font-style: italic;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calc-ai-reasoning {
+  padding: 0.45rem 0.9rem;
+  background: #ede9fe;
+  color: #4338ca;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  border-top: 1px solid #c7d2fe;
 }
 
 @media (max-width: 600px) {
