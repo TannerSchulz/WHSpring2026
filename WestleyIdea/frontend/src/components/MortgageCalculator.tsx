@@ -344,6 +344,29 @@ function PaymentCalc({ prefill }: { prefill?: MortgageInput | null }) {
 
   return (
     <div className="calc-body">
+      {/* AI Rates — always visible at top so users know to press it */}
+      <div className="calc-ai-banner">
+        <div className="calc-ai-banner-left">
+          <span className="calc-ai-badge">AI</span>
+          <div>
+            <div className="calc-ai-banner-title">Get Live AI-Accurate Rates</div>
+            <div className="calc-ai-banner-sub">
+              {state
+                ? `Claude will fetch current rates, tax, and insurance for ${STATE_DATA[state]?.name ?? state} based on your credit profile.`
+                : 'Select your state below, then press this button to auto-fill current rates.'}
+            </div>
+          </div>
+        </div>
+        <button
+          className="calc-ai-btn"
+          onClick={fetchAIRates}
+          disabled={aiLoading || !state}
+        >
+          {aiLoading ? '⏳ Fetching...' : '✨ Fetch AI Rates'}
+        </button>
+      </div>
+      {aiInsight && <div className="calc-ai-insight">{aiInsight}</div>}
+
       <div className="calc-form-grid">
         <div className="calc-col">
           <Field label="Home Price">
@@ -404,19 +427,6 @@ function PaymentCalc({ prefill }: { prefill?: MortgageInput | null }) {
 
         <div className="calc-col">
           <StateSelect value={state} onChange={setState} label="State (auto-fills local costs)" />
-
-          {state && (
-            <div className="calc-ai-section">
-              <button
-                className="calc-ai-btn"
-                onClick={fetchAIRates}
-                disabled={aiLoading}
-              >
-                {aiLoading ? '⏳ Fetching AI rates...' : '✨ Get AI-Accurate Rates for ' + (STATE_DATA[state]?.name ?? state)}
-              </button>
-              {aiInsight && <div className="calc-ai-insight">{aiInsight}</div>}
-            </div>
-          )}
 
           <Field label="Annual Property Tax" hint={state ? `${(STATE_DATA[state].propertyTaxRate * 100).toFixed(2)}% of home value in ${STATE_DATA[state].name}` : undefined}>
             <CurrencyInput value={annualTax} onChange={setAnnualTax} placeholder="4,000" suffix="/yr" />

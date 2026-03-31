@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import MortgageForm from './components/MortgageForm'
-import AssessmentResult from './components/AssessmentResult'
 import ValueTracker, { TrackerEntry } from './components/ValueTracker'
 import LoadingScreen from './components/LoadingScreen'
 import Dashboard from './components/Dashboard'
@@ -8,7 +7,7 @@ import ProfileWidget from './components/ProfileWidget'
 import { MortgageInput, AssessmentResponse } from './types'
 import { useProfile } from './hooks/useProfile'
 
-type Stage = 'form' | 'loading' | 'result' | 'error' | 'dashboard'
+type Stage = 'form' | 'loading' | 'error' | 'dashboard'
 
 const DEMO_INPUT: MortgageInput = {
   annual_income: 95000,
@@ -61,7 +60,7 @@ export default function App() {
 
       const assessment: AssessmentResponse = await res.json()
       setResult(assessment)
-      setStage('result')
+      setStage('dashboard')
     } catch (e) {
       await minDelay
       setError(e instanceof Error ? e.message : 'Unknown error')
@@ -80,16 +79,14 @@ export default function App() {
 
   const startDemo = () => {
     restart()
-    // Small delay so restart's state clears first, then trigger demo
     setTimeout(() => setDemoMode(true), 50)
   }
 
-  const inNarrowFlow = ['form', 'loading', 'result', 'error'].includes(stage)
-  const showTracker = ['form', 'loading', 'result'].includes(stage)
+  const inNarrowFlow = ['form', 'loading', 'error'].includes(stage)
+  const showTracker = ['form', 'loading'].includes(stage)
 
   return (
     <div className="app">
-      {/* Persistent profile widget */}
       {profile && (
         <ProfileWidget
           profile={profile}
@@ -102,7 +99,6 @@ export default function App() {
         />
       )}
 
-      {/* Demo button — visible on form page */}
       {stage === 'form' && (
         <button className="demo-launch-btn" onClick={startDemo}>
           ▶ Live Demo
@@ -130,14 +126,6 @@ export default function App() {
 
           {stage === 'loading' && <LoadingScreen />}
 
-          {stage === 'result' && result && (
-            <AssessmentResult
-              result={result}
-              onRestart={restart}
-              onOpenDashboard={() => setStage('dashboard')}
-            />
-          )}
-
           {stage === 'error' && (
             <div className="card">
               <div className="error-card">
@@ -157,7 +145,7 @@ export default function App() {
         <Dashboard
           result={result}
           lastProfile={lastProfile}
-          onBack={() => setStage('result')}
+          onBack={restart}
           onProfileSave={saveProfile}
           existingProfile={profile}
         />
