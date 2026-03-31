@@ -13,6 +13,7 @@ interface Props {
   existingProfile?: UserProfile | null
   initialTab?: 'plan' | 'calculator'
   isDemoRun?: boolean
+  demoPaused?: boolean
 }
 
 type Tab = 'plan' | 'calculator'
@@ -25,16 +26,17 @@ export default function Dashboard({
   existingProfile,
   initialTab = 'plan',
   isDemoRun = false,
+  demoPaused = false,
 }: Props) {
   const [tab, setTab] = useState<Tab>(initialTab)
   const [savedProfile, setSavedProfile] = useState<UserProfile | null>(existingProfile ?? null)
 
   // Demo: pause on Action Plan then switch to Calculator
   useEffect(() => {
-    if (!isDemoRun) return
+    if (!isDemoRun || demoPaused) return
     const t = setTimeout(() => setTab('calculator'), 3000)
     return () => clearTimeout(t)
-  }, [isDemoRun])
+  }, [isDemoRun, demoPaused])
 
   const handleProfileSave = (p: UserProfile) => {
     setSavedProfile(p)
@@ -48,7 +50,7 @@ export default function Dashboard({
   return (
     <div className="dashboard-shell">
       <div className="dashboard-topbar">
-        <button className="help-back-btn" onClick={onBack}>← Back</button>
+        <div className="dashboard-brand">Mortgage<span>AI</span></div>
         <div className="dashboard-tabs">
           <button
             className={`dashboard-tab${tab === 'plan' ? ' active' : ''}`}
@@ -63,7 +65,7 @@ export default function Dashboard({
             🧮 Calculator
           </button>
         </div>
-        <div className="dashboard-topbar-spacer" />
+        <button className="dashboard-start-over" onClick={onBack}>Start Over</button>
       </div>
 
       <div className="dashboard-content">
@@ -73,6 +75,7 @@ export default function Dashboard({
               profile={savedProfile}
               onProfileUpdate={p => { setSavedProfile(p); onProfileSave(p) }}
               onBack={onBack}
+              inDashboard
             />
           ) : (
             <AccountSetupPage
@@ -81,6 +84,7 @@ export default function Dashboard({
               onBack={onBack}
               onProfileSave={handleProfileSave}
               existingProfile={null}
+              inDashboard
             />
           )
         )}
@@ -90,6 +94,8 @@ export default function Dashboard({
             onBack={() => setTab('plan')}
             prefill={calcPrefill}
             isDemoRun={isDemoRun}
+            demoPaused={demoPaused}
+            inDashboard
           />
         )}
       </div>

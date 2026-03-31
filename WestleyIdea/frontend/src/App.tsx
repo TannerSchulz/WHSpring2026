@@ -28,6 +28,7 @@ export default function App() {
   const [lastProfile, setLastProfile] = useState<MortgageInput | null>(null)
   const [demoMode, setDemoMode] = useState(false)
   const [isDemoRun, setIsDemoRun] = useState(false)
+  const [demoPaused, setDemoPaused] = useState(false)
   const { profile, save: saveProfile, clear: clearProfile } = useProfile()
 
   const handleFieldCommit = (field: string, value: string | number) => {
@@ -77,6 +78,7 @@ export default function App() {
     setLastProfile(null)
     setDemoMode(false)
     setIsDemoRun(false)
+    setDemoPaused(false)
   }
 
   const startDemo = () => {
@@ -111,6 +113,11 @@ export default function App() {
           ▶ Live Demo
         </button>
       )}
+      {isDemoRun && (
+        <button className="demo-pause-btn" onClick={() => setDemoPaused(p => !p)}>
+          {demoPaused ? '▶ Resume' : '⏸ Pause'}
+        </button>
+      )}
 
       {showHeader && (
         <header className="app-header">
@@ -128,6 +135,7 @@ export default function App() {
               onFieldCommit={handleFieldCommit}
               demoMode={demoMode}
               demoData={DEMO_INPUT}
+              demoPaused={demoPaused}
             />
           )}
 
@@ -156,6 +164,7 @@ export default function App() {
           onProfileSave={saveProfile}
           existingProfile={profile}
           isDemoRun={isDemoRun}
+          demoPaused={demoPaused}
         />
       )}
 

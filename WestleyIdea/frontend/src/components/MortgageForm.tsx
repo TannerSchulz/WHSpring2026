@@ -8,6 +8,7 @@ interface Props {
   onFieldCommit: (field: string, value: string | number) => void
   demoMode?: boolean
   demoData?: MortgageInput
+  demoPaused?: boolean
 }
 
 const LOAN_OPTIONS = [
@@ -108,7 +109,7 @@ interface SubAnswers {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMode, demoData }: Props) {
+export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMode, demoData, demoPaused }: Props) {
   const [step, setStep] = useState(0)
   const [animating, setAnimating] = useState(false)
   const [values, setValues] = useState<Partial<MortgageInput>>({ loan_type: 'conventional' })
@@ -167,11 +168,11 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
 
   // ── Demo mode: auto-advance through each step ────────────────────────────────
   useEffect(() => {
-    if (!demoMode) return
+    if (!demoMode || demoPaused) return
     const delay = step === 0 ? 1600 : 1300
     const t = setTimeout(() => commitAndAdvanceRef.current(), delay)
     return () => clearTimeout(t)
-  }, [step, demoMode])
+  }, [step, demoMode, demoPaused])
 
   // ── Validation ──────────────────────────────────────────────────────────────
 

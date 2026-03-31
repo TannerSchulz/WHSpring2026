@@ -10,6 +10,7 @@ interface Props {
   onBack: () => void
   onProfileSave: (p: UserProfile) => void
   existingProfile?: UserProfile | null
+  inDashboard?: boolean
 }
 
 const SETUP_STEPS = [
@@ -45,7 +46,7 @@ const CONCERN_OPTIONS = [
   'Understanding the home buying process',
 ]
 
-export default function AccountSetupPage({ result, userProfile, onBack, onProfileSave, existingProfile }: Props) {
+export default function AccountSetupPage({ result, userProfile, onBack, onProfileSave, existingProfile, inDashboard }: Props) {
   const [setupStep, setSetupStep] = useState(0)
   const [goals, setGoals] = useState<GoalsForm>(defaultGoals)
   const [activeProfile, setActiveProfile] = useState<UserProfile | null>(existingProfile ?? null)
@@ -103,13 +104,14 @@ export default function AccountSetupPage({ result, userProfile, onBack, onProfil
         profile={activeProfile}
         onProfileUpdate={handleProfileUpdate}
         onBack={onBack}
+        inDashboard={inDashboard}
       />
     )
   }
 
   return (
     <div className="setup-page">
-      <button className="help-back-btn" onClick={back}>← Back</button>
+      {!inDashboard && <button className="help-back-btn" onClick={back}>← Back</button>}
 
       <div className="setup-header">
         <h1 className="setup-title">Build your mortgage plan</h1>
@@ -208,7 +210,7 @@ export default function AccountSetupPage({ result, userProfile, onBack, onProfil
         )}
 
         <div className="step-nav" style={{ marginTop: '1.5rem' }}>
-          <button className="btn-back" type="button" onClick={back}>← Back</button>
+          {!inDashboard && <button className="btn-back" type="button" onClick={back}>← Back</button>}
           <button
             className="btn-next"
             type="button"

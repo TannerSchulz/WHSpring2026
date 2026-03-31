@@ -203,9 +203,10 @@ interface Props {
   profile: UserProfile
   onProfileUpdate: (p: UserProfile) => void
   onBack: () => void
+  inDashboard?: boolean
 }
 
-export default function ActionPlanView({ profile, onProfileUpdate, onBack }: Props) {
+export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDashboard }: Props) {
   const { assessment: result, stateCode, name } = profile
   const localRes = getStateResources(stateCode)
 
@@ -253,7 +254,7 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack }: Pro
 
       {/* ── Top bar ─────────────────────────────────────────── */}
       <div className="plan-topbar">
-        <button className="help-back-btn" onClick={onBack}>← Back</button>
+        {!inDashboard && <button className="help-back-btn" onClick={onBack}>← Back</button>}
         <div className="plan-topbar-title">
           <span className="plan-topbar-icon">🗺️</span>
           <div>

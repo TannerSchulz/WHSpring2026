@@ -6,6 +6,8 @@ interface Props {
   onBack: () => void
   prefill?: MortgageInput | null
   isDemoRun?: boolean
+  demoPaused?: boolean
+  inDashboard?: boolean
 }
 
 type Mode = 'payment' | 'afford'
@@ -221,7 +223,7 @@ interface PaymentResult {
   pmiDropMonth: number | null; frontEndDTI: number | null; down: number
 }
 
-function PaymentCalc({ prefill, runDemo, onDemoComplete }: { prefill?: MortgageInput | null; runDemo?: boolean; onDemoComplete?: () => void }) {
+function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?: MortgageInput | null; runDemo?: boolean; onDemoComplete?: () => void; demoPaused?: boolean }) {
   const [homePrice, setHomePrice] = useState(prefill ? fmtInput(prefill.home_price) : '')
   const [downDisplay, setDownDisplay] = useState(prefill ? fmtInput(prefill.down_payment) : '')
   const [downMode, setDownMode] = useState<'dollar' | 'percent'>('dollar')
@@ -287,22 +289,14 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete }: { prefill?: MortgageI
 
   // Demo: run AI fetch then signal completion
   useEffect(() => {
-    if (!runDemo) return
+    if (!runDemo || demoPaused) return
     fetchAIRates().then(() => {
       setTimeout(() => onDemoComplete?.(), 2000)
     })
-  }, [runDemo]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [runDemo, demoPaused]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { setRate(String(CURRENT_RATES[term])) }, [term])
 
-  useEffect(() => {
-    if (!state) return
-    const hp = parseCurrency(homePrice)
-    if (hp > 0) setAnnualTax(fmtInput(Math.round(hp * STATE_DATA[state].propertyTaxRate)))
-    setAnnualInsurance(fmtInput(STATE_DATA[state].avgInsuranceAnnual))
-    setUtilities(fmtInput(STATE_DATA[state].avgUtilitiesMonthly))
-    if (hasHoa) setMonthlyHoa(fmtInput(STATE_DATA[state].avgHoaMonthly))
-  }, [state])
 
   useEffect(() => {
     if (!state) return
@@ -382,7 +376,7 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete }: { prefill?: MortgageI
           onClick={fetchAIRates}
           disabled={aiLoading || !state}
         >
-          {aiLoading ? '⏳ Claude AI is fetching rates...' : '🤖 Pull Current Rates with Claude AI'}
+          {aiLoading ? '⏳ Claude is researching rates...' : '🤖 Have Claude Research Rates for You'}
         </button>
       </div>
       {aiInsight && <div className="calc-ai-insight">{aiInsight}</div>}
@@ -446,7 +440,7 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete }: { prefill?: MortgageI
         </div>
 
         <div className="calc-col">
-          <StateSelect value={state} onChange={setState} label="State (auto-fills local costs)" />
+          <StateSelect value={state} onChange={setState} label="State" />
 
           <Field label="Annual Property Tax" hint={state ? `${(STATE_DATA[state].propertyTaxRate * 100).toFixed(2)}% of home value in ${STATE_DATA[state].name}` : undefined}>
             <CurrencyInput value={annualTax} onChange={setAnnualTax} placeholder="4,000" suffix="/yr" />
@@ -746,7 +740,7 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete }: { prefill?: MortgageI
 const GRID_RATES = [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]
 const GRID_DOWN_PCTS = [0, 3, 5, 10, 15, 20]
 
-function AffordCalc({ prefill, runDemo, onDemoComplete }: { prefill?: MortgageInput | null; runDemo?: boolean; onDemoComplete?: () => void }) {
+function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?: MortgageInput | null; runDemo?: boolean; onDemoComplete?: () => void; demoPaused?: boolean }) {
   const [targetPayment, setTargetPayment] = useState('')
   const [state, setState] = useState(prefill?.state ?? '')
   const [loanType, setLoanType] = useState<LoanType>(prefill?.loan_type as LoanType ?? 'conventional')
@@ -756,26 +750,69 @@ function AffordCalc({ prefill, runDemo, onDemoComplete }: { prefill?: MortgageIn
   const [result, setResult] = useState<{grid: {downPct:number;rate:number;homePrice:number;hasMi:boolean}[][]}>( null!)
   const [popup, setPopup] = useState<{downPct:number;rate:number;homePrice:number} | null>(null)
   const calculateRef = useRef<() => void>(() => {})
+  const [aiTaxRate, setAiTaxRate] = useState<number | null>(null)
+  const [aiInsuranceAnnual, setAiInsuranceAnnual] = useState<number | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiInsight, setAiInsight] = useState<string | null>(null)
+  const [autoCalcPending, setAutoCalcPending] = useState(false)
+
+  const fetchAIRates = async () => {
+    if (!state) return
+    setAiLoading(true)
+    setAiInsight(null)
+    try {
+      const res = await fetch('/api/market-rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          state_code: state,
+          state_name: STATE_DATA[state]?.name ?? state,
+          credit_score: prefill?.credit_score ?? 720,
+          loan_type: loanType,
+          term_years: parseInt(term),
+        }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      const data = await res.json()
+      setAiTaxRate(data.property_tax_rate)
+      setAiInsuranceAnnual(data.avg_insurance_annual)
+      setAiInsight(data.insights + (data.demo_mode ? ' (demo mode — enable API key for live data)' : ''))
+      setAutoCalcPending(true)
+    } catch {
+      setAiInsight('Could not fetch AI rates — check that the backend is running with a valid API key.')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!autoCalcPending) return
+    setAutoCalcPending(false)
+    calculateRef.current()
+  }, [autoCalcPending])
 
   const suggestedPayment = prefill?.annual_income
     ? Math.round(prefill.annual_income / 12 * 0.28) : null
 
-  // Demo: auto-fill target payment and calculate
+  // Demo: fetch AI rates, fill target payment, calculate
   useEffect(() => {
-    if (!runDemo || !suggestedPayment) return
+    if (!runDemo || !suggestedPayment || demoPaused) return
     setTargetPayment(suggestedPayment.toLocaleString())
-    setTimeout(() => {
-      calculateRef.current()
-      setTimeout(() => onDemoComplete?.(), 1200)
-    }, 600)
-  }, [runDemo]) // eslint-disable-line react-hooks/exhaustive-deps
+    fetchAIRates().then(() => {
+      setTimeout(() => {
+        calculateRef.current()
+        setTimeout(() => onDemoComplete?.(), 1200)
+      }, 600)
+    })
+  }, [runDemo, demoPaused]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const calculate = () => {
     const target = parseCurrency(targetPayment)
     if (target <= 0) return
 
     const mHoa = parseCurrency(monthlyHoa)
-    const annualIns = state ? STATE_DATA[state].avgInsuranceAnnual : 1500
+    const taxRateValue = aiTaxRate ?? (state ? STATE_DATA[state].propertyTaxRate : 0)
+    const annualIns = aiInsuranceAnnual ?? (state ? STATE_DATA[state].avgInsuranceAnnual : 1500)
     const mIns = annualIns / 12
     const mUtils = state && includeUtils ? STATE_DATA[state].avgUtilitiesMonthly : 0
     const t = parseInt(term)
@@ -784,7 +821,7 @@ function AffordCalc({ prefill, runDemo, onDemoComplete }: { prefill?: MortgageIn
       return GRID_RATES.map(rate => {
         let homePrice = 400000
         for (let i = 0; i < 12; i++) {
-          const mTax = state ? homePrice * STATE_DATA[state].propertyTaxRate / 12 : 0
+          const mTax = homePrice * taxRateValue / 12
           const loan = homePrice * (1 - downPct / 100)
           const adjLoan = adjustedLoanAmount(loan, loanType, downPct / 100)
           const mi = calcMortgageInsurance(adjLoan, (1 - downPct / 100) * 100, loanType, t)
@@ -813,6 +850,29 @@ function AffordCalc({ prefill, runDemo, onDemoComplete }: { prefill?: MortgageIn
 
   return (
     <div className="calc-body">
+      {/* AI Rates — always visible at top */}
+      <div className="calc-ai-banner">
+        <div className="calc-ai-banner-left">
+          <span className="calc-ai-badge">AI</span>
+          <div>
+            <div className="calc-ai-banner-title">Get Live AI-Accurate Rates</div>
+            <div className="calc-ai-banner-sub">
+              {state
+                ? `Claude will fetch current tax and insurance data for ${STATE_DATA[state]?.name ?? state} to sharpen your affordability estimate.`
+                : 'Select your state below, then press this button to auto-fill current rates.'}
+            </div>
+          </div>
+        </div>
+        <button
+          className="calc-ai-btn"
+          onClick={fetchAIRates}
+          disabled={aiLoading || !state}
+        >
+          {aiLoading ? '⏳ Claude is researching rates...' : '🤖 Have Claude Research Rates for You'}
+        </button>
+      </div>
+      {aiInsight && <div className="calc-ai-insight">{aiInsight}</div>}
+
       <div className="calc-afford-intro">
         Enter your target total monthly housing budget and see the home prices you can afford across different rates and down payments.
       </div>
@@ -986,28 +1046,35 @@ function AffordCalc({ prefill, runDemo, onDemoComplete }: { prefill?: MortgageIn
 
 type DemoPhase = 'idle' | 'payment' | 'afford' | 'done'
 
-export default function MortgageCalculator({ onBack, prefill, isDemoRun }: Props) {
+export default function MortgageCalculator({ onBack, prefill, isDemoRun, demoPaused, inDashboard }: Props) {
   const [mode, setMode] = useState<Mode>('payment')
   const [demoPhase, setDemoPhase] = useState<DemoPhase>('idle')
+  const [paymentDone, setPaymentDone] = useState(false)
 
   useEffect(() => {
     if (!isDemoRun) return
-    // Start payment calc demo after a brief moment to let the tab render
     const t = setTimeout(() => setDemoPhase('payment'), 800)
     return () => clearTimeout(t)
   }, [isDemoRun])
 
-  const handlePaymentDemoComplete = () => {
-    setTimeout(() => {
+  // 10-second pause between payment and afford demos; respects demoPaused
+  useEffect(() => {
+    if (!paymentDone || demoPaused) return
+    const t = setTimeout(() => {
       setMode('afford')
       setTimeout(() => setDemoPhase('afford'), 600)
-    }, 600)
+    }, 10000)
+    return () => clearTimeout(t)
+  }, [paymentDone, demoPaused])
+
+  const handlePaymentDemoComplete = () => {
+    setPaymentDone(true)
   }
 
   return (
     <div className="calc-page">
       <div className="calc-page-header">
-        <button className="calc-back-btn" onClick={onBack}>← Back</button>
+        {!inDashboard && <button className="calc-back-btn" onClick={onBack}>← Back</button>}
         <div>
           <h2 className="calc-page-title">Mortgage Calculator</h2>
           <p className="calc-page-subtitle">Rates as of {RATE_DATA_DATE} · All figures are estimates</p>
@@ -1029,6 +1096,7 @@ export default function MortgageCalculator({ onBack, prefill, isDemoRun }: Props
             prefill={prefill}
             runDemo={demoPhase === 'payment'}
             onDemoComplete={handlePaymentDemoComplete}
+            demoPaused={demoPaused}
           />
         )}
         {mode === 'afford' && (
@@ -1036,6 +1104,7 @@ export default function MortgageCalculator({ onBack, prefill, isDemoRun }: Props
             prefill={prefill}
             runDemo={demoPhase === 'afford'}
             onDemoComplete={() => setDemoPhase('done')}
+            demoPaused={demoPaused}
           />
         )}
       </div>
