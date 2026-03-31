@@ -108,15 +108,17 @@ export default function App() {
         />
       )}
 
-      {!profile && !isDemoRun && (
-        <button className="demo-launch-btn" onClick={startDemo}>
-          ▶ Live Demo
-        </button>
-      )}
-      {isDemoRun && (
-        <button className="demo-pause-btn" onClick={() => setDemoPaused(p => !p)}>
-          {demoPaused ? '▶ Resume' : '⏸ Pause'}
-        </button>
+      {(!profile || isDemoRun) && (
+        <div className="demo-controls">
+          <button className="demo-launch-btn" onClick={startDemo}>
+            ▶ Live Demo
+          </button>
+          {isDemoRun && (
+            <button className="demo-pause-btn" onClick={() => setDemoPaused(p => !p)}>
+              {demoPaused ? '▶ Resume' : '⏸ Pause'}
+            </button>
+          )}
+        </div>
       )}
 
       {showHeader && (
