@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { MortgageInput, AssessmentResponse } from '../types'
 import { US_STATES } from '../data/localResources'
 import ActionPlanView from './ActionPlanView'
@@ -11,6 +11,7 @@ interface Props {
   onProfileSave: (p: UserProfile) => void
   existingProfile?: UserProfile | null
   inDashboard?: boolean
+  isDemoRun?: boolean
 }
 
 const SETUP_STEPS = [
@@ -46,11 +47,36 @@ const CONCERN_OPTIONS = [
   'Understanding the home buying process',
 ]
 
-export default function AccountSetupPage({ result, userProfile, onBack, onProfileSave, existingProfile, inDashboard }: Props) {
+export default function AccountSetupPage({ result, userProfile, onBack, onProfileSave, existingProfile, inDashboard, isDemoRun }: Props) {
   const [setupStep, setSetupStep] = useState(0)
   const [goals, setGoals] = useState<GoalsForm>(defaultGoals)
   const [activeProfile, setActiveProfile] = useState<UserProfile | null>(existingProfile ?? null)
   const [animating, setAnimating] = useState(false)
+
+  // Demo: auto-fill and auto-advance through setup steps
+  useEffect(() => {
+    if (!isDemoRun || activeProfile) return
+    const timers: ReturnType<typeof setTimeout>[] = []
+    timers.push(setTimeout(() => setGoals({
+      name: 'Demo User', timeline: 'Within 1 year', firstHome: true,
+      workingWithAgent: false, topConcern: '', stateCode: 'UT',
+    }), 900))
+    timers.push(setTimeout(() => setSetupStep(1), 2800))
+    timers.push(setTimeout(() => setGoals(g => ({ ...g, topConcern: 'Understanding the home buying process' })), 4200))
+    timers.push(setTimeout(() => {
+      const now = new Date().toISOString()
+      const profile: UserProfile = {
+        id: crypto.randomUUID(), name: 'Demo User', email: '',
+        createdAt: now, lastUpdated: now, stateCode: 'UT',
+        mortgageInput: userProfile, assessment: result,
+        goals: { timeline: 'Within 1 year', firstHome: true, workingWithAgent: false, topConcern: 'Understanding the home buying process' },
+        stepProgress: result.action_steps.map(() => false),
+      }
+      onProfileSave(profile)
+      setActiveProfile(profile)
+    }, 6000))
+    return () => timers.forEach(clearTimeout)
+  }, [isDemoRun]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (field: keyof GoalsForm, value: string | boolean) =>
     setGoals(f => ({ ...f, [field]: value }))

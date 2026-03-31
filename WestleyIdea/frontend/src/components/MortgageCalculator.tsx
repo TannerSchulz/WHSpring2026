@@ -195,7 +195,16 @@ function SegGroup({ options, value, onChange }: {
   )
 }
 
-function StateSelect({ value, onChange, label, hint }: { value: string; onChange: (v: string) => void; label: string; hint?: string }) {
+function StateSelect({ value, onChange, label, hint, aiValues }: {
+  value: string; onChange: (v: string) => void; label: string; hint?: string
+  aiValues?: { taxRate?: number; insurance?: number; hoa?: number; utilities?: number }
+}) {
+  const sd = value ? STATE_DATA[value] : null
+  const hasAi = !!(aiValues && (aiValues.taxRate !== undefined || aiValues.insurance !== undefined))
+  const taxRate   = aiValues?.taxRate    ?? sd?.propertyTaxRate
+  const insurance = aiValues?.insurance  ?? sd?.avgInsuranceAnnual
+  const hoa       = aiValues?.hoa        ?? sd?.avgHoaMonthly
+  const utilities = aiValues?.utilities  ?? sd?.avgUtilitiesMonthly
   return (
     <Field label={label} hint={hint}>
       <select className="calc-select" value={value} onChange={e => onChange(e.target.value)}>
@@ -204,12 +213,13 @@ function StateSelect({ value, onChange, label, hint }: { value: string; onChange
           <option key={code} value={code}>{data.name} ({code})</option>
         ))}
       </select>
-      {value && (
+      {value && taxRate !== undefined && (
         <div className="calc-state-info">
-          <span>Tax: <strong>{(STATE_DATA[value].propertyTaxRate * 100).toFixed(2)}%/yr</strong></span>
-          <span>Insurance: <strong>${fmt(STATE_DATA[value].avgInsuranceAnnual)}/yr</strong></span>
-          <span>Avg HOA: <strong>${fmt(STATE_DATA[value].avgHoaMonthly)}/mo</strong></span>
-          <span>Avg Utilities: <strong>${fmt(STATE_DATA[value].avgUtilitiesMonthly)}/mo</strong></span>
+          {hasAi && <span className="calc-state-ai-badge">AI</span>}
+          <span>Tax: <strong>{(taxRate * 100).toFixed(2)}%/yr</strong></span>
+          {insurance !== undefined && <span>Insurance: <strong>${fmt(insurance)}/yr</strong></span>}
+          {hoa !== undefined && <span>Avg HOA: <strong>${fmt(hoa)}/mo</strong></span>}
+          {utilities !== undefined && <span>Avg Utilities: <strong>${fmt(utilities)}/mo</strong></span>}
         </div>
       )}
     </Field>
@@ -382,9 +392,7 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
           <div>
             <div className="calc-ai-banner-title">Get Live AI-Accurate Rates</div>
             <div className="calc-ai-banner-sub">
-              {state
-                ? `Claude will fetch current rates, tax, and insurance for ${STATE_DATA[state]?.name ?? state} based on your credit profile.`
-                : 'Select your state below, then press this button to auto-fill current rates.'}
+              {state ? `Current rates for ${STATE_DATA[state]?.name ?? state} · personalized to your credit profile` : 'Select a state to get started'}
             </div>
           </div>
         </div>
@@ -393,7 +401,7 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
           onClick={fetchAIRates}
           disabled={aiLoading || !state}
         >
-          {aiLoading ? '⏳ Claude is researching rates...' : '🤖 Have Claude Research Rates for You'}
+          {aiLoading ? '⏳ Claude is researching...' : '🤖 Have Claude Research Rates'}
         </button>
       </div>
       {aiError && <div className="calc-ai-insight" style={{borderLeftColor:'#ef4444',background:'#fef2f2',color:'#dc2626'}}>{aiError}</div>}
@@ -496,13 +504,16 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
         </div>
 
         <div className="calc-col">
-          <StateSelect value={state} onChange={setState} label="State" />
+          <StateSelect
+            value={state} onChange={setState} label="State"
+            aiValues={aiCard ? { taxRate: aiCard.taxRate, insurance: aiCard.insurance, hoa: aiCard.hoa || undefined, utilities: aiCard.utilities || undefined } : undefined}
+          />
 
-          <Field label="Annual Property Tax" hint={state ? `${(STATE_DATA[state].propertyTaxRate * 100).toFixed(2)}% of home value in ${STATE_DATA[state].name}` : undefined}>
+          <Field label="Annual Property Tax">
             <CurrencyInput value={annualTax} onChange={setAnnualTax} placeholder="4,000" suffix="/yr" />
           </Field>
 
-          <Field label="Annual Homeowner's Insurance" hint={state ? `State avg: $${fmt(STATE_DATA[state].avgInsuranceAnnual)}/yr` : undefined}>
+          <Field label="Annual Homeowner's Insurance">
             <CurrencyInput value={annualInsurance} onChange={setAnnualInsurance} placeholder="1,500" suffix="/yr" />
           </Field>
 
@@ -839,6 +850,7 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
       setAiTaxRate(data.property_tax_rate)
       setAiInsuranceAnnual(data.avg_insurance_annual)
       setAiRate(data.interest_rate)
+      if (data.avg_hoa_monthly > 0) setMonthlyHoa(fmtInput(data.avg_hoa_monthly))
       setAiCard({
         stateName: STATE_DATA[state]?.name ?? state,
         rate: data.interest_rate, taxRate: data.property_tax_rate,
@@ -927,9 +939,7 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
           <div>
             <div className="calc-ai-banner-title">Get Live AI-Accurate Rates</div>
             <div className="calc-ai-banner-sub">
-              {state
-                ? `Claude will fetch current tax and insurance data for ${STATE_DATA[state]?.name ?? state} to sharpen your affordability estimate.`
-                : 'Select your state below, then press this button to auto-fill current rates.'}
+              {state ? `Current rates for ${STATE_DATA[state]?.name ?? state} · personalized to your credit profile` : 'Select a state to get started'}
             </div>
           </div>
         </div>
@@ -938,7 +948,7 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
           onClick={fetchAIRates}
           disabled={aiLoading || !state}
         >
-          {aiLoading ? '⏳ Claude is researching rates...' : '🤖 Have Claude Research Rates for You'}
+          {aiLoading ? '⏳ Claude is researching...' : '🤖 Have Claude Research Rates'}
         </button>
       </div>
       {aiError && <div className="calc-ai-insight" style={{borderLeftColor:'#ef4444',background:'#fef2f2',color:'#dc2626'}}>{aiError}</div>}
@@ -1004,7 +1014,10 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
         </div>
 
         <div className="calc-col">
-          <StateSelect value={state} onChange={setState} label="State (for tax, insurance, utilities)" />
+          <StateSelect
+            value={state} onChange={setState} label="State"
+            aiValues={aiCard ? { taxRate: aiCard.taxRate, insurance: aiCard.insurance, utilities: aiCard.utilities || undefined } : undefined}
+          />
           <Field label="Monthly HOA (0 if none)">
             <CurrencyInput value={monthlyHoa} onChange={setMonthlyHoa} placeholder="0" suffix="/mo" />
           </Field>
