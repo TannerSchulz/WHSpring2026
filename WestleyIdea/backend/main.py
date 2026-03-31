@@ -433,6 +433,78 @@ Use their exact numbers. Bold the most critical figures. Keep every field as sho
     )
 
 
+class MarketRatesInput(BaseModel):
+    state_code: str
+    state_name: str
+    credit_score: int
+    loan_type: str
+    term_years: int = 30
+
+
+class MarketRatesResponse(BaseModel):
+    interest_rate: float
+    property_tax_rate: float  # annual, as decimal e.g. 0.018
+    avg_insurance_annual: int
+    insights: str
+    demo_mode: bool = False
+
+
+@app.post("/api/market-rates", response_model=MarketRatesResponse)
+async def market_rates(data: MarketRatesInput):
+    if ai_client:
+        credit_tier = (
+            "excellent (720+)" if data.credit_score >= 720
+            else "good (680–719)" if data.credit_score >= 680
+            else "fair (640–679)" if data.credit_score >= 640
+            else "below average (<640)"
+        )
+        prompt = f"""You are a mortgage data expert. Provide CURRENT (as of early 2026) accurate estimates.
+
+STATE: {data.state_name} ({data.state_code})
+BORROWER CREDIT SCORE: {data.credit_score} — {credit_tier}
+LOAN TYPE: {data.loan_type.upper()}
+LOAN TERM: {data.term_years} years
+
+National 30yr average is ~6.65% (early 2026). Adjust for:
+- Credit tier: excellent borrowers get ~0.25–0.5% below average; fair gets ~0.25–0.5% above
+- VA/USDA loans typically run 0.1–0.25% below conventional
+- FHA is similar to conventional
+
+Respond ONLY with this JSON (no markdown, no explanation):
+{{
+  "interest_rate": <float, e.g. 6.75>,
+  "property_tax_rate": <effective annual rate as decimal, e.g. 0.0178>,
+  "avg_insurance_annual": <integer dollars, e.g. 1850>,
+  "insights": "<one sentence about what makes costs in this state notable>"
+}}"""
+
+        try:
+            message = ai_client.messages.create(
+                model="claude-opus-4-6",
+                max_tokens=256,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            content = message.content[0].text.strip()
+            ai_response = extract_json(content)
+            return MarketRatesResponse(
+                interest_rate=float(ai_response["interest_rate"]),
+                property_tax_rate=float(ai_response["property_tax_rate"]),
+                avg_insurance_annual=int(ai_response["avg_insurance_annual"]),
+                insights=ai_response["insights"],
+                demo_mode=False,
+            )
+        except Exception:
+            pass
+
+    return MarketRatesResponse(
+        interest_rate=6.65 if data.term_years == 30 else 5.95,
+        property_tax_rate=0.01,
+        avg_insurance_annual=1500,
+        insights="AI unavailable — showing national averages. Enable the Anthropic API key for personalized state data.",
+        demo_mode=True,
+    )
+
+
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "ai_enabled": ai_client is not None}

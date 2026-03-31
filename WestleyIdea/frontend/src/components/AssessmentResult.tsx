@@ -23,11 +23,10 @@ function ltvStatus(ltv: number): { status: Status; hint: string } {
 interface Props {
   result: AssessmentResponse
   onRestart: () => void
-  onGetStarted: () => void
-  onOpenCalculator: () => void
+  onOpenDashboard: () => void
 }
 
-export default function AssessmentResult({ result, onRestart, onGetStarted, onOpenCalculator }: Props) {
+export default function AssessmentResult({ result, onRestart, onOpenDashboard }: Props) {
   const q = result.qualifies
   const dti = dtiStatus(result.dti_ratio)
   const ltv = ltvStatus(result.ltv_ratio)
@@ -130,32 +129,18 @@ export default function AssessmentResult({ result, onRestart, onGetStarted, onOp
 
         <div className="result-cta-section">
           <div className="result-cta-heading">What's next?</div>
-
-          <div className="result-cta-cards">
-            <button className="result-cta-card plan-card" onClick={onGetStarted}>
-              <div className="result-cta-icon">📋</div>
-              <div className="result-cta-content">
-                <div className="result-cta-title">Build My Action Plan</div>
-                <div className="result-cta-desc">
-                  {q
-                    ? 'Step-by-step checklist from pre-approval to closing.'
-                    : 'Personalized roadmap to fix each issue and qualify sooner.'}
-                </div>
+          <button className="result-cta-card dashboard-cta-card" onClick={onOpenDashboard}>
+            <div className="result-cta-icon">🚀</div>
+            <div className="result-cta-content">
+              <div className="result-cta-title">Open My Dashboard</div>
+              <div className="result-cta-desc">
+                {q
+                  ? 'Build your action plan and run detailed payment calculations.'
+                  : 'Get your personalized roadmap and explore payment scenarios.'}
               </div>
-              <div className="result-cta-arrow">→</div>
-            </button>
-
-            <button className="result-cta-card calc-card" onClick={onOpenCalculator}>
-              <div className="result-cta-icon">🧮</div>
-              <div className="result-cta-content">
-                <div className="result-cta-title">Calculate My Payment</div>
-                <div className="result-cta-desc">
-                  Monthly cost and rate comparisons.
-                </div>
-              </div>
-              <div className="result-cta-arrow">→</div>
-            </button>
-          </div>
+            </div>
+            <div className="result-cta-arrow">→</div>
+          </button>
         </div>
 
         <button className="btn-restart" onClick={onRestart}>

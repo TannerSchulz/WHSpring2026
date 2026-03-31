@@ -3,14 +3,23 @@ import MortgageForm from './components/MortgageForm'
 import AssessmentResult from './components/AssessmentResult'
 import ValueTracker, { TrackerEntry } from './components/ValueTracker'
 import LoadingScreen from './components/LoadingScreen'
-import AccountSetupPage from './components/AccountSetupPage'
-import ActionPlanView from './components/ActionPlanView'
-import MortgageCalculator from './components/MortgageCalculator'
+import Dashboard from './components/Dashboard'
 import ProfileWidget from './components/ProfileWidget'
 import { MortgageInput, AssessmentResponse } from './types'
 import { useProfile } from './hooks/useProfile'
 
-type Stage = 'form' | 'loading' | 'result' | 'error' | 'help' | 'calculator' | 'resume'
+type Stage = 'form' | 'loading' | 'result' | 'error' | 'dashboard'
+
+const DEMO_INPUT: MortgageInput = {
+  annual_income: 95000,
+  monthly_debts: 450,
+  credit_score: 720,
+  down_payment: 42000,
+  home_price: 420000,
+  employment_years: 3.5,
+  loan_type: 'conventional',
+  state: 'TX',
+}
 
 export default function App() {
   const [stage, setStage] = useState<Stage>('form')
@@ -18,6 +27,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [trackerEntries, setTrackerEntries] = useState<TrackerEntry[]>([])
   const [lastProfile, setLastProfile] = useState<MortgageInput | null>(null)
+  const [demoMode, setDemoMode] = useState(false)
   const { profile, save: saveProfile, clear: clearProfile } = useProfile()
 
   const handleFieldCommit = (field: string, value: string | number) => {
@@ -28,6 +38,7 @@ export default function App() {
   }
 
   const handleSubmit = async (data: MortgageInput) => {
+    setDemoMode(false)
     setLastProfile(data)
     setStage('loading')
     setError(null)
@@ -64,6 +75,13 @@ export default function App() {
     setError(null)
     setTrackerEntries([])
     setLastProfile(null)
+    setDemoMode(false)
+  }
+
+  const startDemo = () => {
+    restart()
+    // Small delay so restart's state clears first, then trigger demo
+    setTimeout(() => setDemoMode(true), 50)
   }
 
   const inNarrowFlow = ['form', 'loading', 'result', 'error'].includes(stage)
@@ -71,13 +89,24 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* Persistent profile widget — top-right corner */}
+      {/* Persistent profile widget */}
       {profile && (
         <ProfileWidget
           profile={profile}
-          onResume={() => setStage('resume')}
+          onResume={() => {
+            setResult(profile.assessment)
+            setLastProfile(profile.mortgageInput)
+            setStage('dashboard')
+          }}
           onClear={() => { clearProfile(); setStage('form') }}
         />
+      )}
+
+      {/* Demo button — visible on form page */}
+      {stage === 'form' && (
+        <button className="demo-launch-btn" onClick={startDemo}>
+          ▶ Live Demo
+        </button>
       )}
 
       {inNarrowFlow && (
@@ -90,7 +119,13 @@ export default function App() {
       {inNarrowFlow && (
         <div className="quiz-main">
           {stage === 'form' && (
-            <MortgageForm onSubmit={handleSubmit} loading={false} onFieldCommit={handleFieldCommit} />
+            <MortgageForm
+              onSubmit={handleSubmit}
+              loading={false}
+              onFieldCommit={handleFieldCommit}
+              demoMode={demoMode}
+              demoData={DEMO_INPUT}
+            />
           )}
 
           {stage === 'loading' && <LoadingScreen />}
@@ -99,8 +134,7 @@ export default function App() {
             <AssessmentResult
               result={result}
               onRestart={restart}
-              onGetStarted={() => setStage('help')}
-              onOpenCalculator={() => setStage('calculator')}
+              onOpenDashboard={() => setStage('dashboard')}
             />
           )}
 
@@ -119,28 +153,13 @@ export default function App() {
         </div>
       )}
 
-      {stage === 'help' && result && lastProfile && (
-        <AccountSetupPage
+      {stage === 'dashboard' && result && lastProfile && (
+        <Dashboard
           result={result}
-          userProfile={lastProfile}
+          lastProfile={lastProfile}
           onBack={() => setStage('result')}
           onProfileSave={saveProfile}
           existingProfile={profile}
-        />
-      )}
-
-      {stage === 'resume' && profile && (
-        <ActionPlanView
-          profile={profile}
-          onProfileUpdate={p => { saveProfile(p) }}
-          onBack={() => setStage('form')}
-        />
-      )}
-
-      {stage === 'calculator' && (
-        <MortgageCalculator
-          onBack={() => setStage(result ? 'result' : 'form')}
-          prefill={lastProfile}
         />
       )}
 

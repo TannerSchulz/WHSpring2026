@@ -241,6 +241,38 @@ function PaymentCalc({ prefill }: { prefill?: MortgageInput | null }) {
   const [showRefi, setShowRefi] = useState(false)
   const [result, setResult] = useState<PaymentResult | null>(null)
   const [disabledRows, setDisabledRows] = useState<Set<string>>(new Set())
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiInsight, setAiInsight] = useState<string | null>(null)
+
+  const fetchAIRates = async () => {
+    if (!state) return
+    setAiLoading(true)
+    setAiInsight(null)
+    try {
+      const res = await fetch('/api/market-rates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          state_code: state,
+          state_name: STATE_DATA[state]?.name ?? state,
+          credit_score: prefill?.credit_score ?? 720,
+          loan_type: loanType,
+          term_years: parseInt(term),
+        }),
+      })
+      if (!res.ok) throw new Error('Failed')
+      const data = await res.json()
+      setRate(String(data.interest_rate))
+      const hp = parseCurrency(homePrice)
+      if (hp > 0) setAnnualTax(fmtInput(Math.round(hp * data.property_tax_rate)))
+      setAnnualInsurance(fmtInput(data.avg_insurance_annual))
+      setAiInsight(data.insights + (data.demo_mode ? ' (demo mode — enable API key for live data)' : ''))
+    } catch {
+      setAiInsight('Could not fetch AI rates — check that the backend is running with a valid API key.')
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   useEffect(() => { setRate(String(CURRENT_RATES[term])) }, [term])
 
@@ -372,6 +404,19 @@ function PaymentCalc({ prefill }: { prefill?: MortgageInput | null }) {
 
         <div className="calc-col">
           <StateSelect value={state} onChange={setState} label="State (auto-fills local costs)" />
+
+          {state && (
+            <div className="calc-ai-section">
+              <button
+                className="calc-ai-btn"
+                onClick={fetchAIRates}
+                disabled={aiLoading}
+              >
+                {aiLoading ? '⏳ Fetching AI rates...' : '✨ Get AI-Accurate Rates for ' + (STATE_DATA[state]?.name ?? state)}
+              </button>
+              {aiInsight && <div className="calc-ai-insight">{aiInsight}</div>}
+            </div>
+          )}
 
           <Field label="Annual Property Tax" hint={state ? `${(STATE_DATA[state].propertyTaxRate * 100).toFixed(2)}% of home value in ${STATE_DATA[state].name}` : undefined}>
             <CurrencyInput value={annualTax} onChange={setAnnualTax} placeholder="4,000" suffix="/yr" />
@@ -903,7 +948,7 @@ export default function MortgageCalculator({ onBack, prefill }: Props) {
   return (
     <div className="calc-page">
       <div className="calc-page-header">
-        <button className="calc-back-btn" onClick={onBack}>← Back to Results</button>
+        <button className="calc-back-btn" onClick={onBack}>← Back</button>
         <div>
           <h2 className="calc-page-title">Mortgage Calculator</h2>
           <p className="calc-page-subtitle">Rates as of {RATE_DATA_DATE} · All figures are estimates</p>

@@ -4719,3 +4719,160 @@ body::after {
   .pw-trigger { padding: 0.35rem; }
   .pw-dropdown { width: calc(100vw - 2rem); right: -0.5rem; }
 }
+
+/* ── Dashboard ──────────────────────────────────────────────────────────────── */
+
+.dashboard-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.dashboard-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1.5rem;
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  gap: 1rem;
+}
+
+.dashboard-topbar-spacer {
+  width: 80px;
+  flex-shrink: 0;
+}
+
+.dashboard-tabs {
+  display: flex;
+  gap: 0.25rem;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 0.3rem;
+  border-radius: 0.75rem;
+  flex-shrink: 0;
+}
+
+.dashboard-tab {
+  padding: 0.5rem 1.4rem;
+  border: none;
+  border-radius: 0.5rem;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.dashboard-tab:hover {
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.dashboard-tab.active {
+  background: white;
+  color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+}
+
+.dashboard-content {
+  flex: 1;
+}
+
+/* ── Demo launch button ─────────────────────────────────────────────────────── */
+
+.demo-launch-btn {
+  position: fixed;
+  top: 1.1rem;
+  right: 1.1rem;
+  padding: 0.45rem 1rem;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+  transition: all 0.15s;
+  letter-spacing: 0.03em;
+}
+
+.demo-launch-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Demo mode banner ───────────────────────────────────────────────────────── */
+
+.demo-mode-banner {
+  background: linear-gradient(135deg, var(--primary), #8b5cf6);
+  color: white;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.45rem 1rem;
+  letter-spacing: 0.04em;
+  border-radius: 0.5rem 0.5rem 0 0;
+  margin: -0.25rem -0.25rem 0.75rem;
+}
+
+/* ── Assessment result — dashboard CTA card ─────────────────────────────────── */
+
+.dashboard-cta-card {
+  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  color: white !important;
+}
+
+.dashboard-cta-card .result-cta-title,
+.dashboard-cta-card .result-cta-desc {
+  color: white !important;
+}
+
+.dashboard-cta-card .result-cta-arrow {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* ── AI rates button in calculator ─────────────────────────────────────────── */
+
+.calc-ai-section {
+  margin-bottom: 0.5rem;
+}
+
+.calc-ai-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.6rem 1rem;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+  transition: opacity 0.15s;
+}
+
+.calc-ai-btn:hover { opacity: 0.9; }
+.calc-ai-btn:disabled { opacity: 0.6; cursor: wait; }
+
+.calc-ai-insight {
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.85rem;
+  background: #ede9fe;
+  border-left: 3px solid var(--primary);
+  border-radius: 0.35rem;
+  font-size: 0.79rem;
+  color: #4f46e5;
+  line-height: 1.4;
+}
