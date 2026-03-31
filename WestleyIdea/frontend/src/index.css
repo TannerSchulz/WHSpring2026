@@ -4181,6 +4181,7 @@ body::after {
 }
 
 .afford-rate-header.current-rate { background: rgba(99,102,241,0.1); color: var(--primary); }
+.afford-rate-header.ai-rate { background: rgba(16,185,129,0.14); color: #059669; font-weight: 700; }
 
 .afford-down-label {
   padding: 0.65rem 1rem; font-weight: 700; font-size: 0.8rem; color: var(--gray-600);
@@ -4986,6 +4987,21 @@ body::after {
   font-size: 0.8rem;
   color: #4f46e5;
   line-height: 1.4;
+}
+
+.calc-ai-sources {
+  margin-top: 0.4rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  font-size: 0.72rem;
+  color: #6d6abe;
+  opacity: 0.85;
+}
+
+.calc-ai-sources span::before {
+  content: '↳ ';
+  opacity: 0.6;
 }
 
 @media (max-width: 600px) {

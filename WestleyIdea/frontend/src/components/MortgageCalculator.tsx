@@ -229,7 +229,7 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
   const [downMode, setDownMode] = useState<'dollar' | 'percent'>('dollar')
   const [loanType, setLoanType] = useState<LoanType>(prefill?.loan_type as LoanType ?? 'conventional')
   const [term, setTerm] = useState<'10'|'15'|'20'|'30'>('30')
-  const [rate, setRate] = useState(String(CURRENT_RATES['30']))
+  const [rate, setRate] = useState('')
   const [state, setState] = useState(prefill?.state ?? '')
   const [annualTax, setAnnualTax] = useState('')
   const [annualInsurance, setAnnualInsurance] = useState('')
@@ -246,6 +246,7 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
   const [disabledRows, setDisabledRows] = useState<Set<string>>(new Set())
   const [aiLoading, setAiLoading] = useState(false)
   const [aiInsight, setAiInsight] = useState<string | null>(null)
+  const [aiSources, setAiSources] = useState<{rate?:string|null; tax?:string|null; insurance?:string|null; hoa?:string|null} | null>(null)
   const [autoCalcPending, setAutoCalcPending] = useState(false)
   const calculateRef = useRef<() => void>(() => {})
 
@@ -253,6 +254,7 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
     if (!state) return
     setAiLoading(true)
     setAiInsight(null)
+    setAiSources(null)
     try {
       const res = await fetch('/api/market-rates', {
         method: 'POST',
@@ -271,7 +273,12 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
       const hp = parseCurrency(homePrice)
       if (hp > 0) setAnnualTax(fmtInput(Math.round(hp * data.property_tax_rate)))
       setAnnualInsurance(fmtInput(data.avg_insurance_annual))
+      if (data.avg_hoa_monthly > 0) {
+        setHasHoa(true)
+        setMonthlyHoa(fmtInput(data.avg_hoa_monthly))
+      }
       setAiInsight(data.insights + (data.demo_mode ? ' (demo mode — enable API key for live data)' : ''))
+      setAiSources({ rate: data.rate_source, tax: data.tax_source, insurance: data.insurance_source, hoa: data.hoa_source })
       setAutoCalcPending(true)
     } catch {
       setAiInsight('Could not fetch AI rates — check that the backend is running with a valid API key.')
@@ -295,7 +302,6 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
     })
   }, [runDemo, demoPaused]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(() => { setRate(String(CURRENT_RATES[term])) }, [term])
 
 
   useEffect(() => {
@@ -314,7 +320,7 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
     const hp = parseCurrency(homePrice)
     const down = getDownDollars()
     const baseLoan = hp - down
-    const r = parseFloat(rate)
+    const r = parseFloat(rate) || CURRENT_RATES[term]
     const t = parseInt(term)
     if (hp <= 0 || baseLoan <= 0 || r <= 0) return
 
@@ -379,7 +385,19 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
           {aiLoading ? '⏳ Claude is researching rates...' : '🤖 Have Claude Research Rates for You'}
         </button>
       </div>
-      {aiInsight && <div className="calc-ai-insight">{aiInsight}</div>}
+      {aiInsight && (
+        <div className="calc-ai-insight">
+          <div>{aiInsight}</div>
+          {aiSources && (
+            <div className="calc-ai-sources">
+              {aiSources.rate && <span>Rate: {aiSources.rate}</span>}
+              {aiSources.tax && <span>Tax: {aiSources.tax}</span>}
+              {aiSources.insurance && <span>Insurance: {aiSources.insurance}</span>}
+              {aiSources.hoa && <span>HOA: {aiSources.hoa}</span>}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="calc-form-grid">
         <div className="calc-col">
@@ -427,9 +445,9 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
             <SegGroup options={[{label:'10yr',value:'10'},{label:'15yr',value:'15'},{label:'20yr',value:'20'},{label:'30yr',value:'30'}]} value={term} onChange={v => setTerm(v as typeof term)} />
           </Field>
 
-          <Field label="Interest Rate" hint={`National avg ${RATE_DATA_DATE}: ${CURRENT_RATES[term]}%`}>
+          <Field label="Interest Rate" hint={rate ? undefined : `Use the AI button above to fetch your rate — or enter manually (national avg: ${CURRENT_RATES[term]}%)`}>
             <div className="calc-input-wrap">
-              <input className="calc-input no-prefix" type="number" step="0.05" min="1" max="20" value={rate} onChange={e => setRate(e.target.value)} />
+              <input className="calc-input no-prefix" type="number" step="0.05" min="1" max="20" value={rate} onChange={e => setRate(e.target.value)} placeholder={String(CURRENT_RATES[term])} />
               <span className="calc-suffix">%</span>
             </div>
           </Field>
@@ -752,14 +770,17 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
   const calculateRef = useRef<() => void>(() => {})
   const [aiTaxRate, setAiTaxRate] = useState<number | null>(null)
   const [aiInsuranceAnnual, setAiInsuranceAnnual] = useState<number | null>(null)
+  const [aiRate, setAiRate] = useState<number | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiInsight, setAiInsight] = useState<string | null>(null)
+  const [aiSources, setAiSources] = useState<{rate?:string|null; tax?:string|null; insurance?:string|null; hoa?:string|null} | null>(null)
   const [autoCalcPending, setAutoCalcPending] = useState(false)
 
   const fetchAIRates = async () => {
     if (!state) return
     setAiLoading(true)
     setAiInsight(null)
+    setAiSources(null)
     try {
       const res = await fetch('/api/market-rates', {
         method: 'POST',
@@ -776,7 +797,9 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
       const data = await res.json()
       setAiTaxRate(data.property_tax_rate)
       setAiInsuranceAnnual(data.avg_insurance_annual)
+      setAiRate(data.interest_rate)
       setAiInsight(data.insights + (data.demo_mode ? ' (demo mode — enable API key for live data)' : ''))
+      setAiSources({ rate: data.rate_source, tax: data.tax_source, insurance: data.insurance_source, hoa: data.hoa_source })
       setAutoCalcPending(true)
     } catch {
       setAiInsight('Could not fetch AI rates — check that the backend is running with a valid API key.')
@@ -871,7 +894,18 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
           {aiLoading ? '⏳ Claude is researching rates...' : '🤖 Have Claude Research Rates for You'}
         </button>
       </div>
-      {aiInsight && <div className="calc-ai-insight">{aiInsight}</div>}
+      {aiInsight && (
+        <div className="calc-ai-insight">
+          <div>{aiInsight}</div>
+          {aiRate && <div style={{marginTop:'0.25rem', fontWeight:600}}>Claude's researched rate for your profile: <strong>{aiRate}%</strong> {aiSources?.rate ? `(${aiSources.rate})` : ''}</div>}
+          {aiSources && (
+            <div className="calc-ai-sources">
+              {aiSources.tax && <span>Tax: {aiSources.tax}</span>}
+              {aiSources.insurance && <span>Insurance: {aiSources.insurance}</span>}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="calc-afford-intro">
         Enter your target total monthly housing budget and see the home prices you can afford across different rates and down payments.
@@ -927,11 +961,15 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
               <thead>
                 <tr>
                   <th className="afford-corner">Down ↓ / Rate →</th>
-                  {GRID_RATES.map(r => (
-                    <th key={r} className={`afford-rate-header${Math.abs(r - CURRENT_RATES[term]) < 0.01 ? ' current-rate' : ''}`}>
-                      {r}%{Math.abs(r - CURRENT_RATES[term]) < 0.01 ? ' ★' : ''}
-                    </th>
-                  ))}
+                  {GRID_RATES.map(r => {
+                    const isNational = Math.abs(r - CURRENT_RATES[term]) < 0.01
+                    const isAiRate = aiRate !== null && Math.abs(r - aiRate) < 0.26
+                    return (
+                      <th key={r} className={`afford-rate-header${isNational ? ' current-rate' : ''}${isAiRate ? ' ai-rate' : ''}`}>
+                        {r}%{isAiRate ? ' 🤖' : isNational ? ' ★' : ''}
+                      </th>
+                    )
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -961,7 +999,8 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
             <span className="legend-dot cell-mid" /> Mid range
             <span className="legend-dot cell-low" /> Lower range
             <span className="afford-pmi-flag" style={{marginLeft:'1rem'}}>+MI</span> = mortgage insurance applies
-            <span style={{marginLeft:'0.5rem', fontStyle:'italic'}}>★ = current avg rate</span>
+            <span style={{marginLeft:'0.5rem', fontStyle:'italic'}}>★ = national avg rate</span>
+            {aiRate && <span style={{marginLeft:'0.5rem', fontStyle:'italic'}}>🤖 = Claude's researched rate ({aiRate}%)</span>}
           </div>
           <div className="afford-disclaimer">
             Figures are estimates assuming {term}-year loan. VA/USDA 0% row includes respective fees. Consult a lender for exact qualification.

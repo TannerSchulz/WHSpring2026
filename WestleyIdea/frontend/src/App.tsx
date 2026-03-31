@@ -108,11 +108,9 @@ export default function App() {
         />
       )}
 
-      {stage === 'form' && (
-        <button className="demo-launch-btn" onClick={startDemo}>
-          ▶ Live Demo
-        </button>
-      )}
+      <button className="demo-launch-btn" onClick={startDemo}>
+        ▶ Live Demo
+      </button>
       {isDemoRun && (
         <button className="demo-pause-btn" onClick={() => setDemoPaused(p => !p)}>
           {demoPaused ? '▶ Resume' : '⏸ Pause'}

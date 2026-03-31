@@ -445,7 +445,12 @@ class MarketRatesResponse(BaseModel):
     interest_rate: float
     property_tax_rate: float  # annual, as decimal e.g. 0.018
     avg_insurance_annual: int
+    avg_hoa_monthly: int = 0
     insights: str
+    rate_source: str | None = None
+    tax_source: str | None = None
+    insurance_source: str | None = None
+    hoa_source: str | None = None
     demo_mode: bool = False
 
 
@@ -458,30 +463,35 @@ async def market_rates(data: MarketRatesInput):
             else "fair (640–679)" if data.credit_score >= 640
             else "below average (<640)"
         )
-        prompt = f"""You are a mortgage data expert. Provide CURRENT (as of early 2026) accurate estimates.
+        prompt = f"""You are a mortgage data expert. Provide CURRENT (as of early 2026) accurate estimates for a borrower in {data.state_name} ({data.state_code}).
 
-STATE: {data.state_name} ({data.state_code})
 BORROWER CREDIT SCORE: {data.credit_score} — {credit_tier}
 LOAN TYPE: {data.loan_type.upper()}
 LOAN TERM: {data.term_years} years
 
 National 30yr average is ~6.65% (early 2026). Adjust for:
 - Credit tier: excellent borrowers get ~0.25–0.5% below average; fair gets ~0.25–0.5% above
-- VA/USDA loans typically run 0.1–0.25% below conventional
-- FHA is similar to conventional
+- VA/USDA loans typically run 0.1–0.25% below conventional; FHA is similar to conventional
+
+For each value, provide a source citation ONLY if you know a real, specific source (e.g. "Freddie Mac PMMS", "Utah State Tax Commission", "Insurance Information Institute"). If no specific public source exists, use null.
 
 Respond ONLY with this JSON (no markdown, no explanation):
 {{
   "interest_rate": <float, e.g. 6.75>,
-  "property_tax_rate": <effective annual rate as decimal, e.g. 0.0178>,
-  "avg_insurance_annual": <integer dollars, e.g. 1850>,
-  "insights": "<one sentence about what makes costs in this state notable>"
+  "rate_source": <string or null, e.g. "Freddie Mac Primary Mortgage Market Survey (PMMS)">,
+  "property_tax_rate": <effective annual rate as decimal, e.g. 0.0057>,
+  "tax_source": <string or null, e.g. "Utah State Tax Commission 2024">,
+  "avg_insurance_annual": <integer dollars, e.g. 1100>,
+  "insurance_source": <string or null, e.g. "Insurance Information Institute 2024">,
+  "avg_hoa_monthly": <integer dollars for typical HOA in this state, 0 if rural/no data>,
+  "hoa_source": <string or null>,
+  "insights": "<one sentence about what makes housing costs in this state notable>"
 }}"""
 
         try:
             message = ai_client.messages.create(
                 model="claude-opus-4-6",
-                max_tokens=256,
+                max_tokens=512,
                 messages=[{"role": "user", "content": prompt}],
             )
             content = message.content[0].text.strip()
@@ -490,7 +500,12 @@ Respond ONLY with this JSON (no markdown, no explanation):
                 interest_rate=float(ai_response["interest_rate"]),
                 property_tax_rate=float(ai_response["property_tax_rate"]),
                 avg_insurance_annual=int(ai_response["avg_insurance_annual"]),
+                avg_hoa_monthly=int(ai_response.get("avg_hoa_monthly", 0)),
                 insights=ai_response["insights"],
+                rate_source=ai_response.get("rate_source") or None,
+                tax_source=ai_response.get("tax_source") or None,
+                insurance_source=ai_response.get("insurance_source") or None,
+                hoa_source=ai_response.get("hoa_source") or None,
                 demo_mode=False,
             )
         except Exception:
@@ -500,6 +515,7 @@ Respond ONLY with this JSON (no markdown, no explanation):
         interest_rate=6.65 if data.term_years == 30 else 5.95,
         property_tax_rate=0.01,
         avg_insurance_annual=1500,
+        avg_hoa_monthly=0,
         insights="AI unavailable — showing national averages. Enable the Anthropic API key for personalized state data.",
         demo_mode=True,
     )
