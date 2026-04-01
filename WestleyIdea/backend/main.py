@@ -111,9 +111,9 @@ def rule_based_assessment(data: MortgageInput) -> dict:
             "We recommend getting pre-approved with a lender to confirm."
         )
         steps = [
-            "Get pre-approved with 2-3 lenders to compare rates",
-            "Gather documents: 2 years of tax returns, recent pay stubs, and bank statements",
-            "Avoid opening new credit accounts or making large purchases before closing",
+            f"Know your numbers — your credit score is {data.credit_score}, DTI is {dti}%, and you have ${data.down_payment:,.0f} saved for a down payment",
+            "Gather your documents: 2 years of tax returns, recent pay stubs, and 2–3 months of bank statements",
+            "Get pre-approved with 2–3 lenders and compare their loan offers",
         ]
     else:
         summary = (
@@ -163,11 +163,11 @@ Please respond in this EXACT JSON format (no markdown, just raw JSON):
   "qualifies": true or false,
   "summary": "1-2 sentences max. Be direct. Bold key numbers like **DTI: {dti:.1f}%** using markdown.",
   "details": ["short detail — bold the key number or factor", "short detail", "short detail"],
-  "action_steps": ["short, actionable step — start with a verb", "step 2", "step 3"],
+  "action_steps": ["step 1 (know their numbers — include credit score, DTI%, down payment)", "step 2 (gather documents — tax returns, pay stubs, bank statements)", "step 3 (get pre-approved — compare lenders)"],
   "estimated_monthly_payment": estimated monthly P&I payment as a number or null
 }}
 
-Be direct and brief. Bold the most important numbers. If they don't qualify, lead with the biggest issue first."""
+Always return exactly 3 action_steps following this structure: (1) know their numbers — credit score, DTI, down payment, (2) gather documents — tax returns, pay stubs, bank statements, (3) get pre-approved — compare lenders and apply. Personalize each step with their actual numbers. Be direct and brief. Bold the most important numbers."""
 
 
 @app.post("/api/assess", response_model=AssessmentResponse)
@@ -528,6 +528,65 @@ Respond ONLY with this JSON (no markdown, no explanation):
         insights="AI unavailable — showing national averages. Enable the Anthropic API key for personalized state data.",
         demo_mode=True,
     )
+
+
+class ChatMessage(BaseModel):
+    role: str  # "user" or "assistant"
+    content: str
+
+
+class ChatInput(BaseModel):
+    messages: list[ChatMessage]
+    current_step: str
+    user_profile: dict
+
+
+class ChatResponse(BaseModel):
+    response: str
+
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat(data: ChatInput):
+    if ai_client:
+        profile = data.user_profile
+        system_prompt = f"""You are a friendly, knowledgeable mortgage advisor helping a first-time home buyer work through their mortgage plan.
+
+CURRENT STEP THE USER IS ON: {data.current_step}
+
+USER FINANCIAL PROFILE:
+- Annual Income: ${profile.get('annual_income', 0):,.0f}
+- Monthly Debts: ${profile.get('monthly_debts', 0):,.0f}
+- Credit Score: {profile.get('credit_score', 'unknown')}
+- Down Payment: ${profile.get('down_payment', 0):,.0f}
+- Home Price: ${profile.get('home_price', 0):,.0f}
+- Employment: {profile.get('employment_years', 0)} years
+- Loan Type: {profile.get('loan_type', 'conventional').upper()}
+
+Keep responses short (2-4 sentences max). Be direct and personalized — use their actual numbers. No bullet points. Plain conversational text only."""
+
+        try:
+            message = ai_client.messages.create(
+                model="claude-opus-4-6",
+                max_tokens=300,
+                system=system_prompt,
+                messages=[{"role": m.role, "content": m.content} for m in data.messages],
+            )
+            return ChatResponse(response=message.content[0].text.strip())
+        except Exception:
+            pass
+
+    # Fallback
+    step = data.current_step.lower()
+    if 'know your' in step or ('credit' in step and 'dti' in step):
+        fallback = "Check annualcreditreport.com for your free credit report, then divide your total monthly debt payments by your gross monthly income to get your DTI. These two numbers are what every lender will look at first."
+    elif 'gather' in step or 'document' in step or 'tax return' in step:
+        fallback = "Your lender needs to verify your income and assets. Grab your last two tax returns from the IRS Get Transcript tool, your most recent pay stubs, and 2-3 months of bank statements — having these ready before you apply speeds things up significantly."
+    elif 'pre-approv' in step or 'lender' in step or 'approv' in step:
+        fallback = "Apply with at least 3 lenders within the same 45-day window so it only counts as one credit inquiry. Compare the APR on each Loan Estimate — not just the interest rate — since APR includes fees and gives you a true cost comparison."
+    else:
+        fallback = "I'm here to help! Ask me anything about your current step, what lenders look for, or what to expect next in the home-buying process."
+
+    return ChatResponse(response=fallback)
 
 
 @app.get("/api/health")

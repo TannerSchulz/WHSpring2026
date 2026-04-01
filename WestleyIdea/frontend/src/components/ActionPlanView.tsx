@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { getStateResources } from '../data/localResources'
 import type { UserProfile } from '../types/profile'
+import PlanChatbot from './PlanChatbot'
 
 interface Resource {
   icon: string
@@ -29,6 +30,47 @@ function getResources(stepText: string, stateCode: string): Resource[] {
     description: ha.description,
     url: ha.url,
   }
+
+  // Step 1 — Know your numbers
+  if (s.includes('know your') || s.includes('know their') || (s.includes('credit') && s.includes('dti'))) return [
+    {
+      icon: '📊',
+      label: 'Get Your Free Credit Report',
+      description: 'Pull reports from all three bureaus (Equifax, Experian, TransUnion) for free once a year — required by federal law.',
+      url: 'https://www.annualcreditreport.com',
+    },
+    {
+      icon: '📱',
+      label: 'Monitor Weekly with Credit Karma',
+      description: 'Free weekly score updates with personalized tips on what\'s hurting your credit and how to improve it.',
+      url: 'https://www.creditkarma.com',
+    },
+    {
+      icon: '🧮',
+      label: 'CFPB DTI Calculator',
+      description: 'Use the CFPB\'s free tool to see exactly how your monthly debts affect your mortgage eligibility.',
+      url: 'https://www.consumerfinance.gov/owning-a-home/',
+    },
+    hudLocal,
+  ]
+
+  // Step 2 — Gather documents
+  if (s.includes('gather') || s.includes('document') || s.includes('tax return') || s.includes('pay stub') || s.includes('bank statement')) return [
+    hudLocal,
+    {
+      icon: '📄',
+      label: 'IRS Get Transcript (Tax Returns)',
+      description: 'Download your official tax transcripts directly from the IRS — accepted by all lenders as proof of income.',
+      url: 'https://www.irs.gov/individuals/get-transcript',
+    },
+    {
+      icon: '🏦',
+      label: 'Download Bank Statements',
+      description: 'Log into your bank\'s online portal to download the last 2–3 months of statements for all accounts you\'ll use.',
+      note: 'Log in to your bank\'s website or app',
+    },
+    stateAuthority,
+  ]
 
   if (s.includes('credit') || s.includes('score')) return [
     stateAuthority,
@@ -197,6 +239,88 @@ function getResources(stepText: string, stateCode: string): Resource[] {
   ]
 }
 
+interface ChecklistItem { text: string; url?: string }
+
+function getStepChecklist(stepText: string): ChecklistItem[] {
+  const s = stepText.toLowerCase()
+
+  // Step 1 — Know your numbers
+  if (s.includes('know your') || s.includes('know their') || (s.includes('credit') && s.includes('dti'))) return [
+    { text: 'Pull your free credit report from all 3 bureaus', url: 'https://www.annualcreditreport.com' },
+    { text: 'Calculate your DTI: add up all monthly debt payments ÷ gross monthly income' },
+    { text: 'Confirm exactly how much you have saved for a down payment' },
+  ]
+
+  // Step 2 — Gather documents
+  if (s.includes('gather') || s.includes('document') || s.includes('tax return') || s.includes('pay stub') || s.includes('bank statement')) return [
+    { text: '2 years of tax returns (W-2s or 1040s)', url: 'https://www.irs.gov/individuals/get-transcript' },
+    { text: 'Recent pay stubs (last 30 days)' },
+    { text: '2–3 months of bank statements' },
+  ]
+
+  // Step 3 — Get pre-approved
+  if (s.includes('pre-approv') || s.includes('lender') || s.includes('approv') || s.includes('loan officer')) return [
+    { text: 'Compare rates from at least 3 lenders (bank, credit union, mortgage broker)', url: 'https://www.bankrate.com/mortgages/mortgage-rates/' },
+    { text: 'Submit pre-approval applications — multiple within 45 days counts as one credit inquiry' },
+    { text: 'Review and compare Loan Estimates side by side (look at APR, not just the rate)', url: 'https://www.consumerfinance.gov/owning-a-home/loan-estimate/' },
+  ]
+
+  if (s.includes('credit') || s.includes('score')) return [
+    { text: 'Pull your free credit report from all 3 bureaus', url: 'https://www.annualcreditreport.com' },
+    { text: 'Dispute any errors or inaccuracies you find' },
+    { text: 'Pay down credit card balances to below 30% utilization' },
+    { text: 'Avoid opening any new credit accounts' },
+  ]
+
+  if (s.includes('debt') || s.includes('dti') || s.includes('ratio')) return [
+    { text: 'List every monthly debt payment (car, student loans, cards)' },
+    { text: 'Calculate your current DTI ratio', url: 'https://www.consumerfinance.gov/owning-a-home/' },
+    { text: 'Pay off or aggressively reduce your highest-interest debt first' },
+    { text: 'Explore income-driven repayment if student loans are raising your DTI', url: 'https://studentaid.gov/manage-loans/repayment/plans/income-driven' },
+  ]
+
+  if (s.includes('down') || s.includes('saving') || s.includes('payment') || s.includes('fund')) return [
+    { text: 'Open a high-yield savings account dedicated to your down payment' },
+    { text: 'Set up automatic monthly transfers into that account' },
+    { text: 'Research down payment assistance programs in your state', url: 'https://www.hud.gov/topics/buying_a_home' },
+    { text: 'Calculate your target amount (3–20% of target home price)' },
+  ]
+
+  if (s.includes('inspect') || s.includes('apprais')) return [
+    { text: 'Research and hire an ASHI-certified home inspector', url: 'https://www.homeinspector.org/FindAnInspector' },
+    { text: 'Schedule and attend the inspection in person' },
+    { text: 'Review the full inspection report carefully' },
+    { text: 'Request repairs or seller credits for any major issues found' },
+  ]
+
+  if (s.includes('offer') || s.includes('negot') || s.includes('purchas') || s.includes('contract')) return [
+    { text: 'Research recent comparable sales (comps) in the neighborhood', url: 'https://www.zillow.com' },
+    { text: 'Decide on your offer price and escalation limit with your agent' },
+    { text: 'Ensure your offer includes inspection and financing contingencies' },
+    { text: 'Submit your earnest money deposit once the offer is accepted' },
+  ]
+
+  if (s.includes('clos') || s.includes('title') || s.includes('escrow')) return [
+    { text: 'Review your Closing Disclosure line by line 3 days before closing', url: 'https://www.consumerfinance.gov/owning-a-home/closing-disclosure/' },
+    { text: 'Do a final walkthrough of the property' },
+    { text: 'Verify wire transfer instructions by phone — never trust email alone' },
+    { text: 'Sign all closing documents and collect your keys' },
+  ]
+
+  return [
+    { text: 'Research this step thoroughly before taking action' },
+    { text: 'Connect with a HUD-approved housing counselor for guidance', url: 'https://www.hud.gov/counseling' },
+    { text: 'Document your progress and keep records of everything' },
+  ]
+}
+
+function isDocItem(text: string): boolean {
+  const t = text.toLowerCase()
+  return t.includes('tax return') || t.includes('pay stub') || t.includes('bank statement') ||
+    t.includes('w-2') || t.includes('1040') || t.includes('gather') || t.includes('collect') ||
+    t.includes('profit/loss') || t.includes('docs:') || t.includes('document')
+}
+
 interface StepState { text: string; done: boolean }
 
 interface Props {
@@ -222,19 +346,32 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
     return first === -1 ? 0 : first
   })
 
+  const [checklistProgress, setChecklistProgress] = useState<Record<number, boolean[]>>({})
+  const [fileAttachments, setFileAttachments] = useState<Record<string, File[]>>({})
+  const [dragOver, setDragOver] = useState<string | null>(null)
+
+  const toggleChecklist = (stepIdx: number, itemIdx: number) => {
+    const checklist = getStepChecklist(steps[stepIdx].text)
+    const current = checklistProgress[stepIdx] ?? checklist.map(() => false)
+    const updated = current.map((v, i) => i === itemIdx ? !v : v)
+    setChecklistProgress(prev => ({ ...prev, [stepIdx]: updated }))
+  }
+
+  const addFiles = (key: string, incoming: FileList | File[]) => {
+    const arr = Array.from(incoming)
+    setFileAttachments(prev => ({ ...prev, [key]: [...(prev[key] ?? []), ...arr] }))
+  }
+
+  const removeFile = (key: string, fileIdx: number) => {
+    setFileAttachments(prev => ({
+      ...prev,
+      [key]: (prev[key] ?? []).filter((_, i) => i !== fileIdx),
+    }))
+  }
+
   const [showEmailForm, setShowEmailForm] = useState(false)
   const [emailInput, setEmailInput] = useState(profile.email || '')
   const [emailSaved, setEmailSaved] = useState(!!profile.email)
-
-  const toggleDone = (i: number) => {
-    const updated = steps.map((s, idx) => idx === i ? { ...s, done: !s.done } : s)
-    setSteps(updated)
-    onProfileUpdate({ ...profile, stepProgress: updated.map(s => s.done) })
-    if (!steps[i].done) {
-      const next = updated.findIndex((s, idx) => idx > i && !s.done)
-      if (next !== -1) setActiveIdx(next)
-    }
-  }
 
   const handleSaveEmail = () => {
     if (!emailInput.trim()) return
@@ -243,11 +380,22 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
     setShowEmailForm(false)
   }
 
-  const doneCount = steps.filter(s => s.done).length
-  const pct = steps.length > 0 ? Math.round((doneCount / steps.length) * 100) : 0
+  // Progress derived from checklist completion
+  const totalItems = steps.reduce((sum, step) => sum + getStepChecklist(step.text).length, 0)
+  const checkedItems = steps.reduce((sum, _, si) => {
+    const count = getStepChecklist(steps[si].text).length
+    const prog = checklistProgress[si] ?? []
+    return sum + Array.from({ length: count }, (_, ii) => prog[ii] ?? false).filter(Boolean).length
+  }, 0)
+  const phasePct = totalItems > 0 ? Math.round((checkedItems / totalItems) * 100) : 0
+
   const active = steps[activeIdx]
-  const allDone = doneCount === steps.length
+  const allDone = checkedItems === totalItems && totalItems > 0
   const resources = active ? getResources(active.text, stateCode) : []
+
+  // SVG ring constants
+  const RING_R = 22
+  const RING_CIRC = 2 * Math.PI * RING_R
 
   return (
     <div className="plan-layout">
@@ -256,8 +404,20 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
       <div className="plan-topbar">
         {!inDashboard && <button className="help-back-btn" onClick={onBack}>← Back</button>}
         <div className="plan-topbar-title">
-          <span className="plan-topbar-icon">🗺️</span>
+          <svg className="plan-progress-ring" width="56" height="56" viewBox="0 0 56 56">
+            <circle cx="28" cy="28" r={RING_R} fill="none" stroke="#e5e7eb" strokeWidth="4" />
+            <circle
+              cx="28" cy="28" r={RING_R} fill="none"
+              stroke="var(--primary)" strokeWidth="4"
+              strokeDasharray={RING_CIRC}
+              strokeDashoffset={RING_CIRC * (1 - phasePct / 100)}
+              strokeLinecap="round"
+              transform="rotate(-90 28 28)"
+            />
+            <text x="28" y="33" textAnchor="middle" fontSize="11" fontWeight="700" fill="#111827">{phasePct}%</text>
+          </svg>
           <div>
+            <div className="plan-topbar-phase">Phase 1 · Pre-Approval</div>
             <div className="plan-topbar-heading">
               {name && name !== 'Guest' ? `${name.split(' ')[0]}'s` : 'Your'} Action Plan
             </div>
@@ -300,36 +460,78 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
               </div>
               <p className="step-focus-text">{active.text}</p>
 
-              <div className="step-focus-divider" />
+              {/* Checklist */}
+              <div className="step-checklist">
+                {getStepChecklist(active.text).map((item, i) => {
+                  const checked = (checklistProgress[activeIdx] ?? [])[i] ?? false
+                  const docItem = isDocItem(item.text)
+                  const fileKey = `${activeIdx}-${i}`
+                  const attached = fileAttachments[fileKey] ?? []
+                  const isOver = dragOver === fileKey
+                  return (
+                    <div key={i} className="step-checklist-row">
+                      <label className={`step-checklist-item${checked ? ' step-checklist-item--done' : ''}`}>
+                        <input
+                          type="checkbox"
+                          className="step-checklist-checkbox"
+                          checked={checked}
+                          onChange={() => toggleChecklist(activeIdx, i)}
+                        />
+                        <span className="step-checklist-label">{item.text}</span>
+                      </label>
 
-              {/* Resources — expanded with descriptions */}
-              <div className="step-resources-heading">How to get started</div>
-              <div className="step-resource-list">
-                {resources.map((res, i) => (
-                  <div key={i} className="step-resource-item">
-                    <div className="step-resource-top">
-                      <span className="step-resource-icon">{res.icon}</span>
-                      <span className="step-resource-label">{res.label}</span>
-                      {res.url
-                        ? <a href={res.url} target="_blank" rel="noopener noreferrer" className="step-resource-link">Open →</a>
-                        : res.note && <span className="step-resource-note">{res.note}</span>
-                      }
+                      {item.url && (
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="checklist-item-resource"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <span className="checklist-item-resource-domain">{new URL(item.url).hostname.replace('www.', '')}</span>
+                          <span className="checklist-item-resource-btn">Go →</span>
+                        </a>
+                      )}
+
+                      {docItem && (
+                        <div
+                          className={`doc-drop-zone${isOver ? ' doc-drop-zone--over' : ''}${attached.length > 0 ? ' doc-drop-zone--has-files' : ''}`}
+                          onDragOver={e => { e.preventDefault(); setDragOver(fileKey) }}
+                          onDragLeave={() => setDragOver(null)}
+                          onDrop={e => { e.preventDefault(); setDragOver(null); addFiles(fileKey, e.dataTransfer.files) }}
+                          onClick={() => document.getElementById(`file-input-${fileKey}`)?.click()}
+                        >
+                          <input
+                            id={`file-input-${fileKey}`}
+                            type="file"
+                            multiple
+                            style={{ display: 'none' }}
+                            onChange={e => e.target.files && addFiles(fileKey, e.target.files)}
+                          />
+                          {attached.length === 0 ? (
+                            <span className="doc-drop-hint">📎 Drop files here or click to attach <span className="doc-drop-optional">(optional)</span></span>
+                          ) : (
+                            <ul className="doc-file-list" onClick={e => e.stopPropagation()}>
+                              {attached.map((f, fi) => (
+                                <li key={fi} className="doc-file-item">
+                                  <span className="doc-file-name">📄 {f.name}</span>
+                                  <button className="doc-file-remove" onClick={() => removeFile(fileKey, fi)}>✕</button>
+                                </li>
+                              ))}
+                              <li className="doc-file-add" onClick={() => document.getElementById(`file-input-${fileKey}`)?.click()}>+ Add more</li>
+                            </ul>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <p className="step-resource-desc">{res.description}</p>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
 
               <div className="step-focus-divider" />
 
               {/* Actions at the bottom */}
               <div className="step-actions-bar">
-                <button
-                  className={`step-mark-btn${active.done ? ' step-mark-btn--undo' : ''}`}
-                  onClick={() => toggleDone(activeIdx)}
-                >
-                  {active.done ? '↩ Mark Incomplete' : '✓ Mark as Done'}
-                </button>
                 <div className="step-nav-btns">
                   <button className="step-nav-btn" onClick={() => setActiveIdx(i => Math.max(0, i - 1))} disabled={activeIdx === 0}>
                     ← Prev
@@ -347,8 +549,8 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
             <div className="plan-save-cta">
               {!showEmailForm ? (
                 <>
-                  <span className="plan-save-cta-text">💾 Save your progress — enter your email to keep this plan</span>
-                  <button className="plan-save-btn" onClick={() => setShowEmailForm(true)}>Save Plan</button>
+                  <span className="plan-save-cta-text">💾 Save your profile — enter your email to pick up where you left off</span>
+                  <button className="plan-save-btn" onClick={() => setShowEmailForm(true)}>Save Profile</button>
                 </>
               ) : (
                 <div className="plan-save-form">
@@ -371,58 +573,47 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
           )}
         </div>
 
-        {/* ═══ RIGHT: Progress sidebar ═══════════════════════ */}
+        {/* ═══ RIGHT: AI assistant ════════════════════════════ */}
         <aside className="plan-sidebar">
-          <div className="sidebar-progress-card">
-            <div className="sidebar-progress-header">
-              <span className="sidebar-progress-title">Your Progress</span>
-              <span className="sidebar-progress-count">{doneCount}/{steps.length} done</span>
+          <div className="sidebar-ai-header">
+            <span className="sidebar-ai-icon">🤖</span>
+            <div>
+              <div className="sidebar-ai-title">AI can help!</div>
+              <div className="sidebar-ai-sub">Ask anything about your current step</div>
             </div>
-            <div className="sidebar-progress-track">
-              <div className="sidebar-progress-fill" style={{ width: `${pct}%` }} />
-            </div>
-            <div className="sidebar-progress-pct">{pct}% complete</div>
           </div>
+          {active && <PlanChatbot profile={profile} currentStep={active.text} />}
 
-          <div className="sidebar-steps">
-            {steps.map((step, i) => {
-              const isActive = i === activeIdx
-              const isDone = step.done
-              return (
-                <button
-                  key={i}
-                  className={`sidebar-step${isActive ? ' sidebar-step--active' : ''}${isDone ? ' sidebar-step--done' : ''}`}
-                  onClick={() => setActiveIdx(i)}
-                >
-                  {i < steps.length - 1 && <div className="sidebar-step-line" />}
-                  <div className={`sidebar-step-circle${isDone ? ' done' : isActive ? ' active' : ''}`}>
-                    {isDone ? '✓' : i + 1}
-                  </div>
-                  <div className="sidebar-step-body">
-                    <div className="sidebar-step-num">Step {i + 1}</div>
-                    <div className="sidebar-step-text">{step.text}</div>
-                  </div>
-                </button>
-              )
-            })}
-          </div>
-
-          <div className="sidebar-stats">
-            <div className="sidebar-stat">
-              <span className="sidebar-stat-val">{result.dti_ratio}%</span>
-              <span className="sidebar-stat-label">DTI</span>
-            </div>
-            <div className="sidebar-stat">
-              <span className="sidebar-stat-val">{result.ltv_ratio}%</span>
-              <span className="sidebar-stat-label">LTV</span>
-            </div>
-            {result.estimated_monthly_payment && (
-              <div className="sidebar-stat">
-                <span className="sidebar-stat-val">${result.estimated_monthly_payment.toLocaleString()}</span>
-                <span className="sidebar-stat-label">Est./mo</span>
+          {/* My Documents */}
+          {(() => {
+            const allDocs: { stepLabel: string; itemLabel: string; file: File; key: string; fileIdx: number }[] = []
+            steps.forEach((step, si) => {
+              getStepChecklist(step.text).forEach((item, ii) => {
+                const key = `${si}-${ii}`
+                ;(fileAttachments[key] ?? []).forEach((file, fi) => {
+                  allDocs.push({ stepLabel: `Step ${si + 1}`, itemLabel: item.text, file, key, fileIdx: fi })
+                })
+              })
+            })
+            if (allDocs.length === 0) return null
+            return (
+              <div className="sidebar-docs">
+                <div className="sidebar-docs-heading">My Documents</div>
+                <ul className="sidebar-docs-list">
+                  {allDocs.map((d, i) => (
+                    <li key={i} className="sidebar-docs-item">
+                      <span className="sidebar-docs-icon">📄</span>
+                      <div className="sidebar-docs-info">
+                        <div className="sidebar-docs-filename">{d.file.name}</div>
+                        <div className="sidebar-docs-for">{d.stepLabel} · {d.itemLabel}</div>
+                      </div>
+                      <button className="sidebar-docs-remove" onClick={() => removeFile(d.key, d.fileIdx)}>✕</button>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            )}
-          </div>
+            )
+          })()}
         </aside>
       </div>
     </div>
