@@ -1530,24 +1530,17 @@ body::after {
   display: flex;
   align-items: center;
   gap: 0.65rem;
+  flex: 1;
+  min-width: 0;
 }
 
 .plan-topbar-icon { font-size: 1.6rem; }
 
-.plan-progress-ring {
-  flex-shrink: 0;
-}
-.plan-progress-ring circle:nth-child(2) {
-  transition: stroke-dashoffset 0.4s ease;
-}
-
-.plan-topbar-phase {
-  font-size: 0.68rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--primary);
-  margin-bottom: 0.2rem;
+.plan-topbar-heading-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .plan-topbar-heading {
@@ -1556,6 +1549,95 @@ body::after {
   color: var(--text);
   line-height: 1.2;
 }
+
+.plan-topbar-phase-badge {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #e0d9ff;
+  background: rgba(139,92,246,0.35);
+  border: 1px solid rgba(167,139,250,0.45);
+  border-radius: 20px;
+  padding: 0.2rem 0.8rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.plan-phase-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-top: 0.6rem;
+}
+.plan-phase-bar {
+  flex: 1;
+  height: 6px;
+  background: rgba(255,255,255,0.15);
+  border-radius: 99px;
+  overflow: hidden;
+}
+.plan-phase-fill {
+  height: 100%;
+  background: #a78bfa;
+  border-radius: 99px;
+  transition: width 0.4s ease;
+}
+.plan-phase-pct {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #c4b5fd;
+  flex-shrink: 0;
+}
+
+/* Phase recap card */
+.phase-recap-card {
+  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
+  border: 1px solid #c4b5fd;
+  border-radius: 14px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+}
+.phase-recap-top {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  margin-bottom: 1rem;
+}
+.phase-recap-icon { font-size: 2rem; line-height: 1; }
+.phase-recap-title {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #4c1d95;
+}
+.phase-recap-sub {
+  font-size: 0.82rem;
+  color: #6d28d9;
+  margin-top: 0.1rem;
+}
+.phase-recap-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.phase-recap-list li {
+  font-size: 0.85rem;
+  color: #5b21b6;
+}
+.phase-next-btn {
+  width: 100%;
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 0.7rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.phase-next-btn:hover { opacity: 0.88; }
 
 .plan-topbar-sub {
   font-size: 0.78rem;

@@ -393,9 +393,11 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
   const allDone = checkedItems === totalItems && totalItems > 0
   const resources = active ? getResources(active.text, stateCode) : []
 
-  // SVG ring constants
-  const RING_R = 22
-  const RING_CIRC = 2 * Math.PI * RING_R
+  const isStepDone = (si: number) => {
+    const items = getStepChecklist(steps[si].text)
+    const prog = checklistProgress[si] ?? []
+    return items.every((_, ii) => prog[ii] ?? false)
+  }
 
   return (
     <div className="plan-layout">
@@ -404,27 +406,23 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
       <div className="plan-topbar">
         {!inDashboard && <button className="help-back-btn" onClick={onBack}>← Back</button>}
         <div className="plan-topbar-title">
-          <svg className="plan-progress-ring" width="56" height="56" viewBox="0 0 56 56">
-            <circle cx="28" cy="28" r={RING_R} fill="none" stroke="#e5e7eb" strokeWidth="4" />
-            <circle
-              cx="28" cy="28" r={RING_R} fill="none"
-              stroke="var(--primary)" strokeWidth="4"
-              strokeDasharray={RING_CIRC}
-              strokeDashoffset={RING_CIRC * (1 - phasePct / 100)}
-              strokeLinecap="round"
-              transform="rotate(-90 28 28)"
-            />
-            <text x="28" y="33" textAnchor="middle" fontSize="11" fontWeight="700" fill="#111827">{phasePct}%</text>
-          </svg>
-          <div>
-            <div className="plan-topbar-phase">Phase 1 · Pre-Approval</div>
-            <div className="plan-topbar-heading">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <span className="plan-topbar-heading">
               {name && name !== 'Guest' ? `${name.split(' ')[0]}'s` : 'Your'} Action Plan
-            </div>
+            </span>
             <div className="plan-topbar-sub">
               {stateCode && `📍 ${localRes.stateName} · `}
               <span className={result.qualifies ? 'plan-status-green' : 'plan-status-yellow'}>
                 {result.qualifies ? '✓ Likely Qualifies' : '⚠ Needs Work'}
+              </span>
+            </div>
+            <div className="plan-phase-progress">
+              <div className="plan-phase-bar">
+                <div className="plan-phase-fill" style={{ width: `${phasePct}%` }} />
+              </div>
+              <span className="plan-phase-pct">{phasePct}%</span>
+              <span className="plan-topbar-phase-badge">
+                {allDone ? '✓ ' : ''}Phase 1 · Pre-Approval
               </span>
             </div>
           </div>
@@ -437,24 +435,38 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
         {/* ═══ LEFT: Focused step ════════════════════════════ */}
         <div className="plan-main">
 
-          {allDone ? (
-            <div className="plan-all-done-card">
-              <div className="plan-done-icon">🏆</div>
-              <h2>All steps complete!</h2>
-              <p>You've finished every step. Your next move is to get pre-approved with a lender.</p>
-              <a href="https://www.bankrate.com/mortgages/mortgage-rates/" target="_blank" rel="noopener noreferrer" className="step-resource-link" style={{ display: 'inline-block', marginTop: '1rem', fontSize: '0.9rem', padding: '0.5rem 1.25rem' }}>
-                Compare Lenders →
-              </a>
+          {allDone && (
+            <div className="phase-recap-card">
+              <div className="phase-recap-top">
+                <span className="phase-recap-icon">🏆</span>
+                <div>
+                  <div className="phase-recap-title">Phase 1 Complete!</div>
+                  <div className="phase-recap-sub">You're pre-approval ready</div>
+                </div>
+              </div>
+              <ul className="phase-recap-list">
+                <li>✓ Reviewed your credit score, DTI, and down payment</li>
+                <li>✓ Gathered your tax returns, pay stubs, and bank statements</li>
+                <li>✓ Ready to compare lenders and submit applications</li>
+              </ul>
+              <button className="phase-next-btn" onClick={() => alert('Phase 2 coming soon!')}>
+                Continue to Phase 2: Finding a Home →
+              </button>
             </div>
-          ) : (
+          )}
+
+          {/* Step card — always visible so completed steps can be reviewed */}
+          {(() => {
+            const stepDone = isStepDone(activeIdx)
+            return (
             <div className="step-focus-card">
               {/* Step title */}
               <div className="step-focus-meta">
                 <span className="step-focus-label">Step {activeIdx + 1} of {steps.length}</span>
-                {activeIdx === 0 && !active.done && (
+                {activeIdx === 0 && !stepDone && (
                   <span className="step-focus-badge step-focus-badge--start">Start Here</span>
                 )}
-                {active.done && (
+                {stepDone && (
                   <span className="step-focus-badge step-focus-badge--done">✓ Complete</span>
                 )}
               </div>
@@ -542,7 +554,8 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
                 </div>
               </div>
             </div>
-          )}
+            )
+          })()}
 
           {/* Save CTA */}
           {!emailSaved ? (
