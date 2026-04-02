@@ -4,6 +4,8 @@ import os
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 load_dotenv()
@@ -592,3 +594,13 @@ Keep responses short (2-4 sentences max). Be direct and personalized — use the
 @app.get("/api/health")
 async def health():
     return {"status": "ok", "ai_enabled": ai_client is not None}
+
+
+# Serve built React frontend in production
+_static_dir = os.path.join(os.path.dirname(__file__), "static")
+if os.path.isdir(_static_dir):
+    app.mount("/assets", StaticFiles(directory=os.path.join(_static_dir, "assets")), name="assets")
+
+    @app.get("/{full_path:path}")
+    async def serve_spa(full_path: str):
+        return FileResponse(os.path.join(_static_dir, "index.html"))
