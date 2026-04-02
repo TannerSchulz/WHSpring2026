@@ -19,7 +19,7 @@ jobs:
       run: echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
     
     - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:latest
+      run: docker build . --file WestleyIdea/Dockerfile --tag ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:latest
 
     - name: Push Docker image
       run: docker push ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:latest
