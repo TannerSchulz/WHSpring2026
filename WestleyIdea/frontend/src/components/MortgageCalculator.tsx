@@ -8,6 +8,7 @@ interface Props {
   isDemoRun?: boolean
   demoPaused?: boolean
   inDashboard?: boolean
+  onDemoComplete?: () => void
 }
 
 type Mode = 'payment' | 'afford'
@@ -1166,7 +1167,7 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
 
 type DemoPhase = 'idle' | 'payment' | 'afford' | 'done'
 
-export default function MortgageCalculator({ onBack, prefill, isDemoRun, demoPaused, inDashboard }: Props) {
+export default function MortgageCalculator({ onBack, prefill, isDemoRun, demoPaused, inDashboard, onDemoComplete }: Props) {
   const [mode, setMode] = useState<Mode>('payment')
   const [demoPhase, setDemoPhase] = useState<DemoPhase>('idle')
   const [paymentDone, setPaymentDone] = useState(false)
@@ -1177,15 +1178,22 @@ export default function MortgageCalculator({ onBack, prefill, isDemoRun, demoPau
     return () => clearTimeout(t)
   }, [isDemoRun])
 
-  // 10-second pause between payment and afford demos; respects demoPaused
+  // 5-second pause between payment and afford demos; respects demoPaused
   useEffect(() => {
     if (!paymentDone || demoPaused) return
     const t = setTimeout(() => {
       setMode('afford')
       setTimeout(() => setDemoPhase('afford'), 600)
-    }, 10000)
+    }, 5000)
     return () => clearTimeout(t)
   }, [paymentDone, demoPaused])
+
+  // When afford demo finishes, signal parent to move on
+  useEffect(() => {
+    if (demoPhase !== 'done' || demoPaused) return
+    const t = setTimeout(() => onDemoComplete?.(), 2000)
+    return () => clearTimeout(t)
+  }, [demoPhase, demoPaused]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handlePaymentDemoComplete = () => {
     setPaymentDone(true)

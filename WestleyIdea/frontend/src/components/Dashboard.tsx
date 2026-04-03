@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import AccountSetupPage from './AccountSetupPage'
 import ActionPlanView from './ActionPlanView'
 import MortgageCalculator from './MortgageCalculator'
@@ -30,20 +30,15 @@ export default function Dashboard({
 }: Props) {
   const [tab, setTab] = useState<Tab>(initialTab)
   const [savedProfile, setSavedProfile] = useState<UserProfile | null>(existingProfile ?? null)
-  const actionPlanShownRef = useRef(false)
-
-  // Demo: after action plan is built, wait 10s then switch to calculator
-  useEffect(() => {
-    if (!isDemoRun || !savedProfile || demoPaused || actionPlanShownRef.current) return
-    actionPlanShownRef.current = true
-    const t = setTimeout(() => setTab('calculator'), 10000)
-    return () => clearTimeout(t)
-  }, [isDemoRun, savedProfile, demoPaused])
 
   const handleProfileSave = (p: UserProfile) => {
     setSavedProfile(p)
     onProfileSave(p)
-    setTab('calculator')
+    if (!isDemoRun) setTab('calculator')
+  }
+
+  const handleCalcDemoComplete = () => {
+    setTab('plan')
   }
 
   const calcPrefill: MortgageInput = savedProfile
@@ -79,6 +74,8 @@ export default function Dashboard({
               onProfileUpdate={p => { setSavedProfile(p); onProfileSave(p) }}
               onBack={onBack}
               inDashboard
+              isDemoRun={isDemoRun}
+              demoPaused={demoPaused}
             />
           ) : (
             <AccountSetupPage
@@ -89,6 +86,7 @@ export default function Dashboard({
               existingProfile={null}
               inDashboard
               isDemoRun={isDemoRun}
+              demoPaused={demoPaused}
             />
           )
         )}
@@ -100,6 +98,7 @@ export default function Dashboard({
             isDemoRun={isDemoRun}
             demoPaused={demoPaused}
             inDashboard
+            onDemoComplete={handleCalcDemoComplete}
           />
         )}
       </div>

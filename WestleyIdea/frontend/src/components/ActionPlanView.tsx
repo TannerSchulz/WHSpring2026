@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { getStateResources } from '../data/localResources'
 import type { UserProfile } from '../types/profile'
 import PlanChatbot from './PlanChatbot'
@@ -328,9 +328,11 @@ interface Props {
   onProfileUpdate: (p: UserProfile) => void
   onBack: () => void
   inDashboard?: boolean
+  isDemoRun?: boolean
+  demoPaused?: boolean
 }
 
-export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDashboard }: Props) {
+export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDashboard, isDemoRun, demoPaused }: Props) {
   const { assessment: result, stateCode, name } = profile
   const localRes = getStateResources(stateCode)
 
@@ -349,6 +351,34 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
   const [checklistProgress, setChecklistProgress] = useState<Record<number, boolean[]>>({})
   const [fileAttachments, setFileAttachments] = useState<Record<string, File[]>>({})
   const [dragOver, setDragOver] = useState<string | null>(null)
+
+  // Demo: auto-check boxes across all steps
+  const [demoCheckIdx, setDemoCheckIdx] = useState<{ step: number; item: number } | null>(null)
+
+  useEffect(() => {
+    if (!isDemoRun) return
+    const t = setTimeout(() => setDemoCheckIdx({ step: 0, item: 0 }), 1500)
+    return () => clearTimeout(t)
+  }, [isDemoRun])
+
+  useEffect(() => {
+    if (!demoCheckIdx || demoPaused) return
+    const { step, item } = demoCheckIdx
+    const checklist = getStepChecklist(steps[step]?.text ?? '')
+    const t = setTimeout(() => {
+      setChecklistProgress(prev => {
+        const current = prev[step] ?? checklist.map(() => false)
+        return { ...prev, [step]: current.map((v, i) => i === item ? true : v) }
+      })
+      if (item + 1 < checklist.length) {
+        setDemoCheckIdx({ step, item: item + 1 })
+      } else if (step + 1 < steps.length) {
+        setActiveIdx(step + 1)
+        setDemoCheckIdx({ step: step + 1, item: 0 })
+      }
+    }, 1200)
+    return () => clearTimeout(t)
+  }, [demoCheckIdx, demoPaused]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const toggleChecklist = (stepIdx: number, itemIdx: number) => {
     const checklist = getStepChecklist(steps[stepIdx].text)

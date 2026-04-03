@@ -12,6 +12,7 @@ interface Props {
   existingProfile?: UserProfile | null
   inDashboard?: boolean
   isDemoRun?: boolean
+  demoPaused?: boolean
 }
 
 const SETUP_STEPS = [
@@ -47,7 +48,7 @@ const CONCERN_OPTIONS = [
   'Understanding the home buying process',
 ]
 
-export default function AccountSetupPage({ result, userProfile, onBack, onProfileSave, existingProfile, inDashboard, isDemoRun }: Props) {
+export default function AccountSetupPage({ result, userProfile, onBack, onProfileSave, existingProfile, inDashboard, isDemoRun, demoPaused }: Props) {
   const [setupStep, setSetupStep] = useState(0)
   const [goals, setGoals] = useState<GoalsForm>(defaultGoals)
   const [activeProfile, setActiveProfile] = useState<UserProfile | null>(existingProfile ?? null)
@@ -131,6 +132,8 @@ export default function AccountSetupPage({ result, userProfile, onBack, onProfil
         onProfileUpdate={handleProfileUpdate}
         onBack={onBack}
         inDashboard={inDashboard}
+        isDemoRun={isDemoRun}
+        demoPaused={demoPaused}
       />
     )
   }
