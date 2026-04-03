@@ -24,7 +24,7 @@ export default function Dashboard({
   onBack,
   onProfileSave,
   existingProfile,
-  initialTab = 'plan',
+  initialTab = 'calculator',
   isDemoRun = false,
   demoPaused = false,
 }: Props) {
