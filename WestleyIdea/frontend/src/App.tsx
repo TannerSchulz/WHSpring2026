@@ -175,6 +175,10 @@ export default function App() {
           <ValueTracker entries={trackerEntries} />
         </div>
       )}
+
+      <footer className="disclaimer-footer">
+        <strong>Demo Only — Not Financial Advice.</strong> MortgageAI is a demonstration tool for educational purposes only. It is not a licensed mortgage lender, broker, or financial advisor, and holds no NMLS license. All calculations and results are estimates only and do not constitute a loan offer, pre-approval, or guarantee of any kind. Actual loan eligibility, rates, and terms vary by lender and are subject to underwriting. Always consult a licensed mortgage professional before making any financial decisions.
+      </footer>
     </div>
   )
 }
