@@ -43,6 +43,7 @@ export default function Dashboard({
   const handleProfileSave = (p: UserProfile) => {
     setSavedProfile(p)
     onProfileSave(p)
+    setTab('calculator')
   }
 
   const calcPrefill: MortgageInput = savedProfile
@@ -55,16 +56,16 @@ export default function Dashboard({
         <div className="dashboard-brand">Mortgage<span>AI</span></div>
         <div className="dashboard-tabs">
           <button
-            className={`dashboard-tab${tab === 'plan' ? ' active' : ''}`}
-            onClick={() => setTab('plan')}
-          >
-            📋 Action Plan
-          </button>
-          <button
             className={`dashboard-tab${tab === 'calculator' ? ' active' : ''}`}
             onClick={() => setTab('calculator')}
           >
             🧮 Calculator
+          </button>
+          <button
+            className={`dashboard-tab${tab === 'plan' ? ' active' : ''}`}
+            onClick={() => setTab('plan')}
+          >
+            📋 Action Plan
           </button>
         </div>
         <button className="dashboard-start-over" onClick={onBack}>Start Over</button>
