@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { STATE_DATA, CURRENT_RATES, MORTGAGE_INSURANCE, RATE_DATA_DATE } from '../data/stateData'
+import {
+  UTAH_COUNTIES, DEFAULT_COUNTY, UTAH_AVERAGES,
+  rateForTerm, LiveRates, pmiAnnualRate,
+} from '../data/utahData'
 import { MortgageInput } from '../types'
 
 interface Props {
@@ -30,32 +33,37 @@ function maxLoanFromPI(targetPI: number, annualRatePct: number, termYears: numbe
   return targetPI * (Math.pow(1 + r, n) - 1) / (r * Math.pow(1 + r, n))
 }
 
-// Returns adjusted loan amount (after FHA upfront MIP financed in, or VA fee)
+// Returns adjusted loan amount (after FHA upfront MIP financed in, or VA/USDA fee)
 function adjustedLoanAmount(baseLoan: number, loanType: LoanType, downPct: number): number {
   if (loanType === 'fha') {
-    return baseLoan * (1 + MORTGAGE_INSURANCE.fha_upfront_mip) // upfront 1.75% financed
+    return baseLoan * 1.0175 // 1.75% upfront MIP, financed
   }
   if (loanType === 'va') {
-    // VA funding fee: 2.15% first use 0% down, 1.5% at 5%+, 1.25% at 10%+
+    // VA funding fee, first use: 2.15% under 5% down, 1.5% at 5%+, 1.25% at 10%+
     const fee = downPct >= 0.10 ? 0.0125 : downPct >= 0.05 ? 0.015 : 0.0215
     return baseLoan * (1 + fee)
   }
   if (loanType === 'usda') {
-    return baseLoan * (1 + 0.01) // 1% upfront guarantee fee
+    return baseLoan * 1.01 // 1% upfront guarantee fee
   }
   return baseLoan
 }
 
-function calcMortgageInsurance(loan: number, ltv: number, loanType: LoanType, termYears: number): number {
+function calcMortgageInsurance(
+  loan: number, ltv: number, loanType: LoanType, termYears: number, creditScore: number,
+): number {
   if (loanType === 'fha') {
-    // FHA MIP: 0.55%/yr regardless (for 30yr, <10% down: life of loan; ≥10% down: 11 years)
-    return loan * MORTGAGE_INSURANCE.fha_mip_annual / 12
+    // FHA annual MIP (post-2023 schedule, base loan amounts)
+    const annual = termYears <= 15
+      ? (ltv > 90 ? 0.0040 : 0.0015)
+      : (ltv > 95 ? 0.0055 : 0.0050)
+    return loan * annual / 12
   }
   if (loanType === 'conventional' && ltv > 80) {
-    return loan * MORTGAGE_INSURANCE.conventional_pmi_annual / 12
+    return loan * pmiAnnualRate(creditScore) / 12
   }
   if (loanType === 'usda') {
-    return loan * MORTGAGE_INSURANCE.usda_annual_fee / 12
+    return loan * 0.0035 / 12 // annual guarantee fee
   }
   // VA: no monthly MI
   return 0
@@ -63,12 +71,22 @@ function calcMortgageInsurance(loan: number, ltv: number, loanType: LoanType, te
 
 function mortgageInsuranceDropsOff(loanType: LoanType, downPct: number): boolean {
   if (loanType === 'conventional') return true // PMI drops at 80% LTV
-  if (loanType === 'fha') return downPct >= 0.10  // MIP drops after 11yr if ≥10% down
+  if (loanType === 'fha') return downPct >= 0.10 // MIP drops after 11yr if ≥10% down
   return false
 }
 
-// Amortization — returns remaining balance after N payments
-// Find month when LTV drops below 80% (for PMI drop-off)
+// How many months of mortgage insurance are actually paid over the loan's life
+function miDurationMonths(
+  loanType: LoanType, downPct: number, termYears: number, pmiDropMonth: number | null,
+): number {
+  const n = termYears * 12
+  if (loanType === 'va') return 0
+  if (loanType === 'usda') return n
+  if (loanType === 'fha') return downPct >= 0.10 ? Math.min(132, n) : n // 11 years with 10%+ down
+  return pmiDropMonth ?? 0
+}
+
+// Find month when LTV drops to 80% of original value (borrower can request PMI removal)
 function monthsUntilPmiDrops(loan: number, homePrice: number, annualRatePct: number, termYears: number): number {
   const r = annualRatePct / 100 / 12
   const n = termYears * 12
@@ -81,23 +99,28 @@ function monthsUntilPmiDrops(loan: number, homePrice: number, annualRatePct: num
   return n
 }
 
-// Extra payment: returns months to payoff given extra payment
-function monthsWithExtraPayment(loan: number, annualRatePct: number, termYears: number, extraMonthly: number): number {
-  if (loan <= 0) return 0
+// Amortize with an extra monthly payment — months to payoff and total interest paid
+function payoffWithExtra(
+  loan: number, annualRatePct: number, termYears: number, extraMonthly: number,
+): { months: number; interest: number } {
+  if (loan <= 0 || annualRatePct <= 0) return { months: 0, interest: 0 }
   const r = annualRatePct / 100 / 12
   const pi = calcPI(loan, annualRatePct, termYears)
-  const total = pi + extraMonthly
   let bal = loan
   let months = 0
+  let interest = 0
   const maxMonths = termYears * 12
   while (bal > 0.01 && months < maxMonths) {
-    bal = bal - (total - bal * r)
+    const monthInterest = bal * r
+    interest += monthInterest
+    bal -= Math.min(pi + extraMonthly - monthInterest, bal)
     months++
   }
-  return months
+  return { months, interest }
 }
 
-// Closing cost estimate
+// Closing cost estimate — Utah-typical figures. Utah has no real estate
+// transfer tax, and title companies (not attorneys) handle closings.
 function estimateClosingCosts(homePrice: number, loan: number, loanType: LoanType): {
   cashItems: { label: string; amount: number }[]
   financedItems: { label: string; amount: number }[]
@@ -106,15 +129,15 @@ function estimateClosingCosts(homePrice: number, loan: number, loanType: LoanTyp
   range: [number, number]
 } {
   const cashItems = [
-    { label: 'Loan origination fee (0.5–1%)',          amount: Math.round(loan * 0.0075) },
-    { label: 'Underwriting & processing',               amount: 695 },
-    { label: 'Appraisal',                               amount: 500 },
-    { label: 'Home inspection',                         amount: 450 },
-    { label: "Lender's title insurance (~0.4% of loan)", amount: Math.round(loan * 0.004) },
-    { label: "Owner's title insurance (recommended)",   amount: Math.round(homePrice * 0.003) },
-    { label: 'Title search & settlement fee',           amount: 600 },
-    { label: 'Recording fees',                          amount: 250 },
-    { label: 'Credit report',                           amount: 45 },
+    { label: 'Loan origination fee (0.5–1%)',            amount: Math.round(loan * 0.0075) },
+    { label: 'Underwriting & processing',                 amount: 695 },
+    { label: 'Appraisal',                                 amount: 550 },
+    { label: 'Home inspection',                           amount: 450 },
+    { label: "Lender's title insurance (~0.4% of loan)",  amount: Math.round(loan * 0.004) },
+    { label: "Owner's title insurance (recommended)",     amount: Math.round(homePrice * 0.003) },
+    { label: 'Title search & settlement fee',             amount: 600 },
+    { label: 'Recording fees (Utah flat-fee)',            amount: 60 },
+    { label: 'Credit report',                             amount: 45 },
   ]
   // Prepaid: first-year homeowners insurance + prepaid interest (15 days) + 2–3 mo escrow reserves
   const prepaidEscrow = Math.round(homePrice * 0.01)
@@ -196,34 +219,56 @@ function SegGroup({ options, value, onChange }: {
   )
 }
 
-function StateSelect({ value, onChange, label, hint, aiValues }: {
-  value: string; onChange: (v: string) => void; label: string; hint?: string
-  aiValues?: { taxRate?: number; insurance?: number; hoa?: number; utilities?: number }
-}) {
-  const sd = value ? STATE_DATA[value] : null
-  const hasAi = !!(aiValues && (aiValues.taxRate !== undefined || aiValues.insurance !== undefined))
-  const taxRate   = aiValues?.taxRate    ?? sd?.propertyTaxRate
-  const insurance = aiValues?.insurance  ?? sd?.avgInsuranceAnnual
-  const hoa       = aiValues?.hoa        ?? sd?.avgHoaMonthly
-  const utilities = aiValues?.utilities  ?? sd?.avgUtilitiesMonthly
+function CountySelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const county = UTAH_COUNTIES[value]
   return (
-    <Field label={label} hint={hint}>
+    <Field label="Utah County">
       <select className="calc-select" value={value} onChange={e => onChange(e.target.value)}>
-        <option value="">— Select a state —</option>
-        {Object.entries(STATE_DATA).sort((a, b) => a[1].name.localeCompare(b[1].name)).map(([code, data]) => (
-          <option key={code} value={code}>{data.name} ({code})</option>
+        {Object.entries(UTAH_COUNTIES).map(([key, c]) => (
+          <option key={key} value={key}>{c.name}</option>
         ))}
       </select>
-      {value && taxRate !== undefined && (
-        <div className="calc-state-info">
-          {hasAi && <span className="calc-state-ai-badge">AI</span>}
-          <span>Tax: <strong>{(taxRate * 100).toFixed(2)}%/yr</strong></span>
-          {insurance !== undefined && <span>Insurance: <strong>${fmt(insurance)}/yr</strong></span>}
-          {hoa !== undefined && <span>Avg HOA: <strong>${fmt(hoa)}/mo</strong></span>}
-          {utilities !== undefined && <span>Avg Utilities: <strong>${fmt(utilities)}/mo</strong></span>}
+      {county && (
+        <div className="calc-sub-hint">
+          Effective property tax: <strong>{(county.taxRate * 100).toFixed(2)}%/yr</strong> on a primary
+          residence (Utah's 45% residential exemption included)
         </div>
       )}
     </Field>
+  )
+}
+
+// Live Utah rates banner — data from Freddie Mac PMMS via the backend
+function RatesCard({ rates, loading }: { rates: LiveRates | null; loading: boolean }) {
+  return (
+    <div className="rates-card">
+      <div className="rates-card-header">
+        <span className="rates-flag">🏔️ Utah Mortgage Rates</span>
+        {rates?.live && <span className="rates-live-badge">● LIVE</span>}
+      </div>
+      {loading ? (
+        <div className="rates-loading">Loading current rates…</div>
+      ) : rates ? (
+        <>
+          <div className="rates-values">
+            <div className="rates-value">
+              <div className="rates-value-num">{rates.rate_30yr.toFixed(2)}%</div>
+              <div className="rates-value-label">30-yr fixed</div>
+            </div>
+            <div className="rates-value">
+              <div className="rates-value-num">{rates.rate_15yr.toFixed(2)}%</div>
+              <div className="rates-value-label">15-yr fixed</div>
+            </div>
+          </div>
+          <div className="rates-source">
+            {rates.source} · week of {rates.as_of}. National weekly average — Utah lenders
+            typically quote within ~0.1%. Your rate depends on credit, points, and lender.
+          </div>
+        </>
+      ) : (
+        <div className="rates-loading">Rates unavailable — enter a rate manually below.</div>
+      )}
+    </div>
   )
 }
 
@@ -235,21 +280,27 @@ interface PaymentResult {
   monthlyHoa: number; utilities: number; maintenance: number; total: number
   totalInterest: number; totalCost: number; closingCosts: ReturnType<typeof estimateClosingCosts>
   pmiDropMonth: number | null; frontEndDTI: number | null; down: number
+  rateUsed: number; termYears: number
 }
 
-function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?: MortgageInput | null; runDemo?: boolean; onDemoComplete?: () => void; demoPaused?: boolean }) {
+function PaymentCalc({ prefill, liveRates, ratesLoading, runDemo, onDemoComplete, demoPaused }: {
+  prefill?: MortgageInput | null; liveRates: LiveRates | null; ratesLoading: boolean
+  runDemo?: boolean; onDemoComplete?: () => void; demoPaused?: boolean
+}) {
   const [homePrice, setHomePrice] = useState(prefill ? fmtInput(prefill.home_price) : '')
   const [downDisplay, setDownDisplay] = useState(prefill ? fmtInput(prefill.down_payment) : '')
   const [downMode, setDownMode] = useState<'dollar' | 'percent'>('dollar')
   const [loanType, setLoanType] = useState<LoanType>(prefill?.loan_type as LoanType ?? 'conventional')
   const [term, setTerm] = useState<'10'|'15'|'20'|'30'>('30')
   const [rate, setRate] = useState('')
-  const [state, setState] = useState(prefill?.state ?? '')
+  const [rateTouched, setRateTouched] = useState(false)
+  const [county, setCounty] = useState(DEFAULT_COUNTY)
   const [annualTax, setAnnualTax] = useState('')
-  const [annualInsurance, setAnnualInsurance] = useState('')
+  const [taxTouched, setTaxTouched] = useState(false)
+  const [annualInsurance, setAnnualInsurance] = useState(fmtInput(UTAH_AVERAGES.insuranceAnnual))
   const [monthlyHoa, setMonthlyHoa] = useState('')
   const [hasHoa, setHasHoa] = useState(false)
-  const [utilities, setUtilities] = useState('')
+  const [utilities, setUtilities] = useState(fmtInput(UTAH_AVERAGES.utilitiesMonthly))
   const [includeMaintenance, setIncludeMaintenance] = useState(true)
   const [annualIncome, setAnnualIncome] = useState(prefill ? fmtInput(prefill.annual_income) : '')
   const [extraPayment, setExtraPayment] = useState('')
@@ -258,79 +309,38 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
   const [showRefi, setShowRefi] = useState(false)
   const [result, setResult] = useState<PaymentResult | null>(null)
   const [disabledRows, setDisabledRows] = useState<Set<string>>(new Set())
-  const [aiLoading, setAiLoading] = useState(false)
-  const [aiError, setAiError] = useState<string | null>(null)
-  const [aiCard, setAiCard] = useState<{
-    stateName: string; rate: number; taxRate: number; insurance: number
-    hoa: number; utilities: number; reasoning: string; demoMode: boolean
-    sources: { rate?: string|null; tax?: string|null; insurance?: string|null; utilities?: string|null }
-  } | null>(null)
-  const [autoCalcPending, setAutoCalcPending] = useState(false)
   const calculateRef = useRef<() => void>(() => {})
 
-  const fetchAIRates = async () => {
-    if (!state) return
-    setAiLoading(true)
-    setAiError(null)
-    try {
-      const res = await fetch('/api/market-rates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          state_code: state,
-          state_name: STATE_DATA[state]?.name ?? state,
-          credit_score: prefill?.credit_score ?? 720,
-          loan_type: loanType,
-          term_years: parseInt(term),
-        }),
-      })
-      if (!res.ok) throw new Error('Failed')
-      const data = await res.json()
-      setRate(String(data.interest_rate))
-      const hp = parseCurrency(homePrice)
-      if (hp > 0) setAnnualTax(fmtInput(Math.round(hp * data.property_tax_rate)))
-      setAnnualInsurance(fmtInput(data.avg_insurance_annual))
-      if (data.avg_hoa_monthly > 0) { setHasHoa(true); setMonthlyHoa(fmtInput(data.avg_hoa_monthly)) }
-      if (data.avg_utilities_monthly > 0) setUtilities(fmtInput(data.avg_utilities_monthly))
-      setAiCard({
-        stateName: STATE_DATA[state]?.name ?? state,
-        rate: data.interest_rate, taxRate: data.property_tax_rate,
-        insurance: data.avg_insurance_annual, hoa: data.avg_hoa_monthly,
-        utilities: data.avg_utilities_monthly,
-        reasoning: data.rate_reasoning || data.insights,
-        demoMode: data.demo_mode,
-        sources: { rate: data.rate_source, tax: data.tax_source, insurance: data.insurance_source, utilities: data.utilities_source },
-      })
-      setAutoCalcPending(true)
-    } catch {
-      setAiError('Could not fetch AI rates — check that the backend is running with a valid API key.')
-    } finally {
-      setAiLoading(false)
-    }
-  }
+  const creditScore = prefill?.credit_score ?? 720
+  const defaultRate = rateForTerm(liveRates, term)
 
-  // Auto-calculate once AI rates have been set and state has re-rendered
+  // Prefill the rate from the live feed until the user types their own
   useEffect(() => {
-    if (!autoCalcPending) return
-    setAutoCalcPending(false)
-    calculateRef.current()
-  }, [autoCalcPending])
+    if (rateTouched) return
+    setRate(String(defaultRate.rate))
+  }, [liveRates, term]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Demo: run AI fetch then signal completion
+  // Auto-compute property tax from county + home price until the user edits it
   useEffect(() => {
-    if (!runDemo || demoPaused) return
-    fetchAIRates().then(() => {
-      setTimeout(() => onDemoComplete?.(), 2000)
-    })
-  }, [runDemo, demoPaused]) // eslint-disable-line react-hooks/exhaustive-deps
-
-
+    if (taxTouched) return
+    const hp = parseCurrency(homePrice)
+    setAnnualTax(hp > 0 ? fmtInput(Math.round(hp * UTAH_COUNTIES[county].taxRate)) : '')
+  }, [county, homePrice]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!state) return
-    if (hasHoa) setMonthlyHoa(fmtInput(STATE_DATA[state].avgHoaMonthly))
+    if (hasHoa) setMonthlyHoa(fmtInput(UTAH_AVERAGES.hoaMonthly))
     else setMonthlyHoa('')
   }, [hasHoa])
+
+  // Demo: wait a beat for rates/prefill, run the calculation, then move on
+  useEffect(() => {
+    if (!runDemo || demoPaused) return
+    const t = setTimeout(() => {
+      calculateRef.current()
+      setTimeout(() => onDemoComplete?.(), 2200)
+    }, 1200)
+    return () => clearTimeout(t)
+  }, [runDemo, demoPaused]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const getDownDollars = () => {
     const hp = parseCurrency(homePrice)
@@ -342,7 +352,7 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
     const hp = parseCurrency(homePrice)
     const down = getDownDollars()
     const baseLoan = hp - down
-    const r = parseFloat(rate) || CURRENT_RATES[term]
+    const r = parseFloat(rate) || defaultRate.rate
     const t = parseInt(term)
     if (hp <= 0 || baseLoan <= 0 || r <= 0) return
 
@@ -350,7 +360,7 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
     const adjLoan = adjustedLoanAmount(baseLoan, loanType, downPct)
     const ltv = (baseLoan / hp) * 100
     const pi = calcPI(adjLoan, r, t)
-    const mi = calcMortgageInsurance(adjLoan, ltv, loanType, t)
+    const mi = calcMortgageInsurance(adjLoan, ltv, loanType, t, creditScore)
     const mTax = parseCurrency(annualTax) / 12
     const mIns = parseCurrency(annualInsurance) / 12
     const mHoa = hasHoa ? parseCurrency(monthlyHoa) : 0
@@ -360,11 +370,14 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
 
     const n = t * 12
     const totalInterest = pi * n - adjLoan
-    const totalCost = hp + totalInterest + (mTax + mIns + mHoa + mMaint) * n + mi * n
 
     const dropsOff = mortgageInsuranceDropsOff(loanType, downPct)
     const pmiDropMonth = (mi > 0 && dropsOff && loanType === 'conventional')
       ? monthsUntilPmiDrops(adjLoan, hp, r, t) : null
+
+    // MI is only paid until it drops off — don't count it for the full term
+    const miMonths = mi > 0 ? miDurationMonths(loanType, downPct, t, pmiDropMonth) : 0
+    const totalCost = hp + totalInterest + (mTax + mIns + mHoa + mMaint) * n + mi * miMonths
 
     const income = parseCurrency(annualIncome)
     const frontEndDTI = income > 0 ? ((pi + mi + mTax + mIns + mHoa) / (income / 12)) * 100 : null
@@ -374,7 +387,7 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
     setResult({ loanBase: baseLoan, loanAdjusted: adjLoan, ltv, pi, mortgageInsurance: mi,
       monthlyTax: mTax, monthlyInsurance: mIns, monthlyHoa: mHoa, utilities: mUtils,
       maintenance: mMaint, total, totalInterest, totalCost, closingCosts: closing,
-      pmiDropMonth, frontEndDTI, down })
+      pmiDropMonth, frontEndDTI, down, rateUsed: r, termYears: t })
   }
   calculateRef.current = calculate
 
@@ -386,70 +399,12 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
 
   return (
     <div className="calc-body">
-      {/* AI Rates — always visible at top so users know to press it */}
-      <div className="calc-ai-banner">
-        <div className="calc-ai-banner-left">
-          <span className="calc-ai-badge">AI</span>
-          <div>
-            <div className="calc-ai-banner-title">Get Live AI-Accurate Rates</div>
-            <div className="calc-ai-banner-sub">
-              {state ? `Current rates for ${STATE_DATA[state]?.name ?? state} · personalized to your credit profile` : 'Select a state to get started'}
-            </div>
-          </div>
-        </div>
-        <button
-          className="calc-ai-btn"
-          onClick={fetchAIRates}
-          disabled={aiLoading || !state}
-        >
-          {aiLoading ? '⏳ Claude is researching...' : '🤖 Have Claude Research Rates'}
-        </button>
-      </div>
-      {aiError && <div className="calc-ai-insight" style={{borderLeftColor:'#ef4444',background:'#fef2f2',color:'#dc2626'}}>{aiError}</div>}
-      {aiCard && (
-        <div className="calc-ai-card">
-          <div className="calc-ai-card-header">
-            🤖 Claude's Researched Rates — {aiCard.stateName}{aiCard.demoMode ? ' (demo)' : ''}
-          </div>
-          <div className="calc-ai-card-grid">
-            <div className="calc-ai-row">
-              <span className="calc-ai-label">Interest Rate</span>
-              <span className="calc-ai-val">{aiCard.rate}%</span>
-              <span className="calc-ai-src">{aiCard.sources.rate ?? ''}</span>
-            </div>
-            <div className="calc-ai-row">
-              <span className="calc-ai-label">Property Tax</span>
-              <span className="calc-ai-val">{(aiCard.taxRate * 100).toFixed(2)}%/yr</span>
-              <span className="calc-ai-src">{aiCard.sources.tax ?? ''}</span>
-            </div>
-            <div className="calc-ai-row">
-              <span className="calc-ai-label">Homeowners Ins.</span>
-              <span className="calc-ai-val">${fmt(aiCard.insurance)}/yr</span>
-              <span className="calc-ai-src">{aiCard.sources.insurance ?? ''}</span>
-            </div>
-            {aiCard.utilities > 0 && (
-              <div className="calc-ai-row">
-                <span className="calc-ai-label">Avg Utilities</span>
-                <span className="calc-ai-val">${fmt(aiCard.utilities)}/mo</span>
-                <span className="calc-ai-src">{aiCard.sources.utilities ?? ''}</span>
-              </div>
-            )}
-            {aiCard.hoa > 0 && (
-              <div className="calc-ai-row">
-                <span className="calc-ai-label">Avg HOA</span>
-                <span className="calc-ai-val">${fmt(aiCard.hoa)}/mo</span>
-                <span className="calc-ai-src"></span>
-              </div>
-            )}
-          </div>
-          {aiCard.reasoning && <div className="calc-ai-reasoning">{aiCard.reasoning}</div>}
-        </div>
-      )}
+      <RatesCard rates={liveRates} loading={ratesLoading} />
 
       <div className="calc-form-grid">
         <div className="calc-col">
           <Field label="Home Price">
-            <CurrencyInput value={homePrice} onChange={setHomePrice} placeholder="400,000" />
+            <CurrencyInput value={homePrice} onChange={setHomePrice} placeholder="450,000" />
           </Field>
 
           <Field label="">
@@ -460,11 +415,15 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
                 <button className={`calc-toggle${downMode === 'percent' ? ' active' : ''}`} onClick={() => setDownMode('percent')}>%</button>
               </div>
             </div>
-            <CurrencyInput value={downDisplay} onChange={setDownDisplay} placeholder={downMode === 'dollar' ? '80,000' : '20'} />
-            {downPct !== null && (
+            <CurrencyInput value={downDisplay} onChange={setDownDisplay} placeholder={downMode === 'dollar' ? '90,000' : '20'} />
+            {downPct !== null && parseFloat(downPct) >= 100 ? (
+              <div className="calc-sub-hint calc-hint-error">
+                ⚠️ Down payment can't be equal to or more than the home price
+              </div>
+            ) : downPct !== null && (
               <div className="calc-sub-hint">
                 {downMode === 'dollar' ? `${downPct}% of home price` : `$${fmt(getDownDollars())}`}
-                {downPct !== null && parseFloat(downPct) < 20 ? ' · PMI / MIP will apply' : ' · No PMI'}
+                {parseFloat(downPct) < 20 ? ' · PMI / MIP will apply' : ' · No PMI'}
               </div>
             )}
           </Field>
@@ -481,10 +440,12 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
               onChange={v => setLoanType(v as LoanType)}
             />
             <div className="calc-sub-hint">
-              {loanType === 'fha'  && 'Includes 1.75% upfront MIP (financed) + 0.55%/yr monthly MIP'}
+              {loanType === 'fha'  && 'Includes 1.75% upfront MIP (financed) + annual MIP'}
               {loanType === 'va'   && 'VA funding fee financed in — no monthly mortgage insurance'}
               {loanType === 'usda' && 'Includes 1% upfront fee + 0.35%/yr annual guarantee fee'}
-              {loanType === 'conventional' && (parseFloat(downPct ?? '20') < 20 ? 'PMI applies until 80% LTV (~0.75%/yr est.)' : 'No PMI with 20%+ down')}
+              {loanType === 'conventional' && (parseFloat(downPct ?? '20') < 20
+                ? `PMI applies until 80% LTV (~${(pmiAnnualRate(creditScore) * 100).toFixed(2)}%/yr at your credit score)`
+                : 'No PMI with 20%+ down')}
             </div>
           </Field>
 
@@ -492,9 +453,21 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
             <SegGroup options={[{label:'10yr',value:'10'},{label:'15yr',value:'15'},{label:'20yr',value:'20'},{label:'30yr',value:'30'}]} value={term} onChange={v => setTerm(v as typeof term)} />
           </Field>
 
-          <Field label="Interest Rate" hint={rate ? undefined : `Use the AI button above to fetch your rate — or enter manually (national avg: ${CURRENT_RATES[term]}%)`}>
+          <Field
+            label="Interest Rate"
+            hint={rateTouched
+              ? undefined
+              : defaultRate.estimated && liveRates
+                ? `Estimated from this week's survey (PMMS publishes 30yr & 15yr only)`
+                : `Auto-filled from this week's survey — edit to match your quote`}
+          >
             <div className="calc-input-wrap">
-              <input className="calc-input no-prefix" type="number" step="0.05" min="1" max="20" value={rate} onChange={e => setRate(e.target.value)} placeholder={String(CURRENT_RATES[term])} />
+              <input
+                className="calc-input no-prefix" type="number" step="0.05" min="1" max="20"
+                value={rate}
+                onChange={e => { setRateTouched(true); setRate(e.target.value) }}
+                placeholder={String(defaultRate.rate)}
+              />
               <span className="calc-suffix">%</span>
             </div>
           </Field>
@@ -505,17 +478,18 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
         </div>
 
         <div className="calc-col">
-          <StateSelect
-            value={state} onChange={setState} label="State"
-            aiValues={aiCard ? { taxRate: aiCard.taxRate, insurance: aiCard.insurance, hoa: aiCard.hoa || undefined, utilities: aiCard.utilities || undefined } : undefined}
-          />
+          <CountySelect value={county} onChange={setCounty} />
 
-          <Field label="Annual Property Tax">
-            <CurrencyInput value={annualTax} onChange={setAnnualTax} placeholder="4,000" suffix="/yr" />
+          <Field label="Annual Property Tax" hint={taxTouched ? undefined : 'Auto-calculated from your county — edit if you know the exact amount'}>
+            <CurrencyInput
+              value={annualTax}
+              onChange={v => { setTaxTouched(true); setAnnualTax(v) }}
+              placeholder="2,500" suffix="/yr"
+            />
           </Field>
 
-          <Field label="Annual Homeowner's Insurance">
-            <CurrencyInput value={annualInsurance} onChange={setAnnualInsurance} placeholder="1,500" suffix="/yr" />
+          <Field label="Annual Homeowner's Insurance" hint={`Utah average: ~$${fmt(UTAH_AVERAGES.insuranceAnnual)}/yr`}>
+            <CurrencyInput value={annualInsurance} onChange={setAnnualInsurance} placeholder="1,150" suffix="/yr" />
           </Field>
 
           <div className="calc-field">
@@ -527,14 +501,14 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
             </div>
             {hasHoa && (
               <>
-                <CurrencyInput value={monthlyHoa} onChange={setMonthlyHoa} placeholder="250" suffix="/mo" />
-                {state && <div className="calc-sub-hint">State avg: ${fmt(STATE_DATA[state].avgHoaMonthly)}/mo</div>}
+                <CurrencyInput value={monthlyHoa} onChange={setMonthlyHoa} placeholder="235" suffix="/mo" />
+                <div className="calc-sub-hint">Utah average: ${fmt(UTAH_AVERAGES.hoaMonthly)}/mo</div>
               </>
             )}
           </div>
 
-          <Field label="Monthly Utilities" hint={state ? `State avg: $${fmt(STATE_DATA[state].avgUtilitiesMonthly)}/mo (elec, gas, water, trash)` : 'electricity, gas, water, trash'}>
-            <CurrencyInput value={utilities} onChange={setUtilities} placeholder="250" suffix="/mo" />
+          <Field label="Monthly Utilities" hint={`Utah average: $${fmt(UTAH_AVERAGES.utilitiesMonthly)}/mo (electricity, gas, water, trash)`}>
+            <CurrencyInput value={utilities} onChange={setUtilities} placeholder="240" suffix="/mo" />
           </Field>
 
           <div className="calc-field">
@@ -622,7 +596,7 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
               {loanType === 'fha' && downPct !== null && parseFloat(downPct) >= 10 &&
                 'FHA MIP drops off after 11 years (10%+ down).'}
               {loanType === 'conventional' && result.pmiDropMonth !== null &&
-                `PMI drops off after ~${Math.ceil(result.pmiDropMonth / 12)} years (when balance reaches 80% LTV).`}
+                `PMI drops off after ~${Math.ceil(result.pmiDropMonth / 12)} years (when balance reaches 80% of original value).`}
               {loanType === 'usda' && 'USDA annual guarantee fee (0.35%/yr) for the life of the loan.'}
             </div>
           )}
@@ -660,10 +634,10 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
                 </Field>
                 {parseCurrency(extraPayment) > 0 && (() => {
                   const extra = parseCurrency(extraPayment)
-                  const origMonths = parseInt(term) * 12
-                  const newMonths = monthsWithExtraPayment(result.loanAdjusted, parseFloat(rate), parseInt(term), extra)
-                  const monthsSaved = origMonths - newMonths
-                  const interestSaved = result.totalInterest - (calcPI(result.loanAdjusted, parseFloat(rate), parseInt(term)) * newMonths - result.loanAdjusted)
+                  const origMonths = result.termYears * 12
+                  const payoff = payoffWithExtra(result.loanAdjusted, result.rateUsed, result.termYears, extra)
+                  const monthsSaved = origMonths - payoff.months
+                  const interestSaved = result.totalInterest - payoff.interest
                   return (
                     <div className="extra-payment-result">
                       <div className="extra-stat">
@@ -675,7 +649,7 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
                         <div className="extra-stat-label">Interest saved</div>
                       </div>
                       <div className="extra-stat">
-                        <div className="extra-stat-value">{Math.ceil(newMonths / 12)} yr</div>
+                        <div className="extra-stat-value">{Math.ceil(payoff.months / 12)} yr</div>
                         <div className="extra-stat-label">New payoff time</div>
                       </div>
                     </div>
@@ -693,7 +667,10 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
             </div>
             {showClosing && (
               <div className="calc-expand-body">
-                <p className="calc-expand-desc">Typical range: ${fmt(result.closingCosts.range[0])} – ${fmt(result.closingCosts.range[1])} (2–5% of loan).</p>
+                <p className="calc-expand-desc">
+                  Typical range: ${fmt(result.closingCosts.range[0])} – ${fmt(result.closingCosts.range[1])} (2–5% of loan).
+                  Good news: Utah has <strong>no real estate transfer tax</strong>.
+                </p>
 
                 <div className="closing-section-label">Cash You Need at Closing</div>
                 <div className="closing-item highlight-item">
@@ -732,9 +709,8 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
           {/* FHA/VA/USDA Refinance comparison */}
           {loanType !== 'conventional' && result.mortgageInsurance > 0 && (() => {
             const hp = parseCurrency(homePrice)
-            const t = parseInt(term)
-            const r = parseFloat(rate)
-            const baseLoan = hp - result.down
+            const t = result.termYears
+            const r = result.rateUsed
             const adjLoan = result.loanAdjusted
             const pmiDropMonth = monthsUntilPmiDrops(adjLoan, hp, r, t)
             const yearsToEquity = Math.ceil(pmiDropMonth / 12)
@@ -808,9 +784,12 @@ function PaymentCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill
 const GRID_RATES = [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]
 const GRID_DOWN_PCTS = [0, 3, 5, 10, 15, 20]
 
-function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?: MortgageInput | null; runDemo?: boolean; onDemoComplete?: () => void; demoPaused?: boolean }) {
+function AffordCalc({ prefill, liveRates, ratesLoading, runDemo, onDemoComplete, demoPaused }: {
+  prefill?: MortgageInput | null; liveRates: LiveRates | null; ratesLoading: boolean
+  runDemo?: boolean; onDemoComplete?: () => void; demoPaused?: boolean
+}) {
   const [targetPayment, setTargetPayment] = useState('')
-  const [state, setState] = useState(prefill?.state ?? '')
+  const [county, setCounty] = useState(DEFAULT_COUNTY)
   const [loanType, setLoanType] = useState<LoanType>(prefill?.loan_type as LoanType ?? 'conventional')
   const [term, setTerm] = useState<'15'|'30'>('30')
   const [monthlyHoa, setMonthlyHoa] = useState('0')
@@ -818,75 +797,22 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
   const [result, setResult] = useState<{grid: {downPct:number;rate:number;homePrice:number;hasMi:boolean}[][]}>( null!)
   const [popup, setPopup] = useState<{downPct:number;rate:number;homePrice:number} | null>(null)
   const calculateRef = useRef<() => void>(() => {})
-  const [aiTaxRate, setAiTaxRate] = useState<number | null>(null)
-  const [aiInsuranceAnnual, setAiInsuranceAnnual] = useState<number | null>(null)
-  const [aiRate, setAiRate] = useState<number | null>(null)
-  const [aiLoading, setAiLoading] = useState(false)
-  const [aiError, setAiError] = useState<string | null>(null)
-  const [aiCard, setAiCard] = useState<{
-    stateName: string; rate: number; taxRate: number; insurance: number
-    utilities: number; reasoning: string; demoMode: boolean
-    sources: { rate?: string|null; tax?: string|null; insurance?: string|null; utilities?: string|null }
-  } | null>(null)
-  const [autoCalcPending, setAutoCalcPending] = useState(false)
 
-  const fetchAIRates = async () => {
-    if (!state) return
-    setAiLoading(true)
-    setAiError(null)
-    try {
-      const res = await fetch('/api/market-rates', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          state_code: state,
-          state_name: STATE_DATA[state]?.name ?? state,
-          credit_score: prefill?.credit_score ?? 720,
-          loan_type: loanType,
-          term_years: parseInt(term),
-        }),
-      })
-      if (!res.ok) throw new Error('Failed')
-      const data = await res.json()
-      setAiTaxRate(data.property_tax_rate)
-      setAiInsuranceAnnual(data.avg_insurance_annual)
-      setAiRate(data.interest_rate)
-      if (data.avg_hoa_monthly > 0) setMonthlyHoa(fmtInput(data.avg_hoa_monthly))
-      setAiCard({
-        stateName: STATE_DATA[state]?.name ?? state,
-        rate: data.interest_rate, taxRate: data.property_tax_rate,
-        insurance: data.avg_insurance_annual, utilities: data.avg_utilities_monthly,
-        reasoning: data.rate_reasoning || data.insights,
-        demoMode: data.demo_mode,
-        sources: { rate: data.rate_source, tax: data.tax_source, insurance: data.insurance_source, utilities: data.utilities_source },
-      })
-      setAutoCalcPending(true)
-    } catch {
-      setAiError('Could not fetch AI rates — check that the backend is running with a valid API key.')
-    } finally {
-      setAiLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    if (!autoCalcPending) return
-    setAutoCalcPending(false)
-    calculateRef.current()
-  }, [autoCalcPending])
+  const creditScore = prefill?.credit_score ?? 720
+  const liveRate = rateForTerm(liveRates, term)
 
   const suggestedPayment = prefill?.annual_income
     ? Math.round(prefill.annual_income / 12 * 0.28) : null
 
-  // Demo: fetch AI rates, fill target payment, calculate
+  // Demo: fill target payment from the 28% rule, then calculate
   useEffect(() => {
     if (!runDemo || !suggestedPayment || demoPaused) return
     setTargetPayment(suggestedPayment.toLocaleString())
-    fetchAIRates().then(() => {
-      setTimeout(() => {
-        calculateRef.current()
-        setTimeout(() => onDemoComplete?.(), 1200)
-      }, 600)
-    })
+    const t = setTimeout(() => {
+      calculateRef.current()
+      setTimeout(() => onDemoComplete?.(), 1500)
+    }, 900)
+    return () => clearTimeout(t)
   }, [runDemo, demoPaused]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const calculate = () => {
@@ -894,28 +820,30 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
     if (target <= 0) return
 
     const mHoa = parseCurrency(monthlyHoa)
-    const taxRateValue = aiTaxRate ?? (state ? STATE_DATA[state].propertyTaxRate : 0)
-    const annualIns = aiInsuranceAnnual ?? (state ? STATE_DATA[state].avgInsuranceAnnual : 1500)
-    const mIns = annualIns / 12
-    const mUtils = state && includeUtils ? STATE_DATA[state].avgUtilitiesMonthly : 0
+    const taxRateValue = UTAH_COUNTIES[county].taxRate
+    const mIns = UTAH_AVERAGES.insuranceAnnual / 12
+    const mUtils = includeUtils ? UTAH_AVERAGES.utilitiesMonthly : 0
     const t = parseInt(term)
 
     const grid = GRID_DOWN_PCTS.map(downPct => {
+      // P&I is paid on the ADJUSTED loan (financed FHA MIP / VA / USDA fees),
+      // so back the fee multiplier out when converting max loan → home price
+      const feeMult = adjustedLoanAmount(1, loanType, downPct / 100)
       return GRID_RATES.map(rate => {
         let homePrice = 400000
         for (let i = 0; i < 12; i++) {
           const mTax = homePrice * taxRateValue / 12
           const loan = homePrice * (1 - downPct / 100)
-          const adjLoan = adjustedLoanAmount(loan, loanType, downPct / 100)
-          const mi = calcMortgageInsurance(adjLoan, (1 - downPct / 100) * 100, loanType, t)
+          const adjLoan = loan * feeMult
+          const mi = calcMortgageInsurance(adjLoan, (1 - downPct / 100) * 100, loanType, t, creditScore)
           const availablePI = target - mTax - mIns - mHoa - mi - mUtils
           if (availablePI <= 0) { homePrice = 0; break }
-          const newLoan = maxLoanFromPI(availablePI, rate, t)
-          homePrice = newLoan / (1 - downPct / 100)
+          const maxAdjLoan = maxLoanFromPI(availablePI, rate, t)
+          homePrice = (maxAdjLoan / feeMult) / (1 - downPct / 100)
         }
         const loan = homePrice * (1 - downPct / 100)
         const ltv = (1 - downPct / 100) * 100
-        const mi = calcMortgageInsurance(loan, ltv, loanType, t)
+        const mi = calcMortgageInsurance(loan * feeMult, ltv, loanType, t, creditScore)
         return { downPct, rate, homePrice: Math.max(0, Math.round(homePrice / 5000) * 5000), hasMi: mi > 0 }
       })
     })
@@ -933,61 +861,10 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
 
   return (
     <div className="calc-body">
-      {/* AI Rates — always visible at top */}
-      <div className="calc-ai-banner">
-        <div className="calc-ai-banner-left">
-          <span className="calc-ai-badge">AI</span>
-          <div>
-            <div className="calc-ai-banner-title">Get Live AI-Accurate Rates</div>
-            <div className="calc-ai-banner-sub">
-              {state ? `Current rates for ${STATE_DATA[state]?.name ?? state} · personalized to your credit profile` : 'Select a state to get started'}
-            </div>
-          </div>
-        </div>
-        <button
-          className="calc-ai-btn"
-          onClick={fetchAIRates}
-          disabled={aiLoading || !state}
-        >
-          {aiLoading ? '⏳ Claude is researching...' : '🤖 Have Claude Research Rates'}
-        </button>
-      </div>
-      {aiError && <div className="calc-ai-insight" style={{borderLeftColor:'#ef4444',background:'#fef2f2',color:'#dc2626'}}>{aiError}</div>}
-      {aiCard && (
-        <div className="calc-ai-card">
-          <div className="calc-ai-card-header">
-            🤖 Claude's Researched Rates — {aiCard.stateName}{aiCard.demoMode ? ' (demo)' : ''}
-          </div>
-          <div className="calc-ai-card-grid">
-            <div className="calc-ai-row">
-              <span className="calc-ai-label">Interest Rate</span>
-              <span className="calc-ai-val">{aiCard.rate}% <span className="calc-ai-note">(highlighted in grid)</span></span>
-              <span className="calc-ai-src">{aiCard.sources.rate ?? ''}</span>
-            </div>
-            <div className="calc-ai-row">
-              <span className="calc-ai-label">Property Tax</span>
-              <span className="calc-ai-val">{(aiCard.taxRate * 100).toFixed(2)}%/yr</span>
-              <span className="calc-ai-src">{aiCard.sources.tax ?? ''}</span>
-            </div>
-            <div className="calc-ai-row">
-              <span className="calc-ai-label">Homeowners Ins.</span>
-              <span className="calc-ai-val">${fmt(aiCard.insurance)}/yr</span>
-              <span className="calc-ai-src">{aiCard.sources.insurance ?? ''}</span>
-            </div>
-            {aiCard.utilities > 0 && (
-              <div className="calc-ai-row">
-                <span className="calc-ai-label">Avg Utilities</span>
-                <span className="calc-ai-val">${fmt(aiCard.utilities)}/mo</span>
-                <span className="calc-ai-src">{aiCard.sources.utilities ?? ''}</span>
-              </div>
-            )}
-          </div>
-          {aiCard.reasoning && <div className="calc-ai-reasoning">{aiCard.reasoning}</div>}
-        </div>
-      )}
+      <RatesCard rates={liveRates} loading={ratesLoading} />
 
       <div className="calc-afford-intro">
-        Enter your target total monthly housing budget and see the home prices you can afford across different rates and down payments.
+        Enter your target total monthly housing budget and see the Utah home prices you can afford across different rates and down payments.
       </div>
 
       <div className="calc-form-grid">
@@ -1015,10 +892,7 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
         </div>
 
         <div className="calc-col">
-          <StateSelect
-            value={state} onChange={setState} label="State"
-            aiValues={aiCard ? { taxRate: aiCard.taxRate, insurance: aiCard.insurance, utilities: aiCard.utilities || undefined } : undefined}
-          />
+          <CountySelect value={county} onChange={setCounty} />
           <Field label="Monthly HOA (0 if none)">
             <CurrencyInput value={monthlyHoa} onChange={setMonthlyHoa} placeholder="0" suffix="/mo" />
           </Field>
@@ -1029,7 +903,7 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
                 {includeUtils ? '✓ Included' : 'Excluded'}
               </button>
             </div>
-            {state && includeUtils && <div className="calc-sub-hint">Using state avg: ${fmt(STATE_DATA[state].avgUtilitiesMonthly)}/mo</div>}
+            {includeUtils && <div className="calc-sub-hint">Using Utah avg: ${fmt(UTAH_AVERAGES.utilitiesMonthly)}/mo</div>}
           </div>
         </div>
       </div>
@@ -1044,11 +918,10 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
                 <tr>
                   <th className="afford-corner">Down ↓ / Rate →</th>
                   {GRID_RATES.map(r => {
-                    const isNational = Math.abs(r - CURRENT_RATES[term]) < 0.01
-                    const isAiRate = aiRate !== null && Math.abs(r - aiRate) < 0.26
+                    const isCurrent = Math.abs(r - liveRate.rate) <= 0.25
                     return (
-                      <th key={r} className={`afford-rate-header${isNational ? ' current-rate' : ''}${isAiRate ? ' ai-rate' : ''}`}>
-                        {r}%{isAiRate ? ' 🤖' : isNational ? ' ★' : ''}
+                      <th key={r} className={`afford-rate-header${isCurrent ? ' current-rate' : ''}`}>
+                        {r}%{isCurrent ? ' ★' : ''}
                       </th>
                     )
                   })}
@@ -1081,11 +954,10 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
             <span className="legend-dot cell-mid" /> Mid range
             <span className="legend-dot cell-low" /> Lower range
             <span className="afford-pmi-flag" style={{marginLeft:'1rem'}}>+MI</span> = mortgage insurance applies
-            <span style={{marginLeft:'0.5rem', fontStyle:'italic'}}>★ = national avg rate</span>
-            {aiRate && <span style={{marginLeft:'0.5rem', fontStyle:'italic'}}>🤖 = Claude's researched rate ({aiRate}%)</span>}
+            <span style={{marginLeft:'0.5rem', fontStyle:'italic'}}>★ = closest to this week's {term}yr rate ({liveRate.rate}%)</span>
           </div>
           <div className="afford-disclaimer">
-            Figures are estimates assuming {term}-year loan. VA/USDA 0% row includes respective fees. Consult a lender for exact qualification.
+            Figures are estimates assuming {term}-year loan with {UTAH_COUNTIES[county].name} property taxes. VA/USDA 0% row includes respective fees. Consult a lender for exact qualification.
           </div>
         </div>
       )}
@@ -1101,12 +973,11 @@ function AffordCalc({ prefill, runDemo, onDemoComplete, demoPaused }: { prefill?
         const financedFee = adjLoan - baseLoan
         const pi = calcPI(adjLoan, r, t)
         const ltv = (baseLoan / hp) * 100
-        const mi = calcMortgageInsurance(adjLoan, ltv, loanType, t)
-        const mTax = state ? hp * STATE_DATA[state].propertyTaxRate / 12 : 0
-        const annualIns = state ? STATE_DATA[state].avgInsuranceAnnual : 1500
-        const mIns = annualIns / 12
+        const mi = calcMortgageInsurance(adjLoan, ltv, loanType, t, creditScore)
+        const mTax = hp * UTAH_COUNTIES[county].taxRate / 12
+        const mIns = UTAH_AVERAGES.insuranceAnnual / 12
         const mHoa = parseCurrency(monthlyHoa)
-        const mUtils = state && includeUtils ? STATE_DATA[state].avgUtilitiesMonthly : 0
+        const mUtils = includeUtils ? UTAH_AVERAGES.utilitiesMonthly : 0
         const totalMonthly = pi + mi + mTax + mIns + mHoa + mUtils
         const totalInterest = pi * t * 12 - adjLoan
 
@@ -1171,6 +1042,19 @@ export default function MortgageCalculator({ onBack, prefill, isDemoRun, demoPau
   const [mode, setMode] = useState<Mode>('payment')
   const [demoPhase, setDemoPhase] = useState<DemoPhase>('idle')
   const [paymentDone, setPaymentDone] = useState(false)
+  const [liveRates, setLiveRates] = useState<LiveRates | null>(null)
+  const [ratesLoading, setRatesLoading] = useState(true)
+
+  // Fetch this week's Utah rates once for both calculator modes
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/utah-rates')
+      .then(res => { if (!res.ok) throw new Error('failed'); return res.json() })
+      .then((data: LiveRates) => { if (!cancelled) setLiveRates(data) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setRatesLoading(false) })
+    return () => { cancelled = true }
+  }, [])
 
   useEffect(() => {
     if (!isDemoRun) return
@@ -1204,8 +1088,12 @@ export default function MortgageCalculator({ onBack, prefill, isDemoRun, demoPau
       <div className="calc-page-header">
         {!inDashboard && <button className="calc-back-btn" onClick={onBack}>← Back</button>}
         <div>
-          <h2 className="calc-page-title">Mortgage Calculator</h2>
-          <p className="calc-page-subtitle">Rates as of {RATE_DATA_DATE} · All figures are estimates</p>
+          <h2 className="calc-page-title">Utah Mortgage Calculator</h2>
+          <p className="calc-page-subtitle">
+            {liveRates
+              ? `Rates: ${liveRates.source}, week of ${liveRates.as_of} · All figures are estimates`
+              : 'All figures are estimates'}
+          </p>
         </div>
       </div>
 
@@ -1222,6 +1110,8 @@ export default function MortgageCalculator({ onBack, prefill, isDemoRun, demoPau
         {mode === 'payment' && (
           <PaymentCalc
             prefill={prefill}
+            liveRates={liveRates}
+            ratesLoading={ratesLoading}
             runDemo={demoPhase === 'payment'}
             onDemoComplete={handlePaymentDemoComplete}
             demoPaused={demoPaused}
@@ -1230,6 +1120,8 @@ export default function MortgageCalculator({ onBack, prefill, isDemoRun, demoPau
         {mode === 'afford' && (
           <AffordCalc
             prefill={prefill}
+            liveRates={liveRates}
+            ratesLoading={ratesLoading}
             runDemo={demoPhase === 'afford'}
             onDemoComplete={() => setDemoPhase('done')}
             demoPaused={demoPaused}

@@ -5,6 +5,11 @@
   --primary-dark: #4f46e5;
   --primary-light: #a5b4fc;
   --accent: #8b5cf6;
+  --brand-ink: #1e1b4b;
+  --bg-grad-1: #1e1b4b;
+  --bg-grad-2: #312e81;
+  --bg-grad-3: #4c1d95;
+  --bg-grad-4: #1e3a5f;
   --success: #10b981;
   --success-bg: #ecfdf5;
   --danger: #ef4444;
@@ -34,7 +39,7 @@
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   min-height: 100vh;
-  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 30%, #4c1d95 60%, #1e3a5f 100%);
+  background: linear-gradient(135deg, var(--bg-grad-1) 0%, var(--bg-grad-2) 30%, var(--bg-grad-3) 60%, var(--bg-grad-4) 100%);
   background-attachment: fixed;
   color: var(--gray-900);
   line-height: 1.5;
@@ -54,7 +59,7 @@ body::before, body::after {
 body::before {
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, #818cf8, transparent);
+  background: radial-gradient(circle, var(--primary-light), transparent);
   top: -200px;
   right: -200px;
   animation: float1 12s ease-in-out infinite;
@@ -88,7 +93,7 @@ body::after {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 2rem 1rem;
+  padding: 5.5rem 1rem 2rem;
 }
 
 .quiz-main {
@@ -261,14 +266,17 @@ body::after {
 }
 
 .app-header h1 {
-  font-size: 2.5rem;
+  font-size: 2.3rem;
   font-weight: 800;
   color: var(--white);
   letter-spacing: -0.03em;
+  line-height: 1.15;
+  max-width: 620px;
+  margin: 0 auto;
 }
 
 .app-header h1 span {
-  background: linear-gradient(135deg, #a5b4fc, #818cf8);
+  background: linear-gradient(135deg, var(--primary-light), var(--primary));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -276,8 +284,11 @@ body::after {
 
 .app-header p {
   color: rgba(255,255,255,0.65);
-  margin-top: 0.5rem;
+  margin-top: 0.75rem;
   font-size: 1.05rem;
+  max-width: 480px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 /* Card */
@@ -452,6 +463,7 @@ body::after {
   display: flex;
   gap: 0.75rem;
   align-items: center;
+  margin-top: 1.75rem;
 }
 
 .btn-back {
@@ -2345,7 +2357,7 @@ body::after {
 }
 .chat-msg--assistant .chat-bubble {
   background: rgba(255,255,255,0.65);
-  color: #1e1b4b;
+  color: var(--brand-ink);
   border-bottom-left-radius: 4px;
 }
 .chat-msg--user .chat-bubble {
@@ -2405,12 +2417,12 @@ body::after {
   border-radius: 8px;
   padding: 0.5rem 0.75rem;
   font-size: 0.82rem;
-  color: #1e1b4b;
+  color: var(--brand-ink);
   outline: none;
   transition: border-color 0.15s;
 }
 .chatbot-input::placeholder { color: rgba(99,102,241,0.5); }
-.chatbot-input:focus { border-color: #6366f1; }
+.chatbot-input:focus { border-color: var(--primary); }
 .chatbot-send-btn {
   background: var(--primary);
   border: none;
@@ -3103,7 +3115,7 @@ body::after {
   display: block;
   width: 100%;
   padding: 0.85rem 1.5rem;
-  background: linear-gradient(135deg, #0ea5e9, #6366f1);
+  background: linear-gradient(135deg, #0ea5e9, var(--primary));
   color: white;
   font-weight: 700;
   font-size: 0.95rem;
@@ -3315,7 +3327,7 @@ body::after {
 .calc-state-ai-badge {
   display: inline-flex;
   align-items: center;
-  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+  background: linear-gradient(90deg, var(--primary-dark), var(--accent));
   color: white;
   font-size: 0.65rem;
   font-weight: 700;
@@ -3850,16 +3862,17 @@ body::after {
 
 .not-sure-btn {
   width: 100%;
-  margin-top: 1rem;
-  padding: 0.75rem 1rem;
-  background: transparent;
-  border: 2px dashed var(--gray-200);
+  margin-top: 1.5rem;
+  padding: 0.85rem 1.1rem;
+  background: var(--gray-50);
+  border: 2px dashed var(--gray-300);
   border-radius: var(--radius-sm);
   font-size: 0.88rem;
+  font-weight: 600;
   color: var(--gray-500);
   cursor: pointer;
   transition: all 0.2s;
-  text-align: left;
+  text-align: center;
 }
 
 .not-sure-btn:hover {
@@ -5370,7 +5383,7 @@ body::after {
 /* ── Demo mode banner ───────────────────────────────────────────────────────── */
 
 .demo-mode-banner {
-  background: linear-gradient(135deg, var(--primary), #8b5cf6);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   color: white;
   text-align: center;
   font-size: 0.78rem;
@@ -5384,7 +5397,7 @@ body::after {
 /* ── Assessment result — dashboard CTA card ─────────────────────────────────── */
 
 .dashboard-cta-card {
-  background: linear-gradient(135deg, #6366f1, #8b5cf6) !important;
+  background: linear-gradient(135deg, var(--primary), var(--accent)) !important;
   color: white !important;
 }
 
@@ -5426,7 +5439,7 @@ body::after {
   width: 2.2rem;
   height: 2.2rem;
   border-radius: 0.5rem;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   color: white;
   font-size: 0.7rem;
   font-weight: 800;
@@ -5453,7 +5466,7 @@ body::after {
   justify-content: center;
   gap: 0.4rem;
   padding: 0.65rem 1.25rem;
-  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   color: white;
   border: none;
   border-radius: 0.6rem;
@@ -5479,7 +5492,7 @@ body::after {
   border-left: 3px solid var(--primary);
   border-radius: 0.4rem;
   font-size: 0.8rem;
-  color: #4f46e5;
+  color: var(--primary-dark);
   line-height: 1.4;
 }
 
@@ -5509,7 +5522,7 @@ body::after {
 }
 
 .calc-ai-card-header {
-  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+  background: linear-gradient(90deg, var(--primary-dark), var(--accent));
   color: white;
   padding: 0.5rem 0.9rem;
   font-weight: 600;
@@ -5539,7 +5552,7 @@ body::after {
 
 .calc-ai-val {
   font-weight: 700;
-  color: #1e1b4b;
+  color: var(--brand-ink);
 }
 
 .calc-ai-note {

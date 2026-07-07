@@ -2,8 +2,11 @@ import { useState } from 'react'
 import AccountSetupPage from './AccountSetupPage'
 import ActionPlanView from './ActionPlanView'
 import MortgageCalculator from './MortgageCalculator'
+import BrandMark from './BrandMark'
+import LoanOfficerCard from './LoanOfficerCard'
 import { MortgageInput, AssessmentResponse } from '../types'
 import type { UserProfile } from '../types/profile'
+import type { Branding } from '../types/branding'
 
 interface Props {
   result: AssessmentResponse
@@ -14,6 +17,8 @@ interface Props {
   initialTab?: 'plan' | 'calculator'
   isDemoRun?: boolean
   demoPaused?: boolean
+  branding: Branding
+  onCustomize?: () => void
 }
 
 type Tab = 'plan' | 'calculator'
@@ -27,6 +32,8 @@ export default function Dashboard({
   initialTab = 'calculator',
   isDemoRun = false,
   demoPaused = false,
+  branding,
+  onCustomize,
 }: Props) {
   const [tab, setTab] = useState<Tab>(initialTab)
   const [savedProfile, setSavedProfile] = useState<UserProfile | null>(existingProfile ?? null)
@@ -48,7 +55,7 @@ export default function Dashboard({
   return (
     <div className="dashboard-shell">
       <div className="dashboard-topbar">
-        <div className="dashboard-brand">Mortgage<span>AI</span></div>
+        <div className="dashboard-brand"><BrandMark branding={branding} size="sm" /></div>
         <div className="dashboard-tabs">
           <button
             className={`dashboard-tab${tab === 'calculator' ? ' active' : ''}`}
@@ -63,8 +70,19 @@ export default function Dashboard({
             📋 Action Plan
           </button>
         </div>
-        <button className="dashboard-start-over" onClick={onBack}>Start Over</button>
+        <div className="dashboard-topbar-actions">
+          {onCustomize && (
+            <button className="brand-customize-btn" onClick={onCustomize}>⚙️ Customize</button>
+          )}
+          <button className="dashboard-start-over" onClick={onBack}>Start Over</button>
+        </div>
       </div>
+
+      {branding.officerName && (
+        <div className="dashboard-lo-row">
+          <LoanOfficerCard branding={branding} />
+        </div>
+      )}
 
       <div className="dashboard-content">
         {tab === 'plan' && (

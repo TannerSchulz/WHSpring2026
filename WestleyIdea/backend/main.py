@@ -1,6 +1,9 @@
 import json
 import os
+import time
+from datetime import datetime
 
+import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -61,17 +64,38 @@ class AssessmentResponse(BaseModel):
     demo_mode: bool = False
 
 
-def calc_metrics(data: MortgageInput) -> tuple[float, float, float]:
+DEFAULT_RATE_30 = 6.5  # used when the live PMMS feed hasn't been fetched
+
+# Utah averages for the back-end DTI estimate (effective primary-residence
+# tax rate incl. the 45% residential exemption; III insurance average)
+UTAH_AVG_TAX_RATE = 0.0055
+UTAH_AVG_INSURANCE_ANNUAL = 1150.0
+
+
+def calc_pi(loan: float, annual_rate_pct: float, term_years: int = 30) -> float:
+    """Standard amortized principal & interest payment."""
+    if loan <= 0 or annual_rate_pct <= 0:
+        return 0.0
+    r = annual_rate_pct / 100 / 12
+    n = term_years * 12
+    return loan * r * (1 + r) ** n / ((1 + r) ** n - 1)
+
+
+def calc_metrics(data: MortgageInput, rate_pct: float = DEFAULT_RATE_30) -> tuple[float, float, float]:
     loan_amount = data.home_price - data.down_payment
-    monthly_payment_estimate = loan_amount * 0.006  # rough P&I at ~7%
-    dti = (data.monthly_debts + monthly_payment_estimate) / (data.annual_income / 12) * 100
+    # Back-end DTI uses the full housing payment (PITI), not bare P&I
+    monthly_pi = calc_pi(loan_amount, rate_pct)
+    monthly_tax = data.home_price * UTAH_AVG_TAX_RATE / 12
+    monthly_ins = UTAH_AVG_INSURANCE_ANNUAL / 12
+    housing = monthly_pi + monthly_tax + monthly_ins
+    dti = (data.monthly_debts + housing) / (data.annual_income / 12) * 100
     ltv = (loan_amount / data.home_price) * 100 if data.home_price > 0 else 0
     return round(loan_amount, 2), round(dti, 1), round(ltv, 1)
 
 
-def rule_based_assessment(data: MortgageInput) -> dict:
+def rule_based_assessment(data: MortgageInput, rate_pct: float = DEFAULT_RATE_30) -> dict:
     """Fallback assessment using standard mortgage qualification rules."""
-    loan_amount, dti, ltv = calc_metrics(data)
+    loan_amount, dti, ltv = calc_metrics(data, rate_pct)
     issues = []
     steps = []
 
@@ -83,7 +107,10 @@ def rule_based_assessment(data: MortgageInput) -> dict:
     credit_ok = data.credit_score >= min_credit.get(data.loan_type, 620)
     dti_ok = dti <= max_dti.get(data.loan_type, 43)
     employment_ok = data.employment_years >= 2
-    down_ok = data.loan_type in ("va", "usda") or (data.down_payment / data.home_price >= 0.03 if data.home_price > 0 else False)
+    # FHA requires 3.5% down (HUD); conventional allows 3%
+    min_down_pct = {"conventional": 0.03, "fha": 0.035, "va": 0.0, "usda": 0.0}
+    required_down = min_down_pct.get(data.loan_type, 0.03)
+    down_ok = required_down == 0 or (data.down_payment / data.home_price >= required_down if data.home_price > 0 else False)
 
     if not credit_ok:
         gap = min_credit.get(data.loan_type, 620) - data.credit_score
@@ -99,9 +126,8 @@ def rule_based_assessment(data: MortgageInput) -> dict:
         steps.append("Wait until you have at least 2 years of steady employment history at your current job or in the same field")
 
     if not down_ok:
-        min_down_pct = 3.5 if data.loan_type == "fha" else 3
-        min_down = data.home_price * (min_down_pct / 100)
-        issues.append(f"Down payment of ${data.down_payment:,.0f} is below the {min_down_pct}% minimum (${min_down:,.0f})")
+        min_down = data.home_price * required_down
+        issues.append(f"Down payment of ${data.down_payment:,.0f} is below the {required_down * 100:.1f}% minimum (${min_down:,.0f})")
         steps.append(f"Save an additional ${min_down - data.down_payment:,.0f} to meet the minimum down payment requirement")
 
     qualifies = credit_ok and dti_ok and employment_ok and down_ok
@@ -124,7 +150,7 @@ def rule_based_assessment(data: MortgageInput) -> dict:
             "Here's what to focus on:"
         )
 
-    monthly_payment = round(loan_amount * 0.006) if loan_amount > 0 else None
+    monthly_payment = round(calc_pi(loan_amount, rate_pct)) if loan_amount > 0 else None
 
     return {
         "qualifies": qualifies,
@@ -139,6 +165,25 @@ def rule_based_assessment(data: MortgageInput) -> dict:
     }
 
 
+def hard_rule_failures(data: MortgageInput) -> list[str]:
+    """Deterministic, binary qualification rules the AI must not override."""
+    failures = []
+    min_credit = {"conventional": 620, "fha": 500, "va": 500, "usda": 640}
+    floor = min_credit.get(data.loan_type, 620)
+    if data.credit_score < floor:
+        failures.append(
+            f"Credit score {data.credit_score} is below the absolute {data.loan_type.upper()} minimum of {floor}"
+        )
+    min_down_pct = {"conventional": 0.03, "fha": 0.035, "va": 0.0, "usda": 0.0}
+    required = min_down_pct.get(data.loan_type, 0.03)
+    if required > 0 and data.home_price > 0 and data.down_payment / data.home_price < required:
+        failures.append(
+            f"Down payment of ${data.down_payment:,.0f} ({data.down_payment / data.home_price * 100:.1f}%) "
+            f"is below the {data.loan_type.upper()} minimum of {required * 100:.1f}% (${data.home_price * required:,.0f})"
+        )
+    return failures
+
+
 def build_prompt(data: MortgageInput, loan_amount: float, dti: float, ltv: float) -> str:
     return f"""You are a mortgage advisor AI. Analyze this application and give a direct, concise assessment.
 
@@ -151,7 +196,7 @@ APPLICANT FINANCIAL PROFILE:
 - Loan Amount: ${loan_amount:,.0f}
 - Employment History: {data.employment_years} years
 - Loan Type Requested: {data.loan_type.upper()}
-- Calculated DTI (with estimated mortgage): {dti:.1f}%
+- Calculated back-end DTI (debts + estimated PITI housing payment): {dti:.1f}%
 - Loan-to-Value Ratio: {ltv:.1f}%
 
 QUALIFICATION GUIDELINES BY LOAN TYPE:
@@ -174,20 +219,30 @@ Always return exactly 3 action_steps following this structure: (1) know their nu
 
 @app.post("/api/assess", response_model=AssessmentResponse)
 async def assess_mortgage(data: MortgageInput):
-    loan_amount, dti, ltv = calc_metrics(data)
+    rates = await get_live_rates()
+    rate_30 = rates.rate_30yr
+    loan_amount, dti, ltv = calc_metrics(data, rate_30)
+    failures = hard_rule_failures(data)
 
     if ai_client:
         try:
+            prompt = build_prompt(data, loan_amount, dti, ltv)
+            if failures:
+                prompt += (
+                    "\n\nIMPORTANT — the applicant FAILS these hard program requirements, "
+                    "so qualifies MUST be false and the failures must appear in details:\n- "
+                    + "\n- ".join(failures)
+                )
             message = ai_client.messages.create(
                 model="claude-opus-4-6",
                 max_tokens=1024,
-                messages=[{"role": "user", "content": build_prompt(data, loan_amount, dti, ltv)}],
+                messages=[{"role": "user", "content": prompt}],
             )
             content = message.content[0].text.strip()
             ai_response = extract_json(content)
 
             return AssessmentResponse(
-                qualifies=ai_response["qualifies"],
+                qualifies=ai_response["qualifies"] and not failures,
                 summary=ai_response["summary"],
                 details=ai_response["details"],
                 action_steps=ai_response["action_steps"],
@@ -201,9 +256,7 @@ async def assess_mortgage(data: MortgageInput):
             pass
 
     # No API key or AI parse failure — use rule-based fallback
-
-    # No API key or AI parse failure — use rule-based fallback
-    result = rule_based_assessment(data)
+    result = rule_based_assessment(data, rate_30)
     return AssessmentResponse(
         **result,
         dti_ratio=dti,
@@ -435,101 +488,68 @@ Use their exact numbers. Bold the most critical figures. Keep every field as sho
     )
 
 
-class MarketRatesInput(BaseModel):
-    state_code: str
-    state_name: str
-    credit_score: int
-    loan_type: str
-    term_years: int = 30
+# ── Live mortgage rates (Freddie Mac PMMS — public weekly survey, no API key) ──
+# National weekly averages; Utah rates track the national survey closely.
+
+PMMS_URL = "https://www.freddiemac.com/pmms/docs/PMMS_history.csv"
+RATES_CACHE_TTL = 6 * 60 * 60  # PMMS updates weekly; re-fetch at most every 6h
+
+_rates_cache: dict = {"data": None, "fetched_at": 0.0}
 
 
-class MarketRatesResponse(BaseModel):
-    interest_rate: float
-    property_tax_rate: float  # annual, as decimal e.g. 0.018
-    avg_insurance_annual: int
-    avg_hoa_monthly: int = 0
-    avg_utilities_monthly: int = 0
-    insights: str
-    rate_reasoning: str = ""
-    rate_source: str | None = None
-    tax_source: str | None = None
-    insurance_source: str | None = None
-    hoa_source: str | None = None
-    utilities_source: str | None = None
-    demo_mode: bool = False
+class UtahRatesResponse(BaseModel):
+    rate_30yr: float
+    rate_15yr: float
+    as_of: str          # survey week, e.g. "Jul 2, 2026"
+    source: str
+    live: bool          # False when serving the static fallback
 
 
-@app.post("/api/market-rates", response_model=MarketRatesResponse)
-async def market_rates(data: MarketRatesInput):
-    if ai_client:
-        credit_tier = (
-            "excellent (720+)" if data.credit_score >= 720
-            else "good (680–719)" if data.credit_score >= 680
-            else "fair (640–679)" if data.credit_score >= 640
-            else "below average (<640)"
+async def get_live_rates() -> UtahRatesResponse:
+    now = time.time()
+    if _rates_cache["data"] is not None and now - _rates_cache["fetched_at"] < RATES_CACHE_TTL:
+        return _rates_cache["data"]
+
+    try:
+        async with httpx.AsyncClient(timeout=15, follow_redirects=True) as client:
+            resp = await client.get(PMMS_URL)
+            resp.raise_for_status()
+        # CSV columns: date,pmms30,pmms30p,pmms15,pmms15p,...
+        # Walk backwards to the most recent week that has both 30yr and 15yr.
+        for line in reversed(resp.text.strip().splitlines()):
+            parts = line.split(",")
+            if len(parts) < 4 or not parts[1].strip() or not parts[3].strip():
+                continue
+            try:
+                rate_30 = float(parts[1])
+                rate_15 = float(parts[3])
+                month, day, year = (int(x) for x in parts[0].split("/"))
+            except ValueError:
+                continue
+            result = UtahRatesResponse(
+                rate_30yr=rate_30,
+                rate_15yr=rate_15,
+                as_of=datetime(year, month, day).strftime("%b %-d, %Y"),
+                source="Freddie Mac Primary Mortgage Market Survey",
+                live=True,
+            )
+            _rates_cache["data"] = result
+            _rates_cache["fetched_at"] = now
+            return result
+        raise ValueError("no parsable PMMS rows")
+    except Exception:
+        return UtahRatesResponse(
+            rate_30yr=6.4,
+            rate_15yr=5.8,
+            as_of="early 2026 (approximate)",
+            source="Static estimate — live rate feed unavailable",
+            live=False,
         )
-        prompt = f"""You are a mortgage data expert. Provide CURRENT (as of early 2026) accurate estimates for a borrower in {data.state_name} ({data.state_code}).
 
-BORROWER CREDIT SCORE: {data.credit_score} — {credit_tier}
-LOAN TYPE: {data.loan_type.upper()}
-LOAN TERM: {data.term_years} years
 
-National 30yr average is ~6.65% (early 2026). Adjust for:
-- Credit tier: excellent borrowers get ~0.25–0.5% below average; fair gets ~0.25–0.5% above
-- VA/USDA loans typically run 0.1–0.25% below conventional; FHA is similar to conventional
-
-For each value, provide a source citation ONLY if you know a real, specific source (e.g. "Freddie Mac PMMS", "Utah State Tax Commission", "Insurance Information Institute"). If no specific public source exists, use null.
-
-Respond ONLY with this JSON (no markdown, no explanation):
-{{
-  "interest_rate": <float, e.g. 6.25>,
-  "rate_reasoning": "<one short sentence: why this rate for this credit tier and loan type>",
-  "rate_source": <string or null — real public source only, e.g. "Freddie Mac PMMS">,
-  "property_tax_rate": <effective annual rate as decimal, e.g. 0.0057>,
-  "tax_source": <string or null, e.g. "Utah State Tax Commission 2024">,
-  "avg_insurance_annual": <integer dollars, e.g. 1100>,
-  "insurance_source": <string or null, e.g. "Insurance Information Institute 2024">,
-  "avg_hoa_monthly": <integer — typical HOA for this state's metro areas, 0 if mostly rural>,
-  "hoa_source": <string or null>,
-  "avg_utilities_monthly": <integer — avg monthly electric+gas+water for this state>,
-  "utilities_source": <string or null, e.g. "U.S. Energy Information Administration 2024">,
-  "insights": "<one sentence about what makes housing costs in this state notable>"
-}}"""
-
-        try:
-            message = ai_client.messages.create(
-                model="claude-opus-4-6",
-                max_tokens=512,
-                messages=[{"role": "user", "content": prompt}],
-            )
-            content = message.content[0].text.strip()
-            ai_response = extract_json(content)
-            return MarketRatesResponse(
-                interest_rate=float(ai_response["interest_rate"]),
-                property_tax_rate=float(ai_response["property_tax_rate"]),
-                avg_insurance_annual=int(ai_response["avg_insurance_annual"]),
-                avg_hoa_monthly=int(ai_response.get("avg_hoa_monthly", 0)),
-                avg_utilities_monthly=int(ai_response.get("avg_utilities_monthly", 0)),
-                insights=ai_response["insights"],
-                rate_reasoning=ai_response.get("rate_reasoning", ""),
-                rate_source=ai_response.get("rate_source") or None,
-                tax_source=ai_response.get("tax_source") or None,
-                insurance_source=ai_response.get("insurance_source") or None,
-                hoa_source=ai_response.get("hoa_source") or None,
-                utilities_source=ai_response.get("utilities_source") or None,
-                demo_mode=False,
-            )
-        except Exception:
-            pass
-
-    return MarketRatesResponse(
-        interest_rate=6.65 if data.term_years == 30 else 5.95,
-        property_tax_rate=0.01,
-        avg_insurance_annual=1500,
-        avg_hoa_monthly=0,
-        insights="AI unavailable — showing national averages. Enable the Anthropic API key for personalized state data.",
-        demo_mode=True,
-    )
+@app.get("/api/utah-rates", response_model=UtahRatesResponse)
+async def utah_rates():
+    return await get_live_rates()
 
 
 class ChatMessage(BaseModel):

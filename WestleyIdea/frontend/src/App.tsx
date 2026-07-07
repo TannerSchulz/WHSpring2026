@@ -1,11 +1,15 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import MortgageForm from './components/MortgageForm'
 import ValueTracker, { TrackerEntry } from './components/ValueTracker'
 import LoadingScreen from './components/LoadingScreen'
 import Dashboard from './components/Dashboard'
 import ProfileWidget from './components/ProfileWidget'
+import BrandingSettings from './components/BrandingSettings'
+import BrandMark from './components/BrandMark'
+import LoanOfficerCard from './components/LoanOfficerCard'
 import { MortgageInput, AssessmentResponse } from './types'
 import { useProfile } from './hooks/useProfile'
+import { useBranding } from './hooks/useBranding'
 
 type Stage = 'form' | 'loading' | 'error' | 'dashboard'
 
@@ -30,6 +34,8 @@ export default function App() {
   const [isDemoRun, setIsDemoRun] = useState(false)
   const [demoPaused, setDemoPaused] = useState(false)
   const { profile, save: saveProfile, clear: clearProfile } = useProfile()
+  const { branding, save: saveBranding, reset: resetBranding } = useBranding()
+  const [showBranding, setShowBranding] = useState(false)
 
   const handleFieldCommit = (field: string, value: string | number) => {
     setTrackerEntries(prev => {
@@ -89,6 +95,33 @@ export default function App() {
     }, 50)
   }
 
+  // Hidden dev/preview entry points (no visible demo button):
+  //   ?preview=calc — jump straight to the dashboard with sample data
+  //   ?demo=1      — run the automated walkthrough
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('preview') === 'calc') {
+      setResult({
+        qualifies: true,
+        summary: 'Sample preview data — **DTI: 39.3%**, credit **720**.',
+        details: ['Credit score: 720 ✓', 'DTI ratio: 39.3% ✓', 'Employment: 3.5 years ✓'],
+        action_steps: [
+          'Know your numbers — credit score 720, DTI 39.3%, $42,000 saved',
+          'Gather your documents: 2 years of tax returns, recent pay stubs, and bank statements',
+          'Get pre-approved with 2–3 lenders and compare offers',
+        ],
+        estimated_monthly_payment: 2379,
+        dti_ratio: 39.3,
+        ltv_ratio: 90,
+        demo_mode: true,
+      })
+      setLastProfile(DEMO_INPUT)
+      setStage('dashboard')
+    } else if (params.has('demo')) {
+      startDemo()
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Header shown on form and error — NOT during loading (LoadingScreen has its own branding)
   const showHeader = ['form', 'error'].includes(stage)
   const inNarrowFlow = ['form', 'loading', 'error'].includes(stage)
@@ -96,35 +129,43 @@ export default function App() {
 
   return (
     <div className="app">
-      {profile && (
-        <ProfileWidget
-          profile={profile}
-          onResume={() => {
-            setResult(profile.assessment)
-            setLastProfile(profile.mortgageInput)
-            setStage('dashboard')
-          }}
-          onClear={() => { clearProfile(); setStage('form') }}
-        />
+      {/* Top navigation — landing & error stages (dashboard has its own topbar) */}
+      {showHeader && (
+        <nav className="top-nav">
+          <BrandMark branding={branding} size="sm" />
+          <div className="top-nav-actions">
+            <button className="brand-customize-btn" onClick={() => setShowBranding(true)}>
+              ⚙️ Customize
+            </button>
+            {profile && (
+              <ProfileWidget
+                profile={profile}
+                onResume={() => {
+                  setResult(profile.assessment)
+                  setLastProfile(profile.mortgageInput)
+                  setStage('dashboard')
+                }}
+                onClear={() => { clearProfile(); setStage('form') }}
+              />
+            )}
+          </div>
+        </nav>
       )}
 
-      {(!profile || isDemoRun) && (
-        <div className="demo-controls">
-          <button className="demo-launch-btn" onClick={startDemo}>
-            ▶ Live Demo
-          </button>
-          {isDemoRun && (
-            <button className="demo-pause-btn" onClick={() => setDemoPaused(p => !p)}>
-              {demoPaused ? '▶ Resume' : '⏸ Pause'}
-            </button>
-          )}
-        </div>
+      {showBranding && (
+        <BrandingSettings
+          branding={branding}
+          onSave={saveBranding}
+          onReset={resetBranding}
+          onClose={() => setShowBranding(false)}
+        />
       )}
 
       {showHeader && (
         <header className="app-header">
-          <h1>Mortgage<span>AI</span></h1>
-          <p>Find out if you qualify for a home loan in minutes</p>
+          <h1>Your path to <span>homeownership</span> starts here</h1>
+          <p>Answer a few quick questions to see if you qualify for a home loan — free, no credit pull.</p>
+          <LoanOfficerCard branding={branding} />
         </header>
       )}
 
@@ -141,7 +182,7 @@ export default function App() {
             />
           )}
 
-          {stage === 'loading' && <LoadingScreen />}
+          {stage === 'loading' && <LoadingScreen branding={branding} />}
 
           {stage === 'error' && (
             <div className="card">
@@ -167,6 +208,8 @@ export default function App() {
           existingProfile={profile}
           isDemoRun={isDemoRun}
           demoPaused={demoPaused}
+          branding={branding}
+          onCustomize={() => setShowBranding(true)}
         />
       )}
 
@@ -177,7 +220,10 @@ export default function App() {
       )}
 
       <footer className="disclaimer-footer">
-        <strong>Demo Only — Not Financial Advice.</strong> MortgageAI is a demonstration tool for educational purposes only. It is not a licensed mortgage lender, broker, or financial advisor, and holds no NMLS license. All calculations and results are estimates only and do not constitute a loan offer, pre-approval, or guarantee of any kind. Actual loan eligibility, rates, and terms vary by lender and are subject to underwriting. Always consult a licensed mortgage professional before making any financial decisions.
+        <strong>Estimates Only — Not Financial Advice.</strong> This tool is provided by {branding.companyName} for educational purposes only. All calculations and results are estimates and do not constitute a loan offer, pre-approval, or guarantee of any kind. Actual loan eligibility, rates, and terms vary and are subject to underwriting. Always consult a licensed mortgage professional before making any financial decisions.
+        {branding.officerName && branding.nmlsId && <> {branding.officerName}, NMLS #{branding.nmlsId}.</>}
+        {branding.phone && <> Questions? Call {branding.phone}.</>}
+        {' '}This application is currently offered for testing and evaluation purposes only. It is not operated by a licensed mortgage broker, lender, or financial advisor, and nothing presented here should be relied upon as professional financial guidance.
       </footer>
     </div>
   )
