@@ -128,7 +128,7 @@ export default function App() {
   const showTracker = stage === 'form'
 
   return (
-    <div className="app">
+    <div className={`app${stage === 'dashboard' ? ' app--full' : ''}`}>
       {/* Top navigation — landing & error stages (dashboard has its own topbar) */}
       {showHeader && (
         <nav className="top-nav">

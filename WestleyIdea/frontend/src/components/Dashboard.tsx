@@ -48,9 +48,10 @@ export default function Dashboard({
     setTab('plan')
   }
 
-  const calcPrefill: MortgageInput = savedProfile
-    ? { ...savedProfile.mortgageInput, state: savedProfile.stateCode || savedProfile.mortgageInput.state }
-    : lastProfile
+  // App always sets lastProfile to the freshest answers — either the quiz the
+  // user just finished or the profile they resumed. A previously saved profile
+  // in localStorage must not shadow numbers entered moments ago.
+  const calcPrefill: MortgageInput = lastProfile
 
   return (
     <div className="dashboard-shell">

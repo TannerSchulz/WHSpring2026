@@ -788,7 +788,13 @@ function AffordCalc({ prefill, liveRates, ratesLoading, runDemo, onDemoComplete,
   prefill?: MortgageInput | null; liveRates: LiveRates | null; ratesLoading: boolean
   runDemo?: boolean; onDemoComplete?: () => void; demoPaused?: boolean
 }) {
-  const [targetPayment, setTargetPayment] = useState('')
+  const suggestedPayment = prefill?.annual_income
+    ? Math.round(prefill.annual_income / 12 * 0.28) : null
+
+  // Start from the 28%-rule budget based on the income they entered in the quiz
+  const [targetPayment, setTargetPayment] = useState(
+    suggestedPayment ? suggestedPayment.toLocaleString() : '',
+  )
   const [county, setCounty] = useState(DEFAULT_COUNTY)
   const [loanType, setLoanType] = useState<LoanType>(prefill?.loan_type as LoanType ?? 'conventional')
   const [term, setTerm] = useState<'15'|'30'>('30')
@@ -800,9 +806,6 @@ function AffordCalc({ prefill, liveRates, ratesLoading, runDemo, onDemoComplete,
 
   const creditScore = prefill?.credit_score ?? 720
   const liveRate = rateForTerm(liveRates, term)
-
-  const suggestedPayment = prefill?.annual_income
-    ? Math.round(prefill.annual_income / 12 * 0.28) : null
 
   // Demo: fill target payment from the 28% rule, then calculate
   useEffect(() => {

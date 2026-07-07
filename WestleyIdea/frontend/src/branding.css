@@ -219,3 +219,10 @@
 /* Dashboard topbar action cluster */
 .dashboard-topbar-actions { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
 .dashboard-topbar .brand-customize-btn { font-size: 0.78rem; padding: 0.4rem 0.8rem; }
+
+/* ── Full-bleed layout for the dashboard stage ─────────────────────────────── */
+/* The landing flow centers a narrow column; the dashboard wants edge-to-edge
+   chrome with its own internally-centered content. */
+.app--full { padding: 0; align-items: stretch; justify-content: flex-start; }
+.app--full .dashboard-shell { width: 100%; }
+.app--full .disclaimer-footer { margin: 0; max-width: none; border-radius: 0; }
