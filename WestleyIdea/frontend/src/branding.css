@@ -226,3 +226,16 @@
 .app--full { padding: 0; align-items: stretch; justify-content: flex-start; }
 .app--full .dashboard-shell { width: 100%; }
 .app--full .disclaimer-footer { margin: 0; max-width: none; border-radius: 0; }
+
+/* ── Landing hero trust pills ──────────────────────────────────────────────── */
+
+.hero-pills {
+  display: flex; justify-content: center; flex-wrap: wrap; gap: 0.5rem;
+  margin-top: 1.1rem;
+}
+.hero-pill {
+  padding: 0.35rem 0.85rem; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.09); border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.85); font-size: 0.8rem; font-weight: 600;
+  backdrop-filter: blur(8px);
+}

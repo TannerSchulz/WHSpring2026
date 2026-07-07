@@ -13,7 +13,8 @@ import { useBranding } from './hooks/useBranding'
 
 type Stage = 'form' | 'loading' | 'error' | 'dashboard'
 
-const DEMO_INPUT: MortgageInput = {
+// Sample data for the ?preview=calc dev shortcut
+const PREVIEW_INPUT: MortgageInput = {
   annual_income: 95000,
   monthly_debts: 450,
   credit_score: 720,
@@ -30,9 +31,6 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [trackerEntries, setTrackerEntries] = useState<TrackerEntry[]>([])
   const [lastProfile, setLastProfile] = useState<MortgageInput | null>(null)
-  const [demoMode, setDemoMode] = useState(false)
-  const [isDemoRun, setIsDemoRun] = useState(false)
-  const [demoPaused, setDemoPaused] = useState(false)
   const { profile, save: saveProfile, clear: clearProfile } = useProfile()
   const { branding, save: saveBranding, reset: resetBranding } = useBranding()
   const [showBranding, setShowBranding] = useState(false)
@@ -45,7 +43,6 @@ export default function App() {
   }
 
   const handleSubmit = async (data: MortgageInput) => {
-    setDemoMode(false)
     setLastProfile(data)
     setStage('loading')
     setError(null)
@@ -82,22 +79,9 @@ export default function App() {
     setError(null)
     setTrackerEntries([])
     setLastProfile(null)
-    setDemoMode(false)
-    setIsDemoRun(false)
-    setDemoPaused(false)
   }
 
-  const startDemo = () => {
-    restart()
-    setTimeout(() => {
-      setDemoMode(true)
-      setIsDemoRun(true)
-    }, 50)
-  }
-
-  // Hidden dev/preview entry points (no visible demo button):
-  //   ?preview=calc — jump straight to the dashboard with sample data
-  //   ?demo=1      — run the automated walkthrough
+  // Dev shortcut: ?preview=calc jumps straight to the dashboard with sample data
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('preview') === 'calc') {
@@ -115,12 +99,10 @@ export default function App() {
         ltv_ratio: 90,
         demo_mode: true,
       })
-      setLastProfile(DEMO_INPUT)
+      setLastProfile(PREVIEW_INPUT)
       setStage('dashboard')
-    } else if (params.has('demo')) {
-      startDemo()
     }
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [])
 
   // Header shown on form and error — NOT during loading (LoadingScreen has its own branding)
   const showHeader = ['form', 'error'].includes(stage)
@@ -164,7 +146,12 @@ export default function App() {
       {showHeader && (
         <header className="app-header">
           <h1>Your path to <span>homeownership</span> starts here</h1>
-          <p>Answer a few quick questions to see if you qualify for a home loan — free, no credit pull.</p>
+          <p>Answer a few quick questions to see where you stand — and get a personal plan to get there.</p>
+          <div className="hero-pills">
+            <span className="hero-pill">⚡ About 2 minutes</span>
+            <span className="hero-pill">🔒 No credit pull</span>
+            <span className="hero-pill">🏔️ Built for Utah buyers</span>
+          </div>
           <LoanOfficerCard branding={branding} />
         </header>
       )}
@@ -176,9 +163,6 @@ export default function App() {
               onSubmit={handleSubmit}
               loading={false}
               onFieldCommit={handleFieldCommit}
-              demoMode={demoMode}
-              demoData={DEMO_INPUT}
-              demoPaused={demoPaused}
             />
           )}
 
@@ -206,8 +190,6 @@ export default function App() {
           onBack={restart}
           onProfileSave={saveProfile}
           existingProfile={profile}
-          isDemoRun={isDemoRun}
-          demoPaused={demoPaused}
           branding={branding}
           onCustomize={() => setShowBranding(true)}
         />
