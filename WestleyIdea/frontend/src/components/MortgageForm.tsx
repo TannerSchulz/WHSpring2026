@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { MortgageInput } from '../types'
-import { STATE_DATA, CURRENT_RATES } from '../data/stateData'
+import { UTAH_COUNTIES, DEFAULT_COUNTY, UTAH_AVERAGES, FALLBACK_RATES, pmiAnnualRate } from '../data/utahData'
 
 interface Props {
   onSubmit: (data: MortgageInput) => void
@@ -56,7 +56,7 @@ function calcMaxHomePrice(
   taxRate: number,
   annualInsurance: number,
   downPct = 0.1,
-  rate = CURRENT_RATES['30'],
+  rate = FALLBACK_RATES['30'],
   termYears = 30,
 ): number {
   let homePrice = 400000
@@ -78,7 +78,7 @@ function estimateTotalMonthly(
   down: number,
   taxRate: number,
   annualInsurance: number,
-  rate = CURRENT_RATES['30'],
+  rate = FALLBACK_RATES['30'],
   termYears = 30,
 ): number {
   const loan = homePrice - down
@@ -102,7 +102,7 @@ type SubFlowType = 'home_price'
 interface SubAnswers {
   budget?: number
   budgetDisplay?: string
-  state?: string
+  county?: string
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -184,6 +184,10 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
     if (current.type === 'currency') {
       const n = parseCurrency(displayValues[current.field] ?? '')
       if (current.field === 'monthly_debts') return !isNaN(n) && n >= 0
+      if (current.field === 'down_payment') {
+        // Must leave something to finance
+        return !isNaN(n) && n > 0 && (!values.home_price || n < values.home_price)
+      }
       return !isNaN(n) && n > 0
     }
     const v = values[current.field as keyof MortgageInput]
@@ -197,7 +201,7 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
   const isSubValid = (): boolean => {
     if (subFlow === 'home_price') {
       if (subStep === 0) return !!subAnswers.budget && subAnswers.budget > 0
-      if (subStep === 1) return !!subAnswers.state
+      if (subStep === 1) return !!subAnswers.county
     }
     return true
   }
@@ -265,8 +269,7 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
   }
 
   const selectHomePrice = (price: number) => {
-    const selectedState = subAnswers.state
-    setValues(v => ({ ...v, home_price: price, ...(selectedState ? { state: selectedState } : {}) }))
+    setValues(v => ({ ...v, home_price: price, state: 'UT' }))
     setDisplayValues(prev => ({ ...prev, home_price: fmt(price) }))
     onFieldCommit('home_price', price)
     setSubFlow(null)
@@ -346,24 +349,22 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
       return (
         <>
           <div className="sub-flow-crumb">🏡 Figuring out home price</div>
-          <div className="step-question">Which state are you looking to buy in?</div>
-          <div className="step-hint">We'll use the average property tax and insurance rates for that state.</div>
+          <div className="step-question">Which Utah county are you looking to buy in?</div>
+          <div className="step-hint">We'll use that county's property tax rate and Utah's average insurance cost.</div>
           <select
             className="sub-state-select"
-            value={subAnswers.state ?? ''}
-            onChange={e => setSubAnswers(prev => ({ ...prev, state: e.target.value }))}
+            value={subAnswers.county ?? ''}
+            onChange={e => setSubAnswers(prev => ({ ...prev, county: e.target.value }))}
           >
-            <option value="">— Select a state —</option>
-            {Object.entries(STATE_DATA)
-              .sort((a, b) => a[1].name.localeCompare(b[1].name))
-              .map(([code, data]) => (
-                <option key={code} value={code}>{data.name}</option>
-              ))}
+            <option value="">— Select a county —</option>
+            {Object.entries(UTAH_COUNTIES).map(([key, c]) => (
+              <option key={key} value={key}>{c.name}</option>
+            ))}
           </select>
-          {subAnswers.state && (
+          {subAnswers.county && (
             <div className="sub-flow-hint">
-              Avg. tax: <strong>{(STATE_DATA[subAnswers.state].propertyTaxRate * 100).toFixed(2)}%/yr</strong>
-              &nbsp;·&nbsp; Avg. insurance: <strong>${fmt(STATE_DATA[subAnswers.state].avgInsuranceAnnual)}/yr</strong>
+              Effective tax: <strong>{(UTAH_COUNTIES[subAnswers.county].taxRate * 100).toFixed(2)}%/yr</strong>
+              &nbsp;·&nbsp; Avg. insurance: <strong>${fmt(UTAH_AVERAGES.insuranceAnnual)}/yr</strong>
             </div>
           )}
         </>
@@ -372,9 +373,9 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
 
     // Step 2: pick from options
     const budget = subAnswers.budget ?? 2500
-    const state = subAnswers.state
-    const taxRate = state ? STATE_DATA[state].propertyTaxRate : 0.01
-    const insurance = state ? STATE_DATA[state].avgInsuranceAnnual : 1500
+    const county = subAnswers.county ?? DEFAULT_COUNTY
+    const taxRate = UTAH_COUNTIES[county].taxRate
+    const insurance = UTAH_AVERAGES.insuranceAnnual
 
     const maxPrice = calcMaxHomePrice(budget, taxRate, insurance, 0.1)
     const options = [
@@ -393,7 +394,7 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
         <div className="sub-flow-crumb">🏡 Figuring out home price</div>
         <div className="step-question">Here's what fits your budget</div>
         <div className="step-hint">
-          Based on ${fmt(budget)}/mo budget in {state ? STATE_DATA[state].name : 'your state'}, assuming 10% down at {CURRENT_RATES['30']}% for 30 years.
+          Based on ${fmt(budget)}/mo budget in {UTAH_COUNTIES[county].name}, assuming 10% down at {FALLBACK_RATES['30']}% for 30 years.
         </div>
         <div className="price-option-cards">
           {options.map(opt => (
@@ -425,9 +426,10 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
     const buildScenario = (downAmt: number, label: string, badge: string, color: string, recommended?: boolean) => {
       if (downAmt > homePrice) return null
       const loan = homePrice - downAmt
-      const pi = calcMonthlyPI(loan, CURRENT_RATES['30'], 30)
+      const pi = calcMonthlyPI(loan, FALLBACK_RATES['30'], 30)
       const ltv = (loan / homePrice) * 100
-      const pmi = ltv > 80 ? Math.round(loan * 0.0075 / 12) : 0
+      // Same credit-score-based PMI table the main calculator uses
+      const pmi = ltv > 80 ? Math.round(loan * pmiAnnualRate(values.credit_score ?? 720) / 12) : 0
       return { downAmt, label, badge, color, recommended, pi: Math.round(pi), pmi, ltv, noPmi: ltv <= 80 }
     }
 
@@ -449,7 +451,7 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
     return (
       <>
         <div className="step-hint" style={{ marginTop: '1.25rem' }}>
-          For a <strong>${fmt(homePrice)}</strong> home at {CURRENT_RATES['30']}% / 30 years. P&amp;I + PMI only — taxes &amp; insurance not included.
+          For a <strong>${fmt(homePrice)}</strong> home at {FALLBACK_RATES['30']}% / 30 years. P&amp;I + PMI only — taxes &amp; insurance not included.
         </div>
         <div className="down-scenario-cards">
           {scenarios.map(s => (
@@ -547,6 +549,9 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
 
     if (current.type === 'currency') {
       const enteredAmount = parseCurrency(displayValues[current.field] ?? '')
+      const downTooBig = current.field === 'down_payment'
+        && !!values.home_price
+        && enteredAmount >= values.home_price
       return (
         <>
           <div className="input-wrap">
@@ -561,7 +566,12 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
               onKeyDown={e => { if (e.key === 'Enter') commitAndAdvance() }}
             />
           </div>
-          {current.field === 'down_payment' && !isNaN(enteredAmount) && enteredAmount > 0 && (
+          {downTooBig && (
+            <div className="step-hint" style={{ color: 'var(--danger)', marginTop: '0.5rem' }}>
+              ⚠️ Your down payment needs to be less than the ${fmt(values.home_price!)} home price
+            </div>
+          )}
+          {current.field === 'down_payment' && !isNaN(enteredAmount) && enteredAmount > 0 && !downTooBig && (
             renderDownPaymentOptions(enteredAmount)
           )}
         </>

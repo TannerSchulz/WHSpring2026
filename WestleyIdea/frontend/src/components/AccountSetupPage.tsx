@@ -29,8 +29,9 @@ interface GoalsForm {
   stateCode: string
 }
 
+// Utah-first product — default the state so local resources point at Utah programs
 const defaultGoals: GoalsForm = {
-  name: '', timeline: '', firstHome: true, workingWithAgent: false, topConcern: '', stateCode: '',
+  name: '', timeline: '', firstHome: true, workingWithAgent: false, topConcern: '', stateCode: 'UT',
 }
 
 const TIMELINE_OPTIONS = [

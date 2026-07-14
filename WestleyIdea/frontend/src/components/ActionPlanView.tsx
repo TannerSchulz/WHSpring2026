@@ -348,7 +348,10 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
     return first === -1 ? 0 : first
   })
 
-  const [checklistProgress, setChecklistProgress] = useState<Record<number, boolean[]>>({})
+  const [checklistProgress, setChecklistProgress] = useState<Record<number, boolean[]>>(
+    () => profile.checklistProgress ?? {},
+  )
+  const [phaseTwoNote, setPhaseTwoNote] = useState(false)
   const [fileAttachments, setFileAttachments] = useState<Record<string, File[]>>({})
   const [dragOver, setDragOver] = useState<string | null>(null)
 
@@ -384,7 +387,13 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
     const checklist = getStepChecklist(steps[stepIdx].text)
     const current = checklistProgress[stepIdx] ?? checklist.map(() => false)
     const updated = current.map((v, i) => i === itemIdx ? !v : v)
-    setChecklistProgress(prev => ({ ...prev, [stepIdx]: updated }))
+    const nextProgress = { ...checklistProgress, [stepIdx]: updated }
+    setChecklistProgress(nextProgress)
+    // Persist so a reload resumes exactly where the user left off
+    const stepDone = checklist.every((_, i) => updated[i] ?? false)
+    const nextStepProgress = steps.map((s, i) => i === stepIdx ? stepDone : s.done)
+    setSteps(prev => prev.map((s, i) => i === stepIdx ? { ...s, done: stepDone } : s))
+    onProfileUpdate({ ...profile, checklistProgress: nextProgress, stepProgress: nextStepProgress })
   }
 
   const addFiles = (key: string, incoming: FileList | File[]) => {
@@ -479,9 +488,14 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
                 <li>✓ Gathered your tax returns, pay stubs, and bank statements</li>
                 <li>✓ Ready to compare lenders and submit applications</li>
               </ul>
-              <button className="phase-next-btn" onClick={() => alert('Phase 2 coming soon!')}>
+              <button className="phase-next-btn" onClick={() => setPhaseTwoNote(true)}>
                 Continue to Phase 2: Finding a Home →
               </button>
+              {phaseTwoNote && (
+                <div className="phase-next-note">
+                  🎉 Phase 2 is coming soon — in the meantime, your loan officer can walk you through the home search.
+                </div>
+              )}
             </div>
           )}
 

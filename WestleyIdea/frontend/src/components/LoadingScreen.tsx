@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import BrandMark from './BrandMark'
+import { Branding } from '../types/branding'
 
 const STEPS = [
   { icon: '📊', text: 'Reading your financial profile...' },
@@ -8,7 +10,7 @@ const STEPS = [
   { icon: '✍️', text: 'Generating your personalized report...' },
 ]
 
-export default function LoadingScreen() {
+export default function LoadingScreen({ branding }: { branding: Branding }) {
   const [activeStep, setActiveStep] = useState(0)
   const [completedSteps, setCompletedSteps] = useState<number[]>([])
 
@@ -29,7 +31,7 @@ export default function LoadingScreen() {
 
   return (
     <div className="loading-screen">
-      <div className="ls-brand">Mortgage<span>AI</span></div>
+      <div className="ls-brand"><BrandMark branding={branding} size="md" /></div>
 
       {/* Orbiting ring */}
       <div className="ls-orbit-wrap">
