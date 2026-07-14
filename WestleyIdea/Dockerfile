@@ -1,5 +1,9 @@
+ARG APP_VERSION=dev
+
 # ── Stage 1: Build React frontend ─────────────────────────────────
 FROM node:20-alpine AS frontend-builder
+ARG APP_VERSION
+ENV VITE_APP_VERSION=$APP_VERSION
 WORKDIR /app/frontend
 
 COPY frontend/package*.json ./
@@ -10,6 +14,8 @@ RUN npm run build
 
 # ── Stage 2: Python backend + built frontend ───────────────────────
 FROM python:3.12-slim
+ARG APP_VERSION
+LABEL org.opencontainers.image.version=$APP_VERSION
 WORKDIR /app
 
 COPY backend/requirements.txt ./

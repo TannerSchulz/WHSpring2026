@@ -2,9 +2,9 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "demo" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "demo" ]
 
 jobs:
 
@@ -15,11 +15,33 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Set build version
+      id: build
+      shell: bash
+      run: |
+        echo "version=0.1.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+        echo "channel=${GITHUB_BASE_REF:-$GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+
     - name: Login to Azure Container Registry
       run: echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
-    
-    - name: Build the Docker image
-      run: docker build ./WestleyIdea --file WestleyIdea/Dockerfile --tag ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:latest
 
-    - name: Push Docker image
-      run: docker push ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:latest
+    - name: Build the Docker image
+      run: |
+        docker build ./WestleyIdea \
+          --file WestleyIdea/Dockerfile \
+          --build-arg APP_VERSION=${{ steps.build.outputs.version }} \
+          --tag ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:${{ steps.build.outputs.version }} \
+          --tag ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:${{ steps.build.outputs.channel }}-latest
+
+    - name: Push versioned Docker image
+      run: docker push ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:${{ steps.build.outputs.version }}
+
+    - name: Push branch channel image
+      if: github.event_name == 'push'
+      run: docker push ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:${{ steps.build.outputs.channel }}-latest
+
+    - name: Update main latest image
+      if: github.event_name == 'push' && steps.build.outputs.channel == 'main'
+      run: |
+        docker tag ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:${{ steps.build.outputs.version }} ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:latest
+        docker push ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:latest
