@@ -6,6 +6,14 @@ on:
   pull_request:
     branches: [ "main", "demo" ]
 
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: mortgageai-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
 
   build:
@@ -45,3 +53,28 @@ jobs:
       run: |
         docker tag ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:${{ steps.build.outputs.version }} ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:latest
         docker push ${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:latest
+
+    - name: Log in to Azure for demo deployment
+      if: github.event_name == 'push' && steps.build.outputs.channel == 'demo'
+      uses: azure/login@v3
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+    - name: Deploy version to demo Container App
+      if: github.event_name == 'push' && steps.build.outputs.channel == 'demo'
+      shell: bash
+      run: |
+        az config set extension.use_dynamic_install=yes_without_prompt
+        revision=$(az containerapp update \
+          --name "${{ vars.AZURE_CONTAINER_APP_NAME }}" \
+          --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+          --image "${{ secrets.ACR_LOGIN_SERVER }}/mortgageai:${{ steps.build.outputs.version }}" \
+          --query properties.latestRevisionName \
+          --output tsv)
+
+        echo "### Demo deployment" >> "$GITHUB_STEP_SUMMARY"
+        echo "- Version: \`${{ steps.build.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
+        echo "- Container App: \`${{ vars.AZURE_CONTAINER_APP_NAME }}\`" >> "$GITHUB_STEP_SUMMARY"
+        echo "- Revision: \`${revision}\`" >> "$GITHUB_STEP_SUMMARY"
