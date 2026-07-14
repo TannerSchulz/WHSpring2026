@@ -24,7 +24,7 @@ export const STEPS = [
   { field: 'credit_score',     question: "What's your credit score?",                   hint: 'Check Credit Karma or your bank app for a free estimate.',    prefix: null, placeholder: '700',    type: 'number'      },
   { field: 'employment_years', question: "How long have you been at your current job?",  hint: 'Lenders like to see at least 2 years of steady employment.',  prefix: null, placeholder: null,     type: 'employment'  },
   { field: 'home_price',       question: "What's the home price you have in mind?",     hint: 'Enter your target purchase price.',                           prefix: '$', placeholder: '350,000', type: 'currency'    },
-  { field: 'down_payment',     question: "How much can you put down?",                  hint: 'A larger down payment improves your odds and lowers your rate.', prefix: '$', placeholder: '35,000', type: 'currency'  },
+  { field: 'down_payment',     question: "How much do you have saved for a down payment?", hint: "Enter your available savings and we'll show you what different down payment amounts mean for your monthly payment.", prefix: '$', placeholder: '35,000', type: 'currency'  },
   { field: 'loan_type',        question: "Which loan type interests you?",              hint: 'Not sure? Conventional works for most buyers.',               prefix: null, placeholder: null,     type: 'select'      },
 ]
 
@@ -97,14 +97,12 @@ function getMinDownPct(loanType: string): number {
 
 // ── Sub-flow types ────────────────────────────────────────────────────────────
 
-type SubFlowType = 'home_price' | 'down_payment'
+type SubFlowType = 'home_price'
 
 interface SubAnswers {
   budget?: number
   budgetDisplay?: string
   state?: string
-  savings?: number
-  savingsDisplay?: string
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -200,9 +198,6 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
     if (subFlow === 'home_price') {
       if (subStep === 0) return !!subAnswers.budget && subAnswers.budget > 0
       if (subStep === 1) return !!subAnswers.state
-    }
-    if (subFlow === 'down_payment') {
-      if (subStep === 0) return subAnswers.savings !== undefined && subAnswers.savings >= 0
     }
     return true
   }
@@ -420,36 +415,11 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
     )
   }
 
-  // ── Sub-flow: down payment ──────────────────────────────────────────────────
+  // ── Inline down-payment scenarios ───────────────────────────────────────────
 
-  const renderDownPaymentSubFlow = () => {
-    if (subStep === 0) {
-      return (
-        <>
-          <div className="sub-flow-crumb">💰 Figuring out down payment</div>
-          <div className="step-question">How much do you have saved for a down payment?</div>
-          <div className="step-hint">Enter your total savings available for the home purchase. We'll show you what different amounts mean for your monthly payment.</div>
-          <div className="input-wrap">
-            <span className="input-prefix">$</span>
-            <input
-              ref={subInputRef}
-              className="step-input"
-              type="text"
-              inputMode="numeric"
-              placeholder="30,000"
-              value={subAnswers.savingsDisplay ?? ''}
-              onChange={e => handleSubCurrencyChange('savings', 'savingsDisplay', e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') advanceSubFlow() }}
-            />
-          </div>
-        </>
-      )
-    }
-
-    // Step 1: show scenarios
+  const renderDownPaymentOptions = (savings: number) => {
     const homePrice = values.home_price ?? 350000
     const loanType = values.loan_type ?? 'conventional'
-    const savings = subAnswers.savings ?? 0
     const minDownPct = getMinDownPct(loanType)
 
     const buildScenario = (downAmt: number, label: string, badge: string, color: string, recommended?: boolean) => {
@@ -478,9 +448,7 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
 
     return (
       <>
-        <div className="sub-flow-crumb">💰 Figuring out down payment</div>
-        <div className="step-question">Here's what different down payments look like</div>
-        <div className="step-hint">
+        <div className="step-hint" style={{ marginTop: '1.25rem' }}>
           For a <strong>${fmt(homePrice)}</strong> home at {CURRENT_RATES['30']}% / 30 years. P&amp;I + PMI only — taxes &amp; insurance not included.
         </div>
         <div className="down-scenario-cards">
@@ -514,7 +482,6 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
 
   const progress = ((step + 1) / STEPS.length) * 100
   const isLastSubStep = subFlow === 'home_price' && subStep === 2
-                     || subFlow === 'down_payment' && subStep === 1
 
   const renderMainInput = () => {
     if (current.type === 'select') {
@@ -579,19 +546,25 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
     }
 
     if (current.type === 'currency') {
+      const enteredAmount = parseCurrency(displayValues[current.field] ?? '')
       return (
-        <div className="input-wrap">
-          {current.prefix && <span className="input-prefix">{current.prefix}</span>}
-          <input
-            ref={inputRef}
-            className="step-input"
-            type="text" inputMode="numeric"
-            placeholder={current.placeholder ?? ''}
-            value={displayValues[current.field] ?? ''}
-            onChange={e => handleCurrencyChange(current.field, e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter') commitAndAdvance() }}
-          />
-        </div>
+        <>
+          <div className="input-wrap">
+            {current.prefix && <span className="input-prefix">{current.prefix}</span>}
+            <input
+              ref={inputRef}
+              className="step-input"
+              type="text" inputMode="numeric"
+              placeholder={current.placeholder ?? ''}
+              value={displayValues[current.field] ?? ''}
+              onChange={e => handleCurrencyChange(current.field, e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') commitAndAdvance() }}
+            />
+          </div>
+          {current.field === 'down_payment' && !isNaN(enteredAmount) && enteredAmount > 0 && (
+            renderDownPaymentOptions(enteredAmount)
+          )}
+        </>
       )
     }
 
@@ -640,16 +613,10 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
                 🤔 Not sure what price to target? Help me figure it out
               </button>
             )}
-            {current.field === 'down_payment' && (
-              <button className="not-sure-btn" onClick={() => enterSubFlow('down_payment')}>
-                🤔 Not sure how much to put down? Show me my options
-              </button>
-            )}
           </>
         )}
 
         {subFlow === 'home_price' && renderHomePriceSubFlow()}
-        {subFlow === 'down_payment' && renderDownPaymentSubFlow()}
 
         <div className="step-nav">
           {(subFlow ? true : step > 0) && (
