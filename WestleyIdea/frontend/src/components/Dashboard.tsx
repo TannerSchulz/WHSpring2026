@@ -3,6 +3,7 @@ import BrandMark from './BrandMark'
 import LoanOfficerCard from './LoanOfficerCard'
 import { MortgageInput } from '../types'
 import type { Branding } from '../types/branding'
+import { APP_VERSION } from '../version'
 
 interface Props {
   lastProfile: MortgageInput
@@ -20,7 +21,12 @@ export default function Dashboard({
   return (
     <div className="dashboard-shell">
       <div className="dashboard-topbar">
-        <div className="dashboard-brand"><BrandMark branding={branding} size="sm" /></div>
+        <div className="dashboard-brand">
+          <div className="brand-version-lockup">
+            <BrandMark branding={branding} size="sm" />
+            <span className="brand-version">Version {APP_VERSION}</span>
+          </div>
+        </div>
         <div className="dashboard-topbar-actions">
           {onCustomize && (
             <button className="brand-customize-btn" onClick={onCustomize}>⚙️ Customize</button>

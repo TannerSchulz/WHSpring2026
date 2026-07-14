@@ -5272,8 +5272,12 @@ body::after {
   min-width: 110px;
 }
 
-.dashboard-brand span {
+.dashboard-brand .brand-mark-name {
   color: var(--primary-light, #818cf8);
+}
+
+.dashboard-brand .brand-version {
+  color: white;
 }
 
 .dashboard-start-over {
@@ -5569,12 +5573,4 @@ body::after {
 
 .disclaimer-footer strong {
   color: #4b5563;
-}
-
-.app-version {
-  display: block;
-  margin-top: 0.35rem;
-  color: #6b7280;
-  font-size: 0.68rem;
-  font-variant-numeric: tabular-nums;
 }

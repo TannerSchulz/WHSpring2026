@@ -10,9 +10,9 @@ import LoanOfficerCard from './components/LoanOfficerCard'
 import { MortgageInput, AssessmentResponse } from './types'
 import { useProfile } from './hooks/useProfile'
 import { useBranding } from './hooks/useBranding'
+import { APP_VERSION } from './version'
 
 type Stage = 'form' | 'loading' | 'error' | 'dashboard'
-const APP_VERSION = import.meta.env.VITE_APP_VERSION || 'dev'
 
 // Sample data for the ?preview=calc dev shortcut
 const PREVIEW_INPUT: MortgageInput = {
@@ -110,7 +110,10 @@ export default function App() {
       {/* Top navigation — landing & error stages (dashboard has its own topbar) */}
       {showHeader && (
         <nav className="top-nav">
-          <BrandMark branding={branding} size="sm" />
+          <div className="brand-version-lockup">
+            <BrandMark branding={branding} size="sm" />
+            <span className="brand-version">Version {APP_VERSION}</span>
+          </div>
           <div className="top-nav-actions">
             <button className="brand-customize-btn" onClick={() => setShowBranding(true)}>
               ⚙️ Customize
@@ -199,7 +202,6 @@ export default function App() {
         {branding.officerName && branding.nmlsId && <> {branding.officerName}, NMLS #{branding.nmlsId}.</>}
         {branding.phone && <> Questions? Call {branding.phone}.</>}
         {' '}This application is currently offered for testing and evaluation purposes only. It is not operated by a licensed mortgage broker, lender, or financial advisor, and nothing presented here should be relied upon as professional financial guidance.
-        <span className="app-version">Version {APP_VERSION}</span>
       </footer>
     </div>
   )

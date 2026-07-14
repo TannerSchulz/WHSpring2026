@@ -6,6 +6,15 @@
 .brand-mark--md .brand-mark-logo { height: 36px; max-width: 160px; }
 .brand-mark--lg .brand-mark-logo { height: 52px; max-width: 220px; }
 .brand-mark-name { font-weight: 800; letter-spacing: -0.02em; }
+.brand-version-lockup { display: flex; flex-direction: column; align-items: flex-start; gap: 0.05rem; }
+.brand-version {
+  color: currentColor;
+  font-size: 0.62rem;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: 0.025em;
+  opacity: 0.42;
+}
 
 /* ── Customize button ──────────────────────────────────────────────────────── */
 
@@ -204,6 +213,7 @@
   color: var(--white);
 }
 .top-nav .brand-mark-name { font-size: 1.05rem; color: var(--white); }
+.top-nav .brand-version { color: var(--white); }
 .top-nav-actions { display: flex; align-items: center; gap: 0.6rem; }
 /* ProfileWidget normally floats fixed — inside the nav it flows inline */
 .top-nav .pw-wrap { position: static; }
