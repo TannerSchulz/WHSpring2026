@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 export interface TrackerEntry {
   field: string
@@ -20,18 +20,7 @@ const FIELD_META: Record<string, { icon: string; label: string; format: (v: stri
 }
 
 export default function ValueTracker({ entries }: Props) {
-  const [newField, setNewField] = useState<string | null>(null)
   const [collapsed, setCollapsed] = useState(false)
-
-  useEffect(() => {
-    if (entries.length === 0) return
-    const latest = entries[entries.length - 1]
-    // Auto-expand when a new entry arrives
-    setCollapsed(false)
-    setNewField(latest.field)
-    const t = setTimeout(() => setNewField(null), 900)
-    return () => clearTimeout(t)
-  }, [entries.length])
 
   return (
     <div className={`tracker-panel${collapsed ? ' tracker-panel--collapsed' : ''}`}>
@@ -54,9 +43,8 @@ export default function ValueTracker({ entries }: Props) {
               {entries.map(entry => {
                 const meta = FIELD_META[entry.field]
                 if (!meta) return null
-                const isNew = newField === entry.field
                 return (
-                  <li key={entry.field} className={`tracker-item${isNew ? ' tracker-item--new' : ''}`}>
+                  <li key={entry.field} className="tracker-item">
                     <span className="tracker-item-icon">{meta.icon}</span>
                     <div className="tracker-item-body">
                       <div className="tracker-item-label">{meta.label}</div>

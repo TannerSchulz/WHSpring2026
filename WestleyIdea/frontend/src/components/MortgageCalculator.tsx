@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import {
   UTAH_COUNTIES, DEFAULT_COUNTY, UTAH_AVERAGES,
   rateForTerm, LiveRates, pmiAnnualRate,
@@ -6,12 +6,7 @@ import {
 import { MortgageInput } from '../types'
 
 interface Props {
-  onBack: () => void
   prefill?: MortgageInput | null
-  isDemoRun?: boolean
-  demoPaused?: boolean
-  inDashboard?: boolean
-  onDemoComplete?: () => void
 }
 
 type Mode = 'payment' | 'afford'
@@ -283,9 +278,8 @@ interface PaymentResult {
   rateUsed: number; termYears: number
 }
 
-function PaymentCalc({ prefill, liveRates, ratesLoading, runDemo, onDemoComplete, demoPaused }: {
+function PaymentCalc({ prefill, liveRates, ratesLoading }: {
   prefill?: MortgageInput | null; liveRates: LiveRates | null; ratesLoading: boolean
-  runDemo?: boolean; onDemoComplete?: () => void; demoPaused?: boolean
 }) {
   const [homePrice, setHomePrice] = useState(prefill ? fmtInput(prefill.home_price) : '')
   const [downDisplay, setDownDisplay] = useState(prefill ? fmtInput(prefill.down_payment) : '')
@@ -309,7 +303,6 @@ function PaymentCalc({ prefill, liveRates, ratesLoading, runDemo, onDemoComplete
   const [showRefi, setShowRefi] = useState(false)
   const [result, setResult] = useState<PaymentResult | null>(null)
   const [disabledRows, setDisabledRows] = useState<Set<string>>(new Set())
-  const calculateRef = useRef<() => void>(() => {})
 
   const creditScore = prefill?.credit_score ?? 720
   const defaultRate = rateForTerm(liveRates, term)
@@ -331,16 +324,6 @@ function PaymentCalc({ prefill, liveRates, ratesLoading, runDemo, onDemoComplete
     if (hasHoa) setMonthlyHoa(fmtInput(UTAH_AVERAGES.hoaMonthly))
     else setMonthlyHoa('')
   }, [hasHoa])
-
-  // Demo: wait a beat for rates/prefill, run the calculation, then move on
-  useEffect(() => {
-    if (!runDemo || demoPaused) return
-    const t = setTimeout(() => {
-      calculateRef.current()
-      setTimeout(() => onDemoComplete?.(), 2200)
-    }, 1200)
-    return () => clearTimeout(t)
-  }, [runDemo, demoPaused]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const getDownDollars = () => {
     const hp = parseCurrency(homePrice)
@@ -389,7 +372,6 @@ function PaymentCalc({ prefill, liveRates, ratesLoading, runDemo, onDemoComplete
       maintenance: mMaint, total, totalInterest, totalCost, closingCosts: closing,
       pmiDropMonth, frontEndDTI, down, rateUsed: r, termYears: t })
   }
-  calculateRef.current = calculate
 
   const downPct = (() => {
     const hp = parseCurrency(homePrice)
@@ -784,9 +766,8 @@ function PaymentCalc({ prefill, liveRates, ratesLoading, runDemo, onDemoComplete
 const GRID_RATES = [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]
 const GRID_DOWN_PCTS = [0, 3, 5, 10, 15, 20]
 
-function AffordCalc({ prefill, liveRates, ratesLoading, runDemo, onDemoComplete, demoPaused }: {
+function AffordCalc({ prefill, liveRates, ratesLoading }: {
   prefill?: MortgageInput | null; liveRates: LiveRates | null; ratesLoading: boolean
-  runDemo?: boolean; onDemoComplete?: () => void; demoPaused?: boolean
 }) {
   const suggestedPayment = prefill?.annual_income
     ? Math.round(prefill.annual_income / 12 * 0.28) : null
@@ -802,21 +783,9 @@ function AffordCalc({ prefill, liveRates, ratesLoading, runDemo, onDemoComplete,
   const [includeUtils, setIncludeUtils] = useState(true)
   const [result, setResult] = useState<{grid: {downPct:number;rate:number;homePrice:number;hasMi:boolean}[][]}>( null!)
   const [popup, setPopup] = useState<{downPct:number;rate:number;homePrice:number} | null>(null)
-  const calculateRef = useRef<() => void>(() => {})
 
   const creditScore = prefill?.credit_score ?? 720
   const liveRate = rateForTerm(liveRates, term)
-
-  // Demo: fill target payment from the 28% rule, then calculate
-  useEffect(() => {
-    if (!runDemo || !suggestedPayment || demoPaused) return
-    setTargetPayment(suggestedPayment.toLocaleString())
-    const t = setTimeout(() => {
-      calculateRef.current()
-      setTimeout(() => onDemoComplete?.(), 1500)
-    }, 900)
-    return () => clearTimeout(t)
-  }, [runDemo, demoPaused]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const calculate = () => {
     const target = parseCurrency(targetPayment)
@@ -853,7 +822,6 @@ function AffordCalc({ prefill, liveRates, ratesLoading, runDemo, onDemoComplete,
 
     setResult({ grid })
   }
-  calculateRef.current = calculate
 
   const maxPrice = result ? Math.max(...result.grid.flat().map(c => c.homePrice)) : 0
   const cellColor = (hp: number) => {
@@ -1039,12 +1007,8 @@ function AffordCalc({ prefill, liveRates, ratesLoading, runDemo, onDemoComplete,
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 
-type DemoPhase = 'idle' | 'payment' | 'afford' | 'done'
-
-export default function MortgageCalculator({ onBack, prefill, isDemoRun, demoPaused, inDashboard, onDemoComplete }: Props) {
+export default function MortgageCalculator({ prefill }: Props) {
   const [mode, setMode] = useState<Mode>('payment')
-  const [demoPhase, setDemoPhase] = useState<DemoPhase>('idle')
-  const [paymentDone, setPaymentDone] = useState(false)
   const [liveRates, setLiveRates] = useState<LiveRates | null>(null)
   const [ratesLoading, setRatesLoading] = useState(true)
 
@@ -1059,37 +1023,9 @@ export default function MortgageCalculator({ onBack, prefill, isDemoRun, demoPau
     return () => { cancelled = true }
   }, [])
 
-  useEffect(() => {
-    if (!isDemoRun) return
-    const t = setTimeout(() => setDemoPhase('payment'), 800)
-    return () => clearTimeout(t)
-  }, [isDemoRun])
-
-  // 5-second pause between payment and afford demos; respects demoPaused
-  useEffect(() => {
-    if (!paymentDone || demoPaused) return
-    const t = setTimeout(() => {
-      setMode('afford')
-      setTimeout(() => setDemoPhase('afford'), 600)
-    }, 5000)
-    return () => clearTimeout(t)
-  }, [paymentDone, demoPaused])
-
-  // When afford demo finishes, signal parent to move on
-  useEffect(() => {
-    if (demoPhase !== 'done' || demoPaused) return
-    const t = setTimeout(() => onDemoComplete?.(), 2000)
-    return () => clearTimeout(t)
-  }, [demoPhase, demoPaused]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handlePaymentDemoComplete = () => {
-    setPaymentDone(true)
-  }
-
   return (
     <div className="calc-page">
       <div className="calc-page-header">
-        {!inDashboard && <button className="calc-back-btn" onClick={onBack}>← Back</button>}
         <div>
           <h2 className="calc-page-title">Utah Mortgage Calculator</h2>
           <p className="calc-page-subtitle">
@@ -1115,9 +1051,6 @@ export default function MortgageCalculator({ onBack, prefill, isDemoRun, demoPau
             prefill={prefill}
             liveRates={liveRates}
             ratesLoading={ratesLoading}
-            runDemo={demoPhase === 'payment'}
-            onDemoComplete={handlePaymentDemoComplete}
-            demoPaused={demoPaused}
           />
         )}
         {mode === 'afford' && (
@@ -1125,9 +1058,6 @@ export default function MortgageCalculator({ onBack, prefill, isDemoRun, demoPau
             prefill={prefill}
             liveRates={liveRates}
             ratesLoading={ratesLoading}
-            runDemo={demoPhase === 'afford'}
-            onDemoComplete={() => setDemoPhase('done')}
-            demoPaused={demoPaused}
           />
         )}
       </div>

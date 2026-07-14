@@ -31,7 +31,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [trackerEntries, setTrackerEntries] = useState<TrackerEntry[]>([])
   const [lastProfile, setLastProfile] = useState<MortgageInput | null>(null)
-  const { profile, save: saveProfile, clear: clearProfile } = useProfile()
+  const { profile, clear: clearProfile } = useProfile()
   const { branding, save: saveBranding, reset: resetBranding } = useBranding()
   const [showBranding, setShowBranding] = useState(false)
 
@@ -46,17 +46,13 @@ export default function App() {
     setLastProfile(data)
     setStage('loading')
     setError(null)
-    const minDelay = new Promise(res => setTimeout(res, 7000))
 
     try {
-      const [res] = await Promise.all([
-        fetch('/api/assess', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(data),
-        }),
-        minDelay,
-      ])
+      const res = await fetch('/api/assess', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
+      })
 
       if (!res.ok) {
         const err = await res.json()
@@ -67,7 +63,6 @@ export default function App() {
       setResult(assessment)
       setStage('dashboard')
     } catch (e) {
-      await minDelay
       setError(e instanceof Error ? e.message : 'Unknown error')
       setStage('error')
     }
@@ -146,7 +141,7 @@ export default function App() {
       {showHeader && (
         <header className="app-header">
           <h1>Your path to <span>homeownership</span> starts here</h1>
-          <p>Answer a few quick questions to see where you stand — and get a personal plan to get there.</p>
+          <p>Answer a few quick questions to get mortgage estimates personalized to your numbers.</p>
           <div className="hero-pills">
             <span className="hero-pill">⚡ About 2 minutes</span>
             <span className="hero-pill">🔒 No credit pull</span>
@@ -185,11 +180,8 @@ export default function App() {
 
       {stage === 'dashboard' && result && lastProfile && (
         <Dashboard
-          result={result}
           lastProfile={lastProfile}
           onBack={restart}
-          onProfileSave={saveProfile}
-          existingProfile={profile}
           branding={branding}
           onCustomize={() => setShowBranding(true)}
         />

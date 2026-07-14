@@ -6,9 +6,6 @@ interface Props {
   onSubmit: (data: MortgageInput) => void
   loading: boolean
   onFieldCommit: (field: string, value: string | number) => void
-  demoMode?: boolean
-  demoData?: MortgageInput
-  demoPaused?: boolean
 }
 
 const LOAN_OPTIONS = [
@@ -107,9 +104,8 @@ interface SubAnswers {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMode, demoData, demoPaused }: Props) {
+export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props) {
   const [step, setStep] = useState(0)
-  const [animating, setAnimating] = useState(false)
   const [values, setValues] = useState<Partial<MortgageInput>>({ loan_type: 'conventional' })
   const [displayValues, setDisplayValues] = useState<Record<string, string>>({})
   const [employYears, setEmployYears] = useState<string>('')
@@ -123,54 +119,20 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
   const inputRef = useRef<HTMLInputElement>(null)
   const employYearsRef = useRef<HTMLInputElement>(null)
   const subInputRef = useRef<HTMLInputElement>(null)
-  const commitAndAdvanceRef = useRef<() => void>(() => {})
 
   const current = STEPS[step]
 
   useEffect(() => {
     if (subFlow) {
-      setTimeout(() => subInputRef.current?.focus(), 350)
+      subInputRef.current?.focus()
       return
     }
     if (current.type === 'employment') {
-      setTimeout(() => employYearsRef.current?.focus(), 350)
+      employYearsRef.current?.focus()
     } else if (current.type !== 'select') {
-      setTimeout(() => inputRef.current?.focus(), 350)
+      inputRef.current?.focus()
     }
   }, [step, subFlow, subStep, current.type])
-
-  // ── Demo mode: pre-fill all values when demo starts ─────────────────────────
-  useEffect(() => {
-    if (!demoMode || !demoData) return
-    setValues({
-      annual_income: demoData.annual_income,
-      monthly_debts: demoData.monthly_debts,
-      credit_score: demoData.credit_score,
-      home_price: demoData.home_price,
-      down_payment: demoData.down_payment,
-      loan_type: demoData.loan_type,
-      state: demoData.state,
-    })
-    setDisplayValues({
-      annual_income: Math.round(demoData.annual_income).toLocaleString(),
-      monthly_debts: Math.round(demoData.monthly_debts).toLocaleString(),
-      home_price: Math.round(demoData.home_price).toLocaleString(),
-      down_payment: Math.round(demoData.down_payment).toLocaleString(),
-    })
-    const years = Math.floor(demoData.employment_years)
-    const months = Math.round((demoData.employment_years - years) * 12)
-    setEmployYears(String(years))
-    setEmployMonths(months > 0 ? String(months) : '')
-    setStep(0)
-  }, [demoMode]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Demo mode: auto-advance through each step ────────────────────────────────
-  useEffect(() => {
-    if (!demoMode || demoPaused) return
-    const delay = step === 0 ? 1600 : 1300
-    const t = setTimeout(() => commitAndAdvanceRef.current(), delay)
-    return () => clearTimeout(t)
-  }, [step, demoMode, demoPaused])
 
   // ── Validation ──────────────────────────────────────────────────────────────
 
@@ -208,11 +170,6 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
 
   // ── Advance main flow ───────────────────────────────────────────────────────
 
-  const animate = (cb: () => void) => {
-    setAnimating(true)
-    setTimeout(() => { cb(); setAnimating(false) }, 280)
-  }
-
   const commitAndAdvance = () => {
     if (!isValid()) return
 
@@ -234,7 +191,7 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
     }
 
     if (step < STEPS.length - 1) {
-      animate(() => setStep(s => s + 1))
+      setStep(s => s + 1)
     } else {
       const finalValues = { ...values }
       if (current.type === 'currency') {
@@ -244,12 +201,9 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
       onSubmit(finalValues as MortgageInput)
     }
   }
-  // Keep ref fresh so the demo auto-advance effect always calls the latest version
-  commitAndAdvanceRef.current = commitAndAdvance
-
   const back = () => {
     if (step === 0) return
-    animate(() => setStep(s => s - 1))
+    setStep(s => s - 1)
   }
 
   // ── Sub-flow advance ────────────────────────────────────────────────────────
@@ -275,7 +229,7 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
     setSubFlow(null)
     setSubStep(0)
     setSubAnswers({})
-    animate(() => setStep(s => s + 1))
+    setStep(s => s + 1)
   }
 
   const selectDownPayment = (amount: number) => {
@@ -285,7 +239,7 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
     setSubFlow(null)
     setSubStep(0)
     setSubAnswers({})
-    animate(() => setStep(s => s + 1))
+    setStep(s => s + 1)
   }
 
   const enterSubFlow = (type: SubFlowType) => {
@@ -600,16 +554,11 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit, demoMod
 
   return (
     <div className="card">
-      {demoMode && (
-        <div className="demo-mode-banner">
-          ▶ Demo Mode — auto-filling your profile
-        </div>
-      )}
       <div className="progress-bar">
         <div className="progress-fill" style={{ width: `${progress}%` }} />
       </div>
 
-      <div className={`step${animating ? ' exit' : ''}`} key={`${step}-${subFlow}-${subStep}`}>
+      <div className="step" key={`${step}-${subFlow}-${subStep}`}>
         {!subFlow && (
           <>
             <div className="step-counter">Step {step + 1} of {STEPS.length}</div>

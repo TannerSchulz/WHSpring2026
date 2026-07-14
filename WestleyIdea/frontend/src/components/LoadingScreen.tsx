@@ -1,34 +1,7 @@
-import { useEffect, useState } from 'react'
 import BrandMark from './BrandMark'
 import { Branding } from '../types/branding'
 
-const STEPS = [
-  { icon: '📊', text: 'Reading your financial profile...' },
-  { icon: '🧮', text: 'Calculating debt-to-income ratio...' },
-  { icon: '🏦', text: 'Checking loan guidelines...' },
-  { icon: '🤖', text: 'Running AI analysis...' },
-  { icon: '✍️', text: 'Generating your personalized report...' },
-]
-
 export default function LoadingScreen({ branding }: { branding: Branding }) {
-  const [activeStep, setActiveStep] = useState(0)
-  const [completedSteps, setCompletedSteps] = useState<number[]>([])
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setActiveStep(prev => {
-        const next = prev + 1
-        if (next >= STEPS.length) {
-          clearInterval(interval)
-          return prev
-        }
-        setCompletedSteps(c => [...c, prev])
-        return next
-      })
-    }, 900)
-    return () => clearInterval(interval)
-  }, [])
-
   return (
     <div className="loading-screen">
       <div className="ls-brand"><BrandMark branding={branding} size="md" /></div>
@@ -47,30 +20,7 @@ export default function LoadingScreen({ branding }: { branding: Branding }) {
       </div>
 
       <h2 className="ls-title">Analyzing Your Profile</h2>
-      <p className="ls-subtitle">Our AI is crunching the numbers — hang tight</p>
-
-      <div className="ls-steps">
-        {STEPS.map((step, i) => {
-          const isComplete = completedSteps.includes(i)
-          const isActive = activeStep === i
-          const isPending = i > activeStep
-
-          return (
-            <div
-              key={i}
-              className={`ls-step ${isComplete ? 'ls-step--done' : ''} ${isActive ? 'ls-step--active' : ''} ${isPending ? 'ls-step--pending' : ''}`}
-            >
-              <div className="ls-step-icon">
-                {isComplete ? '✓' : step.icon}
-              </div>
-              <span className="ls-step-text">{step.text}</span>
-              {isActive && (
-                <span className="ls-step-spinner" />
-              )}
-            </div>
-          )
-        })}
-      </div>
+      <p className="ls-subtitle">Calculating your mortgage estimates…</p>
     </div>
   )
 }

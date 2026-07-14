@@ -5276,38 +5276,6 @@ body::after {
   color: var(--primary-light, #818cf8);
 }
 
-.dashboard-tabs {
-  display: flex;
-  gap: 0;
-  flex-shrink: 0;
-}
-
-.dashboard-tab {
-  padding: 0 1.25rem;
-  height: 56px;
-  border: none;
-  border-bottom: 3px solid transparent;
-  background: transparent;
-  color: rgba(255, 255, 255, 0.55);
-  font-size: 0.88rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.dashboard-tab:hover {
-  color: rgba(255, 255, 255, 0.85);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.dashboard-tab.active {
-  color: white;
-  border-bottom-color: var(--primary-light, #818cf8);
-  font-weight: 600;
-  background: transparent;
-}
-
 .dashboard-start-over {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.2);
