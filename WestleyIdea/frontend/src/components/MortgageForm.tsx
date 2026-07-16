@@ -83,16 +83,16 @@ function DebtsGuide() {
     <div className="debts-guide">
       <div className="debts-guide-title">What counts as a monthly debt?</div>
       <div className="debts-guide-cols">
-        <div className="debts-guide-col">
-          <div className="debts-guide-head include">✓ Include</div>
+        <div className="debts-guide-col include-col">
+          <div className="debts-guide-head include">Include</div>
           <ul>
             {DEBT_GUIDE_INCLUDE.map(([item, note]) => (
               <li key={item}>{item}{note && <span className="debts-guide-note"> — {note}</span>}</li>
             ))}
           </ul>
         </div>
-        <div className="debts-guide-col">
-          <div className="debts-guide-head exclude">✗ Leave out</div>
+        <div className="debts-guide-col exclude-col">
+          <div className="debts-guide-head exclude">Leave out</div>
           <ul>
             {DEBT_GUIDE_EXCLUDE.map(([item, note]) => (
               <li key={item}>{item}{note && <span className="debts-guide-note"> — {note}</span>}</li>

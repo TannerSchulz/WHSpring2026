@@ -797,7 +797,8 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
 const GRID_RATES = [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]
 
 function gridDownPaymentPercents(loanType: LoanType, creditScore: number): number[] {
-  const minimum = minimumDownPercent(loanType, creditScore) * 100
+  // Round away float noise (0.035 × 100 = 3.5000000000000004) — these are row labels
+  const minimum = Math.round(minimumDownPercent(loanType, creditScore) * 1000) / 10
   const candidates = loanType === 'conventional'
     ? [minimum, 5, 10, 15, 20]
     : loanType === 'fha'

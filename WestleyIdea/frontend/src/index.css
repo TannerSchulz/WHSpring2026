@@ -99,6 +99,7 @@ body::after {
 .quiz-main {
   width: 100%;
   max-width: 560px;
+  margin-bottom: 2.5rem;
 }
 
 /* Tracker — fixed to right side, hidden on mobile */
@@ -4045,8 +4046,10 @@ body::after {
 .down-scenario-top {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 0.5rem;
+  align-items: center;
+  gap: 0.35rem 0.5rem;
+  /* the PMI badge drops to its own line instead of clipping when tight */
+  flex-wrap: wrap;
 }
 
 .down-scenario-amount {
@@ -4063,6 +4066,7 @@ body::after {
   border-radius: 4px;
   padding: 0.15rem 0.4rem;
   flex-shrink: 0;
+  white-space: nowrap;
 }
 
 .down-scenario-pmi-badge.no-pmi {
@@ -4761,7 +4765,11 @@ body::after {
 
 .afford-grid-wrapper { overflow-x: auto; border-radius: var(--radius-sm); border: 2px solid var(--gray-200); }
 
-.afford-grid { width: 100%; border-collapse: collapse; font-size: 0.85rem; min-width: 560px; }
+/* border-collapse: separate keeps cell borders attached to the sticky first column */
+.afford-grid { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.85rem; min-width: 560px; }
+
+/* Down-payment column stays visible while the rate columns scroll sideways */
+.afford-corner, .afford-down-label { position: sticky; left: 0; z-index: 2; }
 
 .afford-corner {
   background: var(--gray-100); padding: 0.7rem 1rem;
@@ -5650,27 +5658,34 @@ body::after {
 /* ── Disclaimer footer ───────────────────────────────────────────────────────── */
 .disclaimer-footer {
   width: 100%;
+  max-width: 860px;
+  /* auto top margin keeps it pinned to the viewport bottom on tall screens;
+     .quiz-main's bottom margin guarantees the minimum gap */
+  margin: auto auto 0;
   background: #f8f7ff;
-  border-top: 1px solid #e0d9ff;
-  padding: 0.75rem 1.5rem;
+  border: 1px solid #e0d9ff;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
   font-size: 0.72rem;
   color: #6b7280;
-  line-height: 1.5;
-  text-align: center;
-  margin-top: auto;
+  line-height: 1.6;
+  text-align: left;
 }
 
 .disclaimer-footer strong {
   color: #4b5563;
 }
 
+@media (max-width: 480px) {
+  .disclaimer-footer {
+    margin-top: 2rem;
+    padding: 0.9rem 1rem;
+  }
+}
+
 /* ── Debts guide (what counts toward DTI) ───────────────────────────────────── */
 .debts-guide {
-  margin-top: 1.25rem;
-  border: 1px solid var(--gray-200);
-  border-radius: var(--radius-sm);
-  background: var(--gray-50);
-  padding: 1rem 1.1rem;
+  margin-top: 1.4rem;
   text-align: left;
 }
 
@@ -5680,51 +5695,82 @@ body::after {
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--gray-500);
-  margin-bottom: 0.75rem;
+  margin-bottom: 0.65rem;
 }
 
 .debts-guide-cols {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1.1rem;
+  gap: 0.75rem;
+  align-items: start;
+}
+
+.debts-guide-col {
+  border-radius: var(--radius-sm);
+  padding: 0.85rem 0.95rem;
+}
+
+.debts-guide-col.include-col {
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+}
+
+.debts-guide-col.exclude-col {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
 }
 
 .debts-guide-head {
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   font-weight: 800;
-  margin-bottom: 0.45rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 0.55rem;
 }
-.debts-guide-head.include { color: #059669; }
+.debts-guide-head.include { color: #047857; }
 .debts-guide-head.exclude { color: #b91c1c; }
 
 .debts-guide-col ul {
+  list-style: none;
   margin: 0;
-  padding-left: 1.05rem;
+  padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
+  gap: 0.45rem;
 }
 
 .debts-guide-col li {
+  position: relative;
+  padding-left: 1.25rem;
   font-size: 0.8rem;
   line-height: 1.5;
   color: var(--gray-700);
 }
 
-.debts-guide-note { color: var(--gray-400); }
+.debts-guide-col li::before {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 800;
+  font-size: 0.75rem;
+}
+
+.include-col li::before { content: '✓'; color: #059669; }
+.exclude-col li::before { content: '✕'; color: #dc2626; }
+
+.debts-guide-note { color: var(--gray-500); font-weight: 400; }
 
 .debts-guide-footer {
-  margin-top: 0.9rem;
-  padding-top: 0.75rem;
-  border-top: 1px dashed var(--gray-300);
+  margin-top: 0.7rem;
   font-size: 0.75rem;
   color: var(--gray-400);
+  font-style: italic;
   line-height: 1.5;
 }
 
 @media (max-width: 560px) {
-  .debts-guide { padding: 0.9rem 0.95rem; }
   .debts-guide-cols { grid-template-columns: 1fr; }
+  .debts-guide-col { padding: 0.8rem 0.85rem; }
 }
 
 /* ── Mobile refinements (≈360–430px phones) ─────────────────────────────────── */
@@ -5766,7 +5812,6 @@ body::after {
 
   .dashboard-topbar { padding: 0 0.85rem; }
   .dashboard-brand { min-width: 0; }
-  .disclaimer-footer { padding: 0.75rem 1rem; }
 }
 
 /* Afford-grid swipe cue — only meaningful where the table overflows */
@@ -5780,4 +5825,12 @@ body::after {
     color: var(--gray-500);
     margin-bottom: 0.5rem;
   }
+
+  /* Compact the afford table so ~3 rate columns fit beside the sticky one */
+  .afford-grid { min-width: 500px; }
+  .afford-corner { padding: 0.55rem 0.6rem; font-size: 0.62rem; }
+  .afford-down-label { padding: 0.55rem 0.6rem; font-size: 0.74rem; }
+  .afford-rate-header { padding: 0.55rem 0.35rem; font-size: 0.74rem; }
+  .afford-cell { padding: 0.5rem 0.3rem; }
+  .afford-price { font-size: 0.78rem; }
 }

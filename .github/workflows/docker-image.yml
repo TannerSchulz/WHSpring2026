@@ -28,7 +28,7 @@ jobs:
       id: build
       shell: bash
       run: |
-        echo "version=0.1.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+        echo "version=0.2.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
         echo "channel=${GITHUB_BASE_REF:-$GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
 
     - name: Login to Azure Container Registry
