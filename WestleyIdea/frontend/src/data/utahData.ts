@@ -44,15 +44,6 @@ export const UTAH_AVERAGES = {
   utilitiesMonthly: 240,   // electricity, gas, water, trash
 }
 
-// Conventional PMI annual rate by credit score (approximate industry averages)
-export function pmiAnnualRate(creditScore: number): number {
-  if (creditScore >= 760) return 0.0038
-  if (creditScore >= 720) return 0.0055
-  if (creditScore >= 680) return 0.0085
-  if (creditScore >= 640) return 0.0115
-  return 0.014
-}
-
 // Fallbacks if the live Freddie Mac PMMS feed is unreachable
 export const FALLBACK_RATES: Record<string, number> = {
   '30': 6.4,

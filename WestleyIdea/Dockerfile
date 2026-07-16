@@ -10,6 +10,7 @@ COPY frontend/package*.json ./
 RUN npm ci
 
 COPY frontend/ ./
+RUN npm test
 RUN npm run build
 
 # ── Stage 2: Python backend + built frontend ───────────────────────

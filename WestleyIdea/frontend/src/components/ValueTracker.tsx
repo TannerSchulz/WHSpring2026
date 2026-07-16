@@ -15,7 +15,8 @@ const FIELD_META: Record<string, { icon: string; label: string; format: (v: stri
   credit_score:     { icon: '⭐', label: 'Credit Score',     format: v => `${v}` },
   employment_years: { icon: '🏢', label: 'Employment',       format: v => `${v} yr${Number(v) !== 1 ? 's' : ''}` },
   home_price:       { icon: '🏠', label: 'Home Price',       format: v => `$${Number(v).toLocaleString()}` },
-  down_payment:     { icon: '🏦', label: 'Down Payment',     format: v => `$${Number(v).toLocaleString()}` },
+  available_savings:{ icon: '💵', label: 'Available Savings',format: v => `$${Number(v).toLocaleString()}` },
+  down_payment:     { icon: '🏦', label: 'Selected Down',     format: v => `$${Number(v).toLocaleString()}` },
   loan_type:        { icon: '📋', label: 'Loan Type',        format: v => String(v).toUpperCase() },
 }
 

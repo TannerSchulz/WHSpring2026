@@ -458,6 +458,38 @@ body::after {
   color: var(--primary-dark);
 }
 
+.conditional-loan-details {
+  margin: -0.5rem 0 1.5rem;
+  padding: 0.9rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--gray-100);
+}
+
+.conditional-loan-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+}
+
+.conditional-loan-label { font-size: 0.78rem; font-weight: 700; color: var(--gray-700); }
+.conditional-loan-actions { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+
+.loan-detail-btn {
+  padding: 0.4rem 0.65rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 999px;
+  background: white;
+  color: var(--gray-500);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.loan-detail-btn.selected { border-color: var(--primary); background: rgba(99,102,241,0.08); color: var(--primary-dark); }
+
 /* Navigation buttons */
 .step-nav {
   display: flex;
@@ -4063,6 +4095,16 @@ body::after {
   color: var(--gray-500);
 }
 
+.down-scenario-warning {
+  margin-top: 0.25rem;
+  padding: 0.35rem 0.45rem;
+  border-radius: 5px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 0.68rem;
+  line-height: 1.35;
+}
+
 /* ── Result page CTA cards ─────────────────────────────────────── */
 .result-cta-section {
   margin-top: 0.5rem;
@@ -4376,6 +4418,16 @@ body::after {
   color: var(--success);
 }
 
+.calc-inline-options {
+  display: grid;
+  gap: 0.55rem;
+  margin-top: 0.65rem;
+  padding: 0.65rem;
+  border: 1px solid var(--gray-200);
+  border-radius: 8px;
+  background: var(--gray-100);
+}
+
 .calc-suggest-btn {
   background: rgba(99,102,241,0.1);
   color: var(--primary);
@@ -4410,6 +4462,23 @@ body::after {
 
 .calc-submit-btn:hover { opacity: 0.92; transform: translateY(-1px); }
 
+.calc-validation-error {
+  margin-top: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  border-radius: 7px;
+  background: #fef2f2;
+  color: #b91c1c;
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.calc-planning-note {
+  margin-top: 0.75rem;
+  color: var(--gray-500);
+  font-size: 0.76rem;
+  line-height: 1.45;
+}
+
 /* ── Payment result ───────────────────────────────────────────── */
 .calc-result {
   margin-top: 2rem;
@@ -4442,6 +4511,25 @@ body::after {
 
 .calc-dti-badge.ok { background: rgba(16,185,129,0.3); }
 .calc-dti-badge.warn { background: rgba(245,158,11,0.35); }
+
+.calc-dti-summary { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4rem; }
+.calc-dti-context { flex-basis: 100%; margin-top: 0.35rem; font-size: 0.7rem; opacity: 0.8; }
+
+.calc-warning-list {
+  display: grid;
+  gap: 0.45rem;
+  padding: 1rem 1.5rem 0;
+  color: #92400e;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.calc-warning-list > div {
+  padding: 0.55rem 0.7rem;
+  border-left: 3px solid #f59e0b;
+  border-radius: 0 6px 6px 0;
+  background: #fffbeb;
+}
 
 .calc-breakdown { padding: 1rem 1.5rem; }
 
@@ -4502,7 +4590,7 @@ body::after {
 
 .calc-lifetime {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
   border-top: 2px solid #bfdbfe;
 }
 
@@ -4734,6 +4822,7 @@ body::after {
   .down-scenario-cards { grid-template-columns: 1fr; }
   .result-cta-cards { grid-template-columns: 1fr; }
   .extra-payment-result { grid-template-columns: 1fr 1fr 1fr; }
+  .conditional-loan-row { flex-direction: column; align-items: flex-start; }
 }
 
 @media (max-width: 500px) {

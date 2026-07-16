@@ -2,14 +2,15 @@ import json
 import os
 import time
 from datetime import datetime
+from typing import Literal
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 
 load_dotenv()
 
@@ -44,13 +45,24 @@ if ANTHROPIC_API_KEY and ANTHROPIC_API_KEY.startswith("sk-ant-"):
 
 
 class MortgageInput(BaseModel):
-    annual_income: float
-    monthly_debts: float
-    credit_score: int
-    down_payment: float
-    home_price: float
-    employment_years: float
-    loan_type: str  # "conventional", "fha", "va", "usda"
+    annual_income: float = Field(gt=0, le=100_000_000)
+    monthly_debts: float = Field(ge=0, le=10_000_000)
+    credit_score: int = Field(ge=300, le=850)
+    available_savings: float | None = Field(default=None, ge=0, le=100_000_000)
+    down_payment: float = Field(ge=0, le=100_000_000)
+    home_price: float = Field(gt=0, le=100_000_000)
+    employment_years: float = Field(ge=0, le=100)
+    loan_type: Literal["conventional", "fha", "va", "usda"]
+    state: str | None = Field(default=None, max_length=2)
+    county: str | None = Field(default=None, max_length=100)
+    va_usage: Literal["first", "subsequent"] | None = None
+    va_funding_fee_exempt: bool = False
+
+    @model_validator(mode="after")
+    def validate_down_payment(self):
+        if self.down_payment > self.home_price:
+            raise ValueError("down_payment cannot exceed home_price")
+        return self
 
 
 class AssessmentResponse(BaseModel):
@@ -489,7 +501,7 @@ Use their exact numbers. Bold the most critical figures. Keep every field as sho
 
 
 # ── Live mortgage rates (Freddie Mac PMMS — public weekly survey, no API key) ──
-# National weekly averages; Utah rates track the national survey closely.
+# These are national conventional benchmarks, not Utah- or program-specific quotes.
 
 PMMS_URL = "https://www.freddiemac.com/pmms/docs/PMMS_history.csv"
 RATES_CACHE_TTL = 6 * 60 * 60  # PMMS updates weekly; re-fetch at most every 6h
@@ -529,7 +541,7 @@ async def get_live_rates() -> UtahRatesResponse:
             result = UtahRatesResponse(
                 rate_30yr=rate_30,
                 rate_15yr=rate_15,
-                as_of=datetime(year, month, day).strftime("%b %-d, %Y"),
+                as_of=f"{datetime(year, month, day):%b} {day}, {year}",
                 source="Freddie Mac Primary Mortgage Market Survey",
                 live=True,
             )
@@ -541,7 +553,7 @@ async def get_live_rates() -> UtahRatesResponse:
         return UtahRatesResponse(
             rate_30yr=6.4,
             rate_15yr=5.8,
-            as_of="early 2026 (approximate)",
+            as_of="fallback planning estimate",
             source="Static estimate — live rate feed unavailable",
             live=False,
         )

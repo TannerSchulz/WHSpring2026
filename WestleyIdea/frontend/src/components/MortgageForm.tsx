@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import { MortgageInput } from '../types'
-import { UTAH_COUNTIES, DEFAULT_COUNTY, UTAH_AVERAGES, FALLBACK_RATES, pmiAnnualRate } from '../data/utahData'
+import { UTAH_COUNTIES, DEFAULT_COUNTY, UTAH_AVERAGES, FALLBACK_RATES } from '../data/utahData'
+import {
+  adjustedLoanAmount,
+  downPaymentWarnings,
+  firstYearMortgageInsurance,
+  minimumDownPercent,
+  type LoanType,
+} from '../utils/mortgageMath'
 
 interface Props {
   onSubmit: (data: MortgageInput) => void
@@ -9,20 +16,20 @@ interface Props {
 }
 
 const LOAN_OPTIONS = [
-  { value: 'conventional', name: 'Conventional', desc: 'Standard loan, 3%+ down' },
-  { value: 'fha',          name: 'FHA',          desc: 'Flexible credit, 3.5% down' },
-  { value: 'va',           name: 'VA',            desc: 'Veterans, no down payment' },
-  { value: 'usda',         name: 'USDA',          desc: 'Rural areas, no down payment' },
+  { value: 'conventional', name: 'Conventional', desc: 'As little as 3% for eligible borrowers' },
+  { value: 'fha',          name: 'FHA',          desc: '3.5% with 580+ score; 10% at 500–579' },
+  { value: 'va',           name: 'VA',            desc: 'Eligible service members, often 0% down' },
+  { value: 'usda',         name: 'USDA',          desc: 'Eligible rural homes and households, 0% down' },
 ]
 
 export const STEPS = [
   { field: 'annual_income',    question: "What's your annual income?",                 hint: 'Before taxes — include all sources of income.',               prefix: '$', placeholder: '75,000',  type: 'currency'    },
   { field: 'monthly_debts',    question: "What are your monthly debt payments?",        hint: 'Car loans, student loans, credit cards — not rent. Enter 0 if none.', prefix: '$', placeholder: '500', type: 'currency' },
   { field: 'credit_score',     question: "What's your credit score?",                   hint: 'Check Credit Karma or your bank app for a free estimate.',    prefix: null, placeholder: '700',    type: 'number'      },
-  { field: 'employment_years', question: "How long have you been at your current job?",  hint: 'Lenders like to see at least 2 years of steady employment.',  prefix: null, placeholder: null,     type: 'employment'  },
+  { field: 'employment_years', question: "How long have you had steady employment or qualifying income?", hint: 'Include recent jobs in the same field. A shorter history does not automatically disqualify you.', prefix: null, placeholder: null, type: 'employment' },
   { field: 'home_price',       question: "What's the home price you have in mind?",     hint: 'Enter your target purchase price.',                           prefix: '$', placeholder: '350,000', type: 'currency'    },
-  { field: 'down_payment',     question: "How much do you have saved for a down payment?", hint: "Enter your available savings and we'll show you what different down payment amounts mean for your monthly payment.", prefix: '$', placeholder: '35,000', type: 'currency'  },
   { field: 'loan_type',        question: "Which loan type interests you?",              hint: 'Not sure? Conventional works for most buyers.',               prefix: null, placeholder: null,     type: 'select'      },
+  { field: 'available_savings',question: "How much do you have saved for a down payment?", hint: "Enter zero if you're starting out. We'll keep this separate from any hypothetical down-payment option you explore.", prefix: '$', placeholder: '35,000', type: 'currency' },
 ]
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -67,7 +74,7 @@ function calcMaxHomePrice(
     const newLoan = maxLoanFromPI(availablePI, rate, termYears)
     homePrice = newLoan / (1 - downPct)
   }
-  return Math.max(0, Math.round(homePrice / 5000) * 5000)
+  return Math.max(0, Math.floor(homePrice / 5000) * 5000)
 }
 
 function estimateTotalMonthly(
@@ -86,12 +93,6 @@ function estimateTotalMonthly(
   return Math.round(pi + pmi + (homePrice * taxRate / 12) + (annualInsurance / 12))
 }
 
-function getMinDownPct(loanType: string): number {
-  if (loanType === 'va' || loanType === 'usda') return 0
-  if (loanType === 'fha') return 0.035
-  return 0.03
-}
-
 // ── Sub-flow types ────────────────────────────────────────────────────────────
 
 type SubFlowType = 'home_price'
@@ -106,7 +107,11 @@ interface SubAnswers {
 
 export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props) {
   const [step, setStep] = useState(0)
-  const [values, setValues] = useState<Partial<MortgageInput>>({ loan_type: 'conventional' })
+  const [values, setValues] = useState<Partial<MortgageInput>>({
+    loan_type: 'conventional',
+    va_usage: 'first',
+    va_funding_fee_exempt: false,
+  })
   const [displayValues, setDisplayValues] = useState<Record<string, string>>({})
   const [employYears, setEmployYears] = useState<string>('')
   const [employMonths, setEmployMonths] = useState<string>('')
@@ -141,15 +146,12 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
     if (current.type === 'employment') {
       const y = parseInt(employYears) || 0
       const m = parseInt(employMonths) || 0
-      return y >= 0 && m >= 0 && m <= 11
+      return (employYears !== '' || employMonths !== '') && y >= 0 && m >= 0 && m <= 11
     }
     if (current.type === 'currency') {
       const n = parseCurrency(displayValues[current.field] ?? '')
       if (current.field === 'monthly_debts') return !isNaN(n) && n >= 0
-      if (current.field === 'down_payment') {
-        // Must leave something to finance
-        return !isNaN(n) && n > 0 && (!values.home_price || n < values.home_price)
-      }
+      if (current.field === 'available_savings') return !isNaN(n) && n >= 0
       return !isNaN(n) && n > 0
     }
     const v = values[current.field as keyof MortgageInput]
@@ -184,8 +186,14 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
     } else if (current.type === 'currency') {
       const n = parseCurrency(displayValues[current.field] ?? '')
       const val = isNaN(n) ? 0 : n
-      setValues(v => ({ ...v, [current.field]: val }))
+      const selectedDown = current.field === 'available_savings'
+        ? Math.min(val, values.home_price ?? val)
+        : val
+      setValues(v => current.field === 'available_savings'
+        ? ({ ...v, available_savings: val, down_payment: selectedDown })
+        : ({ ...v, [current.field]: val }))
       onFieldCommit(current.field, val)
+      if (current.field === 'available_savings') onFieldCommit('down_payment', selectedDown)
     } else {
       onFieldCommit(current.field, values[current.field as keyof MortgageInput] as number)
     }
@@ -197,6 +205,9 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
       if (current.type === 'currency') {
         const n = parseCurrency(displayValues[current.field] ?? '')
         ;(finalValues as Record<string, number>)[current.field] = isNaN(n) ? 0 : n
+        if (current.field === 'available_savings') {
+          finalValues.down_payment = Math.min(isNaN(n) ? 0 : n, finalValues.home_price ?? (isNaN(n) ? 0 : n))
+        }
       }
       onSubmit(finalValues as MortgageInput)
     }
@@ -223,7 +234,8 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
   }
 
   const selectHomePrice = (price: number) => {
-    setValues(v => ({ ...v, home_price: price, state: 'UT' }))
+    const selectedCounty = subAnswers.county ?? DEFAULT_COUNTY
+    setValues(v => ({ ...v, home_price: price, state: 'UT', county: selectedCounty }))
     setDisplayValues(prev => ({ ...prev, home_price: fmt(price) }))
     onFieldCommit('home_price', price)
     setSubFlow(null)
@@ -232,14 +244,16 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
     setStep(s => s + 1)
   }
 
-  const selectDownPayment = (amount: number) => {
-    setValues(v => ({ ...v, down_payment: amount }))
-    setDisplayValues(prev => ({ ...prev, down_payment: fmt(amount) }))
+  const selectDownPayment = (amount: number, savings: number) => {
+    setValues(v => ({ ...v, available_savings: savings, down_payment: amount }))
+    setDisplayValues(prev => ({ ...prev, available_savings: fmt(savings) }))
+    onFieldCommit('available_savings', savings)
     onFieldCommit('down_payment', amount)
-    setSubFlow(null)
-    setSubStep(0)
-    setSubAnswers({})
-    setStep(s => s + 1)
+    onSubmit({
+      ...values,
+      available_savings: savings,
+      down_payment: amount,
+    } as MortgageInput)
   }
 
   const enterSubFlow = (type: SubFlowType) => {
@@ -270,6 +284,14 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
   // ── Sub-flow: home price ────────────────────────────────────────────────────
 
   const renderHomePriceSubFlow = () => {
+    const monthlyGross = (values.annual_income ?? 0) / 12
+    const planningPayment = monthlyGross > 0
+      ? Math.max(0, Math.round(Math.min(
+        monthlyGross * 0.28,
+        monthlyGross * 0.43 - (values.monthly_debts ?? 0),
+      )))
+      : 0
+
     if (subStep === 0) {
       return (
         <>
@@ -290,9 +312,9 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
             />
             <span className="input-suffix">/mo</span>
           </div>
-          {values.annual_income && (
+          {planningPayment > 0 && (
             <div className="sub-flow-hint">
-              28% rule suggests: <strong>${fmt(values.annual_income / 12 * 0.28)}/mo</strong>
+              Planning start after the debts entered: <strong>${fmt(planningPayment)}/mo</strong>. This is a budgeting guide, not an approval limit.
             </div>
           )}
         </>
@@ -317,8 +339,9 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
           </select>
           {subAnswers.county && (
             <div className="sub-flow-hint">
-              Effective tax: <strong>{(UTAH_COUNTIES[subAnswers.county].taxRate * 100).toFixed(2)}%/yr</strong>
+              County planning tax rate: <strong>{(UTAH_COUNTIES[subAnswers.county].taxRate * 100).toFixed(2)}%/yr</strong>
               &nbsp;·&nbsp; Avg. insurance: <strong>${fmt(UTAH_AVERAGES.insuranceAnnual)}/yr</strong>
+              <br />Actual tax-area rate, assessed value, and insurance quote will vary.
             </div>
           )}
         </>
@@ -374,59 +397,86 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
 
   const renderDownPaymentOptions = (savings: number) => {
     const homePrice = values.home_price ?? 350000
-    const loanType = values.loan_type ?? 'conventional'
-    const minDownPct = getMinDownPct(loanType)
+    const loanType = (values.loan_type ?? 'conventional') as LoanType
+    const creditScore = values.credit_score ?? 720
+    const minDownPct = minimumDownPercent(loanType, creditScore)
+    const rate = FALLBACK_RATES['30']
+    const feeOptions = {
+      vaUsage: values.va_usage,
+      vaFundingFeeExempt: values.va_funding_fee_exempt,
+    }
 
-    const buildScenario = (downAmt: number, label: string, badge: string, color: string, recommended?: boolean) => {
+    const buildScenario = (downAmt: number, label: string, badge: string, color: string) => {
       if (downAmt > homePrice) return null
-      const loan = homePrice - downAmt
-      const pi = calcMonthlyPI(loan, FALLBACK_RATES['30'], 30)
-      const ltv = (loan / homePrice) * 100
-      // Same credit-score-based PMI table the main calculator uses
-      const pmi = ltv > 80 ? Math.round(loan * pmiAnnualRate(values.credit_score ?? 720) / 12) : 0
-      return { downAmt, label, badge, color, recommended, pi: Math.round(pi), pmi, ltv, noPmi: ltv <= 80 }
+      const baseLoan = Math.max(0, homePrice - downAmt)
+      const downPct = homePrice > 0 ? downAmt / homePrice : 0
+      const adjustedLoan = adjustedLoanAmount(baseLoan, loanType, downPct, feeOptions)
+      const ltv = homePrice > 0 ? (baseLoan / homePrice) * 100 : 0
+      const pi = calcMonthlyPI(adjustedLoan, rate, 30)
+      const mi = firstYearMortgageInsurance(
+        baseLoan, adjustedLoan, ltv, loanType, 30, rate, creditScore,
+      )
+      return {
+        downAmt, label, badge, color, pi: Math.round(pi), mi: Math.round(mi),
+        shortfall: Math.max(0, downAmt - savings),
+        warnings: downPaymentWarnings(loanType, downPct, creditScore),
+      }
     }
 
     const rawScenarios = [
-      buildScenario(Math.round(homePrice * minDownPct), 'Minimum Required', minDownPct === 0 ? 'No down payment' : `${(minDownPct * 100).toFixed(1)}% down`, 'option-orange'),
+      buildScenario(Math.round(homePrice * minDownPct), 'Program Starting Point', minDownPct === 0 ? 'No down payment' : `${(minDownPct * 100).toFixed(1)}% down`, 'option-orange'),
       homePrice * 0.05 > homePrice * minDownPct + 1000 ? buildScenario(Math.round(homePrice * 0.05), '5% Down', '5% down', 'option-yellow') : null,
-      buildScenario(Math.round(homePrice * 0.10), '10% Down', '10% down', 'option-blue', true),
-      buildScenario(Math.round(homePrice * 0.20), '20% Down — No PMI', '20% down · no PMI', 'option-green'),
+      buildScenario(Math.round(homePrice * 0.10), '10% Down', '10% down', 'option-blue'),
+      buildScenario(Math.round(homePrice * 0.20), '20% Down', '20% down', 'option-green'),
     ]
 
-    // Add "what you saved" if it's a meaningfully different amount
-    const savedScenario = savings > 0 && !rawScenarios.some(s => s && Math.abs(s.downAmt - savings) < 1000)
+    // Preserve a distinct "what you saved" scenario, including a valid $0 case.
+    const savedScenario = !rawScenarios.some(s => s && Math.abs(s.downAmt - savings) < 1000)
       ? buildScenario(savings, 'What You Have Saved', `${((savings / homePrice) * 100).toFixed(1)}% down`, 'option-purple')
       : null
     if (savedScenario) rawScenarios.push(savedScenario)
 
-    const scenarios = rawScenarios.filter(Boolean) as NonNullable<ReturnType<typeof buildScenario>>[]
+    const scenarios = rawScenarios
+      .filter((scenario): scenario is NonNullable<typeof scenario> => scenario !== null)
+      .filter((scenario, index, all) => all.findIndex(other => other.downAmt === scenario.downAmt) === index)
+
+    const insuranceLabel = (mi: number) => {
+      if (loanType === 'va') return 'No monthly mortgage insurance'
+      if (loanType === 'conventional') return mi > 0 ? `~$${fmt(mi)}/mo estimated PMI` : 'No PMI'
+      if (loanType === 'fha') return `~$${fmt(mi)}/mo FHA MIP`
+      return `~$${fmt(mi)}/mo USDA annual fee`
+    }
 
     return (
       <>
         <div className="step-hint" style={{ marginTop: '1.25rem' }}>
-          For a <strong>${fmt(homePrice)}</strong> home at {FALLBACK_RATES['30']}% / 30 years. P&amp;I + PMI only — taxes &amp; insurance not included.
+          For a <strong>${fmt(homePrice)}</strong> home using a {rate}% planning rate and the selected {loanType.toUpperCase()} program. Taxes and homeowner's insurance are added in the full calculator.
         </div>
         <div className="down-scenario-cards">
           {scenarios.map(s => (
             <button
-              key={s.label}
-              className={`down-scenario-card ${s.color}${s.recommended ? ' recommended' : ''}`}
-              onClick={() => selectDownPayment(s.downAmt)}
+              key={`${s.label}-${s.downAmt}`}
+              className={`down-scenario-card ${s.color}`}
+              onClick={() => selectDownPayment(s.downAmt, savings)}
             >
-              {s.recommended && <div className="price-option-rec-banner">★ Common Choice</div>}
               <div className="down-scenario-top">
                 <div className="down-scenario-amount">${fmt(s.downAmt)}</div>
-                <div className={`down-scenario-pmi-badge${s.noPmi ? ' no-pmi' : ''}`}>
-                  {s.noPmi ? '✓ No PMI' : `+$${fmt(s.pmi)}/mo PMI`}
+                <div className={`down-scenario-pmi-badge${s.mi === 0 ? ' no-pmi' : ''}`}>
+                  {insuranceLabel(s.mi)}
                 </div>
               </div>
               <div className="down-scenario-label">{s.label}</div>
               <div className="down-scenario-payment">
-                ~${fmt(s.pi + s.pmi)}/mo <span className="down-scenario-payment-note">P&amp;I{s.pmi > 0 ? ' + PMI' : ''}</span>
+                ~${fmt(s.pi + s.mi)}/mo <span className="down-scenario-payment-note">P&amp;I{s.mi > 0 ? ' + mortgage insurance/fee' : ''}</span>
               </div>
               <div className="down-scenario-badge">{s.badge}</div>
-              <div className="price-option-cta">Select →</div>
+              <div className="down-scenario-payment-note">
+                {s.shortfall > 0 ? `$${fmt(s.shortfall)} more than you currently have saved` : 'Within your saved amount'}
+              </div>
+              {s.warnings.map(warning => (
+                <div key={warning} className="down-scenario-warning">{warning}</div>
+              ))}
+              <div className="price-option-cta">Explore this option →</div>
             </button>
           ))}
         </div>
@@ -442,19 +492,44 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
   const renderMainInput = () => {
     if (current.type === 'select') {
       return (
-        <div className="loan-options">
-          {LOAN_OPTIONS.map(opt => (
-            <button
-              key={opt.value}
-              type="button"
-              className={`loan-option${values.loan_type === opt.value ? ' selected' : ''}`}
-              onClick={() => setValues(v => ({ ...v, loan_type: opt.value as MortgageInput['loan_type'] }))}
-            >
-              <div className="loan-option-name">{opt.name}</div>
-              <div className="loan-option-desc">{opt.desc}</div>
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="loan-options">
+            {LOAN_OPTIONS.map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                className={`loan-option${values.loan_type === opt.value ? ' selected' : ''}`}
+                onClick={() => setValues(v => ({ ...v, loan_type: opt.value as MortgageInput['loan_type'] }))}
+              >
+                <div className="loan-option-name">{opt.name}</div>
+                <div className="loan-option-desc">{opt.desc}</div>
+              </button>
+            ))}
+          </div>
+          {values.loan_type === 'va' && (
+            <div className="conditional-loan-details">
+              <div className="step-hint">These details change the VA funding fee. Your Certificate of Eligibility determines the final status.</div>
+              <div className="conditional-loan-row">
+                <span className="conditional-loan-label">VA loan usage</span>
+                <div className="conditional-loan-actions">
+                  <button type="button" className={`loan-detail-btn${values.va_usage !== 'subsequent' ? ' selected' : ''}`}
+                    onClick={() => setValues(v => ({ ...v, va_usage: 'first' }))}>First use</button>
+                  <button type="button" className={`loan-detail-btn${values.va_usage === 'subsequent' ? ' selected' : ''}`}
+                    onClick={() => setValues(v => ({ ...v, va_usage: 'subsequent' }))}>Subsequent use</button>
+                </div>
+              </div>
+              <div className="conditional-loan-row">
+                <span className="conditional-loan-label">Funding-fee status</span>
+                <div className="conditional-loan-actions">
+                  <button type="button" className={`loan-detail-btn${!values.va_funding_fee_exempt ? ' selected' : ''}`}
+                    onClick={() => setValues(v => ({ ...v, va_funding_fee_exempt: false }))}>Not exempt / unsure</button>
+                  <button type="button" className={`loan-detail-btn${values.va_funding_fee_exempt ? ' selected' : ''}`}
+                    onClick={() => setValues(v => ({ ...v, va_funding_fee_exempt: true }))}>Exempt</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </>
       )
     }
 
@@ -503,7 +578,7 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
 
     if (current.type === 'currency') {
       const enteredAmount = parseCurrency(displayValues[current.field] ?? '')
-      const downTooBig = current.field === 'down_payment'
+      const savingsCoverPrice = current.field === 'available_savings'
         && !!values.home_price
         && enteredAmount >= values.home_price
       return (
@@ -520,12 +595,15 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
               onKeyDown={e => { if (e.key === 'Enter') commitAndAdvance() }}
             />
           </div>
-          {downTooBig && (
-            <div className="step-hint" style={{ color: 'var(--danger)', marginTop: '0.5rem' }}>
-              ⚠️ Your down payment needs to be less than the ${fmt(values.home_price!)} home price
+          {savingsCoverPrice && (
+            <div className="step-hint" style={{ marginTop: '0.5rem' }}>
+              Your savings cover the full purchase price. You can still choose a smaller down payment to compare mortgage options.
             </div>
           )}
-          {current.field === 'down_payment' && !isNaN(enteredAmount) && enteredAmount > 0 && !downTooBig && (
+          {current.field === 'available_savings'
+            && (displayValues[current.field] ?? '') !== ''
+            && !isNaN(enteredAmount)
+            && enteredAmount >= 0 && (
             renderDownPaymentOptions(enteredAmount)
           )}
         </>

@@ -1,18 +1,15 @@
 import { useState, useEffect } from 'react'
 import MortgageForm from './components/MortgageForm'
 import ValueTracker, { TrackerEntry } from './components/ValueTracker'
-import LoadingScreen from './components/LoadingScreen'
 import Dashboard from './components/Dashboard'
-import ProfileWidget from './components/ProfileWidget'
 import BrandingSettings from './components/BrandingSettings'
 import BrandMark from './components/BrandMark'
 import LoanOfficerCard from './components/LoanOfficerCard'
-import { MortgageInput, AssessmentResponse } from './types'
-import { useProfile } from './hooks/useProfile'
+import { MortgageInput } from './types'
 import { useBranding } from './hooks/useBranding'
 import { APP_VERSION } from './version'
 
-type Stage = 'form' | 'loading' | 'error' | 'dashboard'
+type Stage = 'form' | 'dashboard'
 
 // Sample data for the ?preview=calc dev shortcut
 const PREVIEW_INPUT: MortgageInput = {
@@ -28,11 +25,8 @@ const PREVIEW_INPUT: MortgageInput = {
 
 export default function App() {
   const [stage, setStage] = useState<Stage>('form')
-  const [result, setResult] = useState<AssessmentResponse | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [trackerEntries, setTrackerEntries] = useState<TrackerEntry[]>([])
   const [lastProfile, setLastProfile] = useState<MortgageInput | null>(null)
-  const { profile, clear: clearProfile } = useProfile()
   const { branding, save: saveBranding, reset: resetBranding } = useBranding()
   const [showBranding, setShowBranding] = useState(false)
 
@@ -43,36 +37,13 @@ export default function App() {
     })
   }
 
-  const handleSubmit = async (data: MortgageInput) => {
+  const handleSubmit = (data: MortgageInput) => {
     setLastProfile(data)
-    setStage('loading')
-    setError(null)
-
-    try {
-      const res = await fetch('/api/assess', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data),
-      })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.detail || 'Something went wrong')
-      }
-
-      const assessment: AssessmentResponse = await res.json()
-      setResult(assessment)
-      setStage('dashboard')
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error')
-      setStage('error')
-    }
+    setStage('dashboard')
   }
 
   const restart = () => {
     setStage('form')
-    setResult(null)
-    setError(null)
     setTrackerEntries([])
     setLastProfile(null)
   }
@@ -81,28 +52,13 @@ export default function App() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     if (params.get('preview') === 'calc') {
-      setResult({
-        qualifies: true,
-        summary: 'Sample preview data — **DTI: 39.3%**, credit **720**.',
-        details: ['Credit score: 720 ✓', 'DTI ratio: 39.3% ✓', 'Employment: 3.5 years ✓'],
-        action_steps: [
-          'Know your numbers — credit score 720, DTI 39.3%, $42,000 saved',
-          'Gather your documents: 2 years of tax returns, recent pay stubs, and bank statements',
-          'Get pre-approved with 2–3 lenders and compare offers',
-        ],
-        estimated_monthly_payment: 2379,
-        dti_ratio: 39.3,
-        ltv_ratio: 90,
-        demo_mode: true,
-      })
       setLastProfile(PREVIEW_INPUT)
       setStage('dashboard')
     }
   }, [])
 
-  // Header shown on form and error — NOT during loading (LoadingScreen has its own branding)
-  const showHeader = ['form', 'error'].includes(stage)
-  const inNarrowFlow = ['form', 'loading', 'error'].includes(stage)
+  const showHeader = stage === 'form'
+  const inNarrowFlow = stage === 'form'
   const showTracker = stage === 'form'
 
   return (
@@ -118,17 +74,6 @@ export default function App() {
             <button className="brand-customize-btn" onClick={() => setShowBranding(true)}>
               ⚙️ Customize
             </button>
-            {profile && (
-              <ProfileWidget
-                profile={profile}
-                onResume={() => {
-                  setResult(profile.assessment)
-                  setLastProfile(profile.mortgageInput)
-                  setStage('dashboard')
-                }}
-                onClear={() => { clearProfile(); setStage('form') }}
-              />
-            )}
           </div>
         </nav>
       )}
@@ -165,24 +110,10 @@ export default function App() {
             />
           )}
 
-          {stage === 'loading' && <LoadingScreen branding={branding} />}
-
-          {stage === 'error' && (
-            <div className="card">
-              <div className="error-card">
-                <div className="error-icon">⚠️</div>
-                <h2>Something went wrong</h2>
-                <p>{error}</p>
-                <button className="btn-next" style={{ width: '100%' }} onClick={restart}>
-                  Try Again
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       )}
 
-      {stage === 'dashboard' && result && lastProfile && (
+      {stage === 'dashboard' && lastProfile && (
         <Dashboard
           lastProfile={lastProfile}
           onBack={restart}

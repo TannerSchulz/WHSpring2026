@@ -2,11 +2,15 @@ export interface MortgageInput {
   annual_income: number
   monthly_debts: number
   credit_score: number
+  available_savings?: number
   down_payment: number
   home_price: number
   employment_years: number
   loan_type: 'conventional' | 'fha' | 'va' | 'usda'
   state?: string
+  county?: string
+  va_usage?: 'first' | 'subsequent'
+  va_funding_fee_exempt?: boolean
 }
 
 export interface AssessmentResponse {
