@@ -5676,10 +5676,30 @@ body::after {
   color: #4b5563;
 }
 
+.disclaimer-title {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: #4b5563;
+  margin-bottom: 0.5rem;
+}
+
+.disclaimer-footer p {
+  margin: 0 0 0.55rem;
+}
+
+.disclaimer-footer p:last-child {
+  margin-bottom: 0;
+}
+
 @media (max-width: 480px) {
   .disclaimer-footer {
     margin-top: 2rem;
     padding: 0.9rem 1rem;
+  }
+  .disclaimer-title {
+    font-size: 0.74rem;
   }
 }
 

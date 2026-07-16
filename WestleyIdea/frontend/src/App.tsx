@@ -129,10 +129,26 @@ export default function App() {
       )}
 
       <footer className="disclaimer-footer">
-        <strong>Estimates Only — Not Financial Advice.</strong> This tool is provided by {branding.companyName} for educational purposes only. All calculations and results are estimates and do not constitute a loan offer, pre-approval, or guarantee of any kind. Actual loan eligibility, rates, and terms vary and are subject to underwriting. Always consult a licensed mortgage professional before making any financial decisions.
-        {branding.officerName && branding.nmlsId && <> {branding.officerName}, NMLS #{branding.nmlsId}.</>}
-        {branding.phone && <> Questions? Call {branding.phone}.</>}
-        {' '}This application is currently offered for testing and evaluation purposes only. It is not operated by a licensed mortgage broker, lender, or financial advisor, and nothing presented here should be relied upon as professional financial guidance.
+        <div className="disclaimer-title">Estimates Only — Not Financial, Legal, or Professional Advice</div>
+        <p>
+          This application is a demonstration tool offered strictly for testing and evaluation
+          purposes. It is not operated by a licensed mortgage broker, lender, attorney, financial
+          advisor, tax professional, or any other licensed professional, and nothing presented here
+          constitutes mortgage, legal, tax, investment, or financial advice of any kind.
+        </p>
+        <p>
+          All calculations, rates, and results are unverified estimates for illustration only. They
+          may be inaccurate, incomplete, or out of date, must not be relied upon for any real
+          financial decision, and do not constitute a loan offer, quote, pre-qualification,
+          pre-approval, or commitment to lend. Actual eligibility, rates, fees, and terms are
+          determined solely by licensed lenders through their own underwriting.
+        </p>
+        <p>
+          Always consult a licensed mortgage professional, attorney, or financial advisor before
+          making any decision related to a home purchase or loan. By using this tool, you
+          acknowledge that it is provided "as is" for evaluation only and that no liability is
+          accepted for decisions made in reliance on it.
+        </p>
       </footer>
     </div>
   )
