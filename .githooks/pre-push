@@ -1,0 +1,11 @@
+#!/bin/sh
+# Blocks the push if the mortgage-calculator validation fails.
+# Enabled via: git config core.hooksPath .githooks
+# Runs the frontend type-check, production build, and math test suite.
+set -e
+
+cd "$(git rev-parse --show-toplevel)/WestleyIdea/frontend"
+
+echo "── pre-push: validating mortgage calculator (npm run validate) ──"
+npm run validate
+echo "── pre-push: validation passed ──"

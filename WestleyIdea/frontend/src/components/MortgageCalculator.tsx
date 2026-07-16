@@ -6,13 +6,14 @@ import {
 import { MortgageInput } from '../types'
 import {
   adjustedLoanAmount,
+  affordableHomePrice,
   calcPI,
+  computePaymentScenario,
   downPaymentWarnings,
   firstYearMortgageInsurance,
-  maxLoanFromPI,
   minimumDownPercent,
   monthsUntilBalanceRatio,
-  totalScheduledMortgageInsurance,
+  payoffWithExtra,
   upfrontFeeRate,
   type LoanType,
   type VaUsage,
@@ -23,28 +24,6 @@ interface Props {
 }
 
 type Mode = 'payment' | 'afford'
-
-// ── Math helpers ──────────────────────────────────────────────────────────────
-
-// Amortize with an extra monthly payment — months to payoff and total interest paid
-function payoffWithExtra(
-  loan: number, annualRatePct: number, termYears: number, extraMonthly: number,
-): { months: number; interest: number } {
-  if (loan <= 0 || annualRatePct <= 0) return { months: 0, interest: 0 }
-  const r = annualRatePct / 100 / 12
-  const pi = calcPI(loan, annualRatePct, termYears)
-  let bal = loan
-  let months = 0
-  let interest = 0
-  const maxMonths = termYears * 12
-  while (bal > 0.01 && months < maxMonths) {
-    const monthInterest = bal * r
-    interest += monthInterest
-    bal -= Math.min(pi + extraMonthly - monthInterest, bal)
-    months++
-  }
-  return { months, interest }
-}
 
 // Closing cost estimate — Utah-typical figures. Utah has no real estate
 // transfer tax, and title companies (not attorneys) handle closings.
@@ -326,46 +305,32 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
     const r = rate.trim() === '' ? defaultRate.rate : Number(rate)
     const t = parseInt(term)
     if (!Number.isFinite(hp) || hp <= 0) { setValidationError('Enter a valid home price greater than $0.'); return }
+    if (hp > 50_000_000) { setValidationError('Enter a home price of $50 million or less.'); return }
     if (down < 0) { setValidationError('Down payment cannot be negative.'); return }
     if (down > hp) { setValidationError('Down payment cannot exceed the home price.'); return }
     if (!Number.isFinite(r) || r <= 0 || r > 25 || t <= 0) { setValidationError('Enter an interest rate greater than 0% and no more than 25%.'); return }
     setValidationError(null)
 
-    const baseLoan = Math.max(0, hp - down)
-    const downPct = down / hp
     const feeOptions = { vaUsage, vaFundingFeeExempt }
-    const adjLoan = adjustedLoanAmount(baseLoan, loanType, downPct, feeOptions)
-    const ltv = (baseLoan / hp) * 100
-    const pi = calcPI(adjLoan, r, t)
     const pmiOverride = monthlyPmiOverride.trim() === '' ? null : parseCurrency(monthlyPmiOverride)
-    const mi = firstYearMortgageInsurance(
-      baseLoan, adjLoan, ltv, loanType, t, r, creditScore, pmiOverride,
-    )
-    const mTax = parseCurrency(annualTax) / 12
-    const mIns = parseCurrency(annualInsurance) / 12
-    const mHoa = hasHoa ? parseCurrency(monthlyHoa) : 0
-    const mUtils = parseCurrency(utilities) || 0
-    const mMaint = includeMaintenance ? hp * 0.01 / 12 : 0
-    const total = pi + mi + mTax + mIns + mHoa + mUtils + mMaint
-
-    const n = t * 12
-    const totalInterest = pi * n - adjLoan
-
-    const pmiRequestMonth = mi > 0 && loanType === 'conventional'
-      ? monthsUntilBalanceRatio(baseLoan, hp, r, t, 0.80) : null
-    const pmiAutomaticMonth = mi > 0 && loanType === 'conventional'
-      ? monthsUntilBalanceRatio(baseLoan, hp, r, t, 0.78) : null
-
-    // MI is only paid until it drops off — don't count it for the full term
-    const totalMi = totalScheduledMortgageInsurance(
-      baseLoan, adjLoan, ltv, loanType, t, r, creditScore, downPct,
-      pmiAutomaticMonth, pmiOverride,
-    )
-    const income = parseCurrency(annualIncome)
-    const debts = parseCurrency(monthlyDebts)
-    const qualifyingHousing = pi + mi + mTax + mIns + mHoa
-    const frontEndDTI = income > 0 ? (qualifyingHousing / (income / 12)) * 100 : null
-    const backEndDTI = income > 0 ? ((qualifyingHousing + debts) / (income / 12)) * 100 : null
+    const scenario = computePaymentScenario({
+      homePrice: hp,
+      downDollars: down,
+      loanType,
+      termYears: t,
+      ratePct: r,
+      annualTax: parseCurrency(annualTax),
+      annualInsurance: parseCurrency(annualInsurance),
+      monthlyHoa: hasHoa ? parseCurrency(monthlyHoa) : 0,
+      monthlyUtilities: parseCurrency(utilities) || 0,
+      monthlyMaintenance: includeMaintenance ? hp * 0.01 / 12 : 0,
+      annualIncome: parseCurrency(annualIncome),
+      monthlyDebts: parseCurrency(monthlyDebts),
+      creditScore,
+      pmiMonthlyOverride: pmiOverride,
+      feeOptions,
+    })
+    const { baseLoan, downPct } = scenario
 
     const warnings = downPaymentWarnings(loanType, downPct, creditScore)
     if (prefill?.available_savings != null && down > prefill.available_savings) {
@@ -380,15 +345,20 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
     if (baseLoan === 0) warnings.push('This is a cash-purchase scenario, so no mortgage principal or interest is included.')
 
     const closing = estimateClosingCosts(
-      hp, baseLoan, loanType, downPct, r, mTax * 12, mIns * 12,
+      hp, baseLoan, loanType, downPct, r, scenario.monthlyTax * 12, scenario.monthlyInsurance * 12,
       { vaUsage, vaFundingFeeExempt },
     )
 
-    setResult({ loanBase: baseLoan, loanAdjusted: adjLoan, ltv, pi, mortgageInsurance: mi,
-      monthlyTax: mTax, monthlyInsurance: mIns, monthlyHoa: mHoa, utilities: mUtils,
-      maintenance: mMaint, total, totalInterest, closingCosts: closing,
-      pmiRequestMonth, pmiAutomaticMonth, frontEndDTI, backEndDTI, down,
-      totalScheduledMortgageInsurance: totalMi, warnings, rateUsed: r, termYears: t })
+    setResult({ loanBase: baseLoan, loanAdjusted: scenario.adjustedLoan, ltv: scenario.ltv,
+      pi: scenario.pi, mortgageInsurance: scenario.mortgageInsurance,
+      monthlyTax: scenario.monthlyTax, monthlyInsurance: scenario.monthlyInsurance,
+      monthlyHoa: scenario.monthlyHoa, utilities: scenario.monthlyUtilities,
+      maintenance: scenario.monthlyMaintenance, total: scenario.total,
+      totalInterest: scenario.totalInterest, closingCosts: closing,
+      pmiRequestMonth: scenario.pmiRequestMonth, pmiAutomaticMonth: scenario.pmiAutomaticMonth,
+      frontEndDTI: scenario.frontEndDTI, backEndDTI: scenario.backEndDTI, down,
+      totalScheduledMortgageInsurance: scenario.totalScheduledMortgageInsurance,
+      warnings, rateUsed: r, termYears: t })
   }
 
   const downPct = (() => {
@@ -515,7 +485,7 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
             <CurrencyInput value={annualIncome} onChange={setAnnualIncome} placeholder="80,000" suffix="/yr" />
           </Field>
 
-          <Field label="Existing Monthly Debts" hint="Car, student, card, support, and other recurring obligations — not the new housing payment.">
+          <Field label="Existing Monthly Debts" hint="Car, student, and personal loans, minimum credit-card payments, and child support or alimony — not rent, utilities, or this new housing payment.">
             <CurrencyInput value={monthlyDebts} onChange={setMonthlyDebts} placeholder="500" suffix="/mo" />
           </Field>
         </div>
@@ -881,32 +851,26 @@ function AffordCalc({ prefill, liveRates, ratesLoading }: {
       setValidationError('Enter a monthly housing budget greater than $0.')
       return
     }
+    if (target > 100_000) {
+      setValidationError('Enter a monthly housing budget of $100,000 or less.')
+      return
+    }
     setValidationError(null)
 
     const mHoa = parseCurrency(monthlyHoa)
     const taxRateValue = UTAH_COUNTIES[county].taxRate
-    const mIns = UTAH_AVERAGES.insuranceAnnual / 12
     const mUtils = includeUtils ? UTAH_AVERAGES.utilitiesMonthly : 0
     const t = parseInt(term)
 
     const grid = downPaymentPercents.map(downPct => {
-      // P&I is paid on the ADJUSTED loan (financed FHA MIP / VA / USDA fees),
-      // so back the fee multiplier out when converting max loan → home price
       const feeMult = adjustedLoanAmount(1, loanType, downPct / 100, feeOptions)
       return GRID_RATES.map(rate => {
-        let homePrice = 400000
-        for (let i = 0; i < 12; i++) {
-          const mTax = homePrice * taxRateValue / 12
-          const loan = homePrice * (1 - downPct / 100)
-          const adjLoan = loan * feeMult
-          const mi = firstYearMortgageInsurance(
-            loan, adjLoan, (1 - downPct / 100) * 100, loanType, t, rate, creditScore,
-          )
-          const availablePI = target - mTax - mIns - mHoa - mi - mUtils
-          if (availablePI <= 0) { homePrice = 0; break }
-          const maxAdjLoan = maxLoanFromPI(availablePI, rate, t)
-          homePrice = (maxAdjLoan / feeMult) / (1 - downPct / 100)
+        const costOptions = {
+          loanType, ratePct: rate, termYears: t, taxRate: taxRateValue,
+          annualInsurance: UTAH_AVERAGES.insuranceAnnual, monthlyHoa: mHoa,
+          monthlyUtilities: mUtils, creditScore, feeOptions,
         }
+        const homePrice = affordableHomePrice(target, downPct / 100, costOptions)
         const loan = homePrice * (1 - downPct / 100)
         const ltv = (1 - downPct / 100) * 100
         const mi = firstYearMortgageInsurance(
@@ -992,6 +956,7 @@ function AffordCalc({ prefill, liveRates, ratesLoading }: {
 
       {result && (
         <div className="calc-afford-result">
+          <div className="afford-swipe-hint">Swipe the table sideways to compare all rates →</div>
           <div className="afford-grid-wrapper">
             <table className="afford-grid">
               <thead>

@@ -223,6 +223,179 @@ export function totalScheduledMortgageInsurance(
   return total
 }
 
+// Amortize with an extra monthly payment — months to payoff and total interest paid
+export function payoffWithExtra(
+  loan: number,
+  annualRatePct: number,
+  termYears: number,
+  extraMonthly: number,
+): { months: number; interest: number } {
+  if (loan <= 0 || termYears <= 0 || annualRatePct < 0) return { months: 0, interest: 0 }
+  const r = annualRatePct / 100 / 12
+  const pi = calcPI(loan, annualRatePct, termYears)
+  let bal = loan
+  let months = 0
+  let interest = 0
+  const maxMonths = termYears * 12
+  while (bal > 0.01 && months < maxMonths) {
+    const monthInterest = bal * r
+    interest += monthInterest
+    bal -= Math.min(pi + extraMonthly - monthInterest, bal)
+    months++
+  }
+  return { months, interest }
+}
+
+export interface MonthlyCostOptions {
+  loanType: LoanType
+  ratePct: number
+  termYears: number
+  taxRate: number          // annual effective property-tax rate on market value
+  annualInsurance: number
+  monthlyHoa?: number
+  monthlyUtilities?: number
+  creditScore?: number
+  feeOptions?: LoanFeeOptions
+}
+
+// Monthly P&I + first-year MI + taxes + insurance (+ HOA/utilities) for one price/down combo.
+export function estimateMonthlyCost(
+  homePrice: number,
+  downDollars: number,
+  opts: MonthlyCostOptions,
+): number {
+  if (homePrice <= 0) return 0
+  const baseLoan = Math.max(0, homePrice - downDollars)
+  const downPct = downDollars / homePrice
+  const adjustedLoan = adjustedLoanAmount(baseLoan, opts.loanType, downPct, opts.feeOptions ?? {})
+  const ltv = (baseLoan / homePrice) * 100
+  const pi = calcPI(adjustedLoan, opts.ratePct, opts.termYears)
+  const mi = firstYearMortgageInsurance(
+    baseLoan, adjustedLoan, ltv, opts.loanType, opts.termYears, opts.ratePct,
+    opts.creditScore ?? 720,
+  )
+  return pi + mi + homePrice * opts.taxRate / 12 + opts.annualInsurance / 12
+    + (opts.monthlyHoa ?? 0) + (opts.monthlyUtilities ?? 0)
+}
+
+// Fixed-point solve for the home price whose total monthly cost matches the budget.
+// P&I is paid on the ADJUSTED loan (financed FHA MIP / VA / USDA fees), so the fee
+// multiplier is backed out when converting max loan → home price.
+export function affordableHomePrice(
+  targetMonthly: number,
+  downPct: number, // fraction, 0–1
+  opts: MonthlyCostOptions,
+): number {
+  if (targetMonthly <= 0 || downPct < 0 || downPct >= 1) return 0
+  const feeMult = adjustedLoanAmount(1, opts.loanType, downPct, opts.feeOptions ?? {})
+  const fixedCosts = opts.annualInsurance / 12 + (opts.monthlyHoa ?? 0) + (opts.monthlyUtilities ?? 0)
+  let homePrice = 400_000
+  for (let i = 0; i < 12; i++) {
+    const loan = homePrice * (1 - downPct)
+    const mi = firstYearMortgageInsurance(
+      loan, loan * feeMult, (1 - downPct) * 100, opts.loanType, opts.termYears,
+      opts.ratePct, opts.creditScore ?? 720,
+    )
+    const availablePI = targetMonthly - homePrice * opts.taxRate / 12 - fixedCosts - mi
+    if (availablePI <= 0) return 0
+    const maxAdjustedLoan = maxLoanFromPI(availablePI, opts.ratePct, opts.termYears)
+    homePrice = (maxAdjustedLoan / feeMult) / (1 - downPct)
+  }
+  return Math.max(0, homePrice)
+}
+
+export interface PaymentScenarioInput {
+  homePrice: number
+  downDollars: number
+  loanType: LoanType
+  termYears: number
+  ratePct: number
+  annualTax: number
+  annualInsurance: number
+  monthlyHoa?: number
+  monthlyUtilities?: number
+  monthlyMaintenance?: number
+  annualIncome?: number
+  monthlyDebts?: number
+  creditScore?: number
+  pmiMonthlyOverride?: number | null
+  feeOptions?: LoanFeeOptions
+}
+
+export interface PaymentScenario {
+  baseLoan: number
+  adjustedLoan: number
+  ltv: number
+  downPct: number
+  pi: number
+  mortgageInsurance: number
+  monthlyTax: number
+  monthlyInsurance: number
+  monthlyHoa: number
+  monthlyUtilities: number
+  monthlyMaintenance: number
+  total: number
+  totalInterest: number
+  pmiRequestMonth: number | null
+  pmiAutomaticMonth: number | null
+  totalScheduledMortgageInsurance: number
+  frontEndDTI: number | null
+  backEndDTI: number | null
+}
+
+// The full monthly-ownership-cost scenario shown by the payment calculator.
+// DTI ratios use the qualifying housing payment (PITI + MI + HOA) — utilities
+// and maintenance are ownership costs, not part of lender ratios.
+export function computePaymentScenario(input: PaymentScenarioInput): PaymentScenario {
+  const {
+    homePrice, downDollars, loanType, termYears, ratePct,
+    annualTax, annualInsurance,
+  } = input
+  const feeOptions = input.feeOptions ?? {}
+  const creditScore = input.creditScore ?? 720
+  const baseLoan = Math.max(0, homePrice - downDollars)
+  const downPct = homePrice > 0 ? downDollars / homePrice : 0
+  const adjustedLoan = adjustedLoanAmount(baseLoan, loanType, downPct, feeOptions)
+  const ltv = homePrice > 0 ? (baseLoan / homePrice) * 100 : 0
+  const pi = calcPI(adjustedLoan, ratePct, termYears)
+  const mortgageInsurance = firstYearMortgageInsurance(
+    baseLoan, adjustedLoan, ltv, loanType, termYears, ratePct, creditScore,
+    input.pmiMonthlyOverride,
+  )
+  const monthlyTax = annualTax / 12
+  const monthlyInsurance = annualInsurance / 12
+  const monthlyHoa = input.monthlyHoa ?? 0
+  const monthlyUtilities = input.monthlyUtilities ?? 0
+  const monthlyMaintenance = input.monthlyMaintenance ?? 0
+  const total = pi + mortgageInsurance + monthlyTax + monthlyInsurance
+    + monthlyHoa + monthlyUtilities + monthlyMaintenance
+  const totalInterest = pi * termYears * 12 - adjustedLoan
+
+  const conventionalPmi = mortgageInsurance > 0 && loanType === 'conventional'
+  const pmiRequestMonth = conventionalPmi
+    ? monthsUntilBalanceRatio(baseLoan, homePrice, ratePct, termYears, 0.80) : null
+  const pmiAutomaticMonth = conventionalPmi
+    ? monthsUntilBalanceRatio(baseLoan, homePrice, ratePct, termYears, 0.78) : null
+
+  const totalMi = totalScheduledMortgageInsurance(
+    baseLoan, adjustedLoan, ltv, loanType, termYears, ratePct, creditScore, downPct,
+    pmiAutomaticMonth, input.pmiMonthlyOverride,
+  )
+
+  const income = input.annualIncome ?? 0
+  const debts = input.monthlyDebts ?? 0
+  const qualifyingHousing = pi + mortgageInsurance + monthlyTax + monthlyInsurance + monthlyHoa
+  const frontEndDTI = income > 0 ? (qualifyingHousing / (income / 12)) * 100 : null
+  const backEndDTI = income > 0 ? ((qualifyingHousing + debts) / (income / 12)) * 100 : null
+
+  return {
+    baseLoan, adjustedLoan, ltv, downPct, pi, mortgageInsurance,
+    monthlyTax, monthlyInsurance, monthlyHoa, monthlyUtilities, monthlyMaintenance,
+    total, totalInterest, pmiRequestMonth, pmiAutomaticMonth,
+    totalScheduledMortgageInsurance: totalMi, frontEndDTI, backEndDTI,
+  }
+}
+
 export function downPaymentWarnings(
   loanType: LoanType,
   downPct: number,

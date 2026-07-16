@@ -5663,3 +5663,121 @@ body::after {
 .disclaimer-footer strong {
   color: #4b5563;
 }
+
+/* ── Debts guide (what counts toward DTI) ───────────────────────────────────── */
+.debts-guide {
+  margin-top: 1.25rem;
+  border: 1px solid var(--gray-200);
+  border-radius: var(--radius-sm);
+  background: var(--gray-50);
+  padding: 1rem 1.1rem;
+  text-align: left;
+}
+
+.debts-guide-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--gray-500);
+  margin-bottom: 0.75rem;
+}
+
+.debts-guide-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.1rem;
+}
+
+.debts-guide-head {
+  font-size: 0.8rem;
+  font-weight: 800;
+  margin-bottom: 0.45rem;
+}
+.debts-guide-head.include { color: #059669; }
+.debts-guide-head.exclude { color: #b91c1c; }
+
+.debts-guide-col ul {
+  margin: 0;
+  padding-left: 1.05rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.debts-guide-col li {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--gray-700);
+}
+
+.debts-guide-note { color: var(--gray-400); }
+
+.debts-guide-footer {
+  margin-top: 0.9rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed var(--gray-300);
+  font-size: 0.75rem;
+  color: var(--gray-400);
+  line-height: 1.5;
+}
+
+@media (max-width: 560px) {
+  .debts-guide { padding: 0.9rem 0.95rem; }
+  .debts-guide-cols { grid-template-columns: 1fr; }
+}
+
+/* ── Mobile refinements (≈360–430px phones) ─────────────────────────────────── */
+@media (max-width: 720px) {
+  /* iOS Safari zooms the whole page when a focused input is below 16px */
+  .calc-input,
+  .calc-select,
+  .sub-state-select,
+  .setup-select { font-size: 16px; }
+
+  /* Comfortable touch targets (Apple HIG / Material ≈44px) */
+  .calc-seg { padding: 0.7rem 0.15rem; font-size: 0.84rem; }
+  .calc-toggle { padding: 0.4rem 0.8rem; font-size: 0.84rem; }
+  .calc-toggle-pill { padding: 0.45rem 0.9rem; font-size: 0.78rem; }
+  .calc-expand-header { padding: 1rem 1.1rem; }
+
+  .calc-page { padding: 1rem 0.85rem 2.25rem; }
+  .calc-page-header { margin-bottom: 1rem; }
+  .rates-card { margin-bottom: 1.1rem; }
+  .calc-form-grid { gap: 1.1rem; }
+}
+
+@media (max-width: 480px) {
+  .app { padding: 4.75rem 0.85rem 1.5rem; }
+  .app-header { margin-bottom: 1.5rem; }
+  .app-header h1 { font-size: 1.7rem; }
+  .app-header p { font-size: 0.95rem; margin-top: 0.6rem; }
+
+  .step { padding: 1.5rem 1.2rem 1.75rem; }
+  .step-nav { margin-top: 1.5rem; }
+  .step-nav .btn-back { padding: 0.85rem 1rem; }
+
+  .calc-total-payment { font-size: 2.2rem; }
+  .calc-result-header { padding: 1.5rem 1rem; }
+  .calc-breakdown { margin: 1rem 1rem 0; }
+  .calc-warning-list { padding: 1rem 1rem 0; }
+  .extra-payment-result { grid-template-columns: 1fr; gap: 0.6rem; }
+  .refi-grid { grid-template-columns: 1fr 1fr; }
+
+  .dashboard-topbar { padding: 0 0.85rem; }
+  .dashboard-brand { min-width: 0; }
+  .disclaimer-footer { padding: 0.75rem 1rem; }
+}
+
+/* Afford-grid swipe cue — only meaningful where the table overflows */
+.afford-swipe-hint { display: none; }
+
+@media (max-width: 720px) {
+  .afford-swipe-hint {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--gray-500);
+    margin-bottom: 0.5rem;
+  }
+}

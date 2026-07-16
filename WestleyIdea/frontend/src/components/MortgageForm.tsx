@@ -3,7 +3,10 @@ import { MortgageInput } from '../types'
 import { UTAH_COUNTIES, DEFAULT_COUNTY, UTAH_AVERAGES, FALLBACK_RATES } from '../data/utahData'
 import {
   adjustedLoanAmount,
+  affordableHomePrice,
+  calcPI,
   downPaymentWarnings,
+  estimateMonthlyCost,
   firstYearMortgageInsurance,
   minimumDownPercent,
   type LoanType,
@@ -41,56 +44,67 @@ function parseCurrency(s: string): number {
 
 function fmt(n: number): string { return Math.round(n).toLocaleString() }
 
-function calcMonthlyPI(loan: number, annualRatePct: number, termYears: number): number {
-  if (loan <= 0 || annualRatePct <= 0) return 0
-  const r = annualRatePct / 100 / 12
-  const n = termYears * 12
-  return loan * r * Math.pow(1 + r, n) / (Math.pow(1 + r, n) - 1)
-}
-
-function maxLoanFromPI(targetPI: number, annualRatePct: number, termYears: number): number {
-  if (targetPI <= 0 || annualRatePct <= 0) return 0
-  const r = annualRatePct / 100 / 12
-  const n = termYears * 12
-  return targetPI * (Math.pow(1 + r, n) - 1) / (r * Math.pow(1 + r, n))
-}
-
-function calcMaxHomePrice(
-  budgetMonthly: number,
-  taxRate: number,
-  annualInsurance: number,
-  downPct = 0.1,
-  rate = FALLBACK_RATES['30'],
-  termYears = 30,
-): number {
-  let homePrice = 400000
-  for (let i = 0; i < 12; i++) {
-    const loan = homePrice * (1 - downPct)
-    const pmi = downPct < 0.2 ? loan * 0.0075 / 12 : 0
-    const mTax = homePrice * taxRate / 12
-    const mIns = annualInsurance / 12
-    const availablePI = budgetMonthly - mTax - mIns - pmi
-    if (availablePI <= 0) return 0
-    const newLoan = maxLoanFromPI(availablePI, rate, termYears)
-    homePrice = newLoan / (1 - downPct)
+// Planning assumptions for the "help me figure out a price" sub-flow: it runs
+// before a loan program is chosen, so it prices a 30-year conventional loan with
+// 10% down using the credit score already collected earlier in the quiz.
+function subFlowCostOptions(taxRate: number, annualInsurance: number, creditScore: number) {
+  return {
+    loanType: 'conventional' as LoanType,
+    ratePct: FALLBACK_RATES['30'],
+    termYears: 30,
+    taxRate,
+    annualInsurance,
+    creditScore,
   }
-  return Math.max(0, Math.floor(homePrice / 5000) * 5000)
 }
 
-function estimateTotalMonthly(
-  homePrice: number,
-  down: number,
-  taxRate: number,
-  annualInsurance: number,
-  rate = FALLBACK_RATES['30'],
-  termYears = 30,
-): number {
-  const loan = homePrice - down
-  if (loan <= 0) return 0
-  const pi = calcMonthlyPI(loan, rate, termYears)
-  const ltv = (loan / homePrice) * 100
-  const pmi = ltv > 80 ? loan * 0.0075 / 12 : 0
-  return Math.round(pi + pmi + (homePrice * taxRate / 12) + (annualInsurance / 12))
+// What lenders count as recurring debt for DTI, per Fannie Mae B3-6-05 and
+// HUD 4000.1. Shown under the monthly-debts question so the number entered
+// matches what underwriting will actually use.
+const DEBT_GUIDE_INCLUDE = [
+  ['Car loans or leases', ''],
+  ['Minimum credit-card payments', 'just the minimums, not what you actually pay'],
+  ['Student loans', 'count these even if deferred — lenders use the payment on your credit report, or 0.5–1% of the balance if it shows $0'],
+  ['Personal or installment loans', ''],
+  ['Child support or alimony you pay', ''],
+  ['Mortgage payments on properties you\'ll keep', ''],
+  ['Loans you co-signed', 'unless the other person has 12 months of documented on-time payments'],
+]
+
+const DEBT_GUIDE_EXCLUDE = [
+  ['Rent, or a mortgage you\'re replacing with this purchase', ''],
+  ['Utilities, phone, internet, and streaming services', ''],
+  ['Car insurance, health insurance, groceries, gas, and childcare', ''],
+  ['401(k) or retirement-account loans', ''],
+]
+
+function DebtsGuide() {
+  return (
+    <div className="debts-guide">
+      <div className="debts-guide-title">What counts as a monthly debt?</div>
+      <div className="debts-guide-cols">
+        <div className="debts-guide-col">
+          <div className="debts-guide-head include">✓ Include</div>
+          <ul>
+            {DEBT_GUIDE_INCLUDE.map(([item, note]) => (
+              <li key={item}>{item}{note && <span className="debts-guide-note"> — {note}</span>}</li>
+            ))}
+          </ul>
+        </div>
+        <div className="debts-guide-col">
+          <div className="debts-guide-head exclude">✗ Leave out</div>
+          <ul>
+            {DEBT_GUIDE_EXCLUDE.map(([item, note]) => (
+              <li key={item}>{item}{note && <span className="debts-guide-note"> — {note}</span>}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div className="debts-guide-footer">
+        Lenders use these debts (not living expenses) to calculate your debt-to-income ratio, a key qualifying number.
+      </div>
+    </div>
+  )
 }
 
 // ── Sub-flow types ────────────────────────────────────────────────────────────
@@ -297,7 +311,7 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
         <>
           <div className="sub-flow-crumb">🏡 Figuring out home price</div>
           <div className="step-question">What's your comfortable monthly housing budget?</div>
-          <div className="step-hint">Include everything — principal, interest, taxes, insurance, and any HOA.</div>
+          <div className="step-hint">Principal, interest, property taxes, and homeowner's insurance. If the home may have an HOA fee, leave room for it in this number.</div>
           <div className="input-wrap">
             <span className="input-prefix">$</span>
             <input
@@ -353,8 +367,9 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
     const county = subAnswers.county ?? DEFAULT_COUNTY
     const taxRate = UTAH_COUNTIES[county].taxRate
     const insurance = UTAH_AVERAGES.insuranceAnnual
+    const costOptions = subFlowCostOptions(taxRate, insurance, values.credit_score ?? 720)
 
-    const maxPrice = calcMaxHomePrice(budget, taxRate, insurance, 0.1)
+    const maxPrice = Math.floor(affordableHomePrice(budget, 0.10, costOptions) / 5000) * 5000
     const options = [
       { label: 'Conservative', badge: 'More breathing room', factor: 0.70, color: 'option-green' },
       { label: 'Comfortable',  badge: 'Recommended',         factor: 0.85, color: 'option-blue', recommended: true },
@@ -362,7 +377,7 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
     ].map(opt => {
       const price = Math.round(maxPrice * opt.factor / 5000) * 5000
       const down = Math.round(price * 0.1)
-      const monthly = estimateTotalMonthly(price, down, taxRate, insurance)
+      const monthly = Math.round(estimateMonthlyCost(price, down, costOptions))
       return { ...opt, price, down, monthly }
     }).filter(o => o.price > 0)
 
@@ -412,7 +427,7 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
       const downPct = homePrice > 0 ? downAmt / homePrice : 0
       const adjustedLoan = adjustedLoanAmount(baseLoan, loanType, downPct, feeOptions)
       const ltv = homePrice > 0 ? (baseLoan / homePrice) * 100 : 0
-      const pi = calcMonthlyPI(adjustedLoan, rate, 30)
+      const pi = calcPI(adjustedLoan, rate, 30)
       const mi = firstYearMortgageInsurance(
         baseLoan, adjustedLoan, ltv, loanType, 30, rate, creditScore,
       )
@@ -643,6 +658,8 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
             <div className="step-question">{current.question}</div>
             <div className="step-hint">{current.hint}</div>
             {renderMainInput()}
+
+            {current.field === 'monthly_debts' && <DebtsGuide />}
 
             {/* "Not sure?" alternatives */}
             {current.field === 'home_price' && (
