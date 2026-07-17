@@ -71,7 +71,7 @@ export default function StepHelpPage({ stepText, userProfile, onBack }: Props) {
             <p className="help-explanation">{bold(data.explanation)}</p>
             {data.demo_mode && (
               <div className="demo-notice" style={{ marginTop: '0.75rem' }}>
-                Demo mode — guidance based on standard mortgage best practices.
+                Demo mode - guidance based on standard mortgage best practices.
               </div>
             )}
           </div>

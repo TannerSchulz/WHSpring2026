@@ -133,7 +133,7 @@ test('conventional 20%-down scenario matches hand-computed payment, total, and D
     annualIncome: 95_000, monthlyDebts: 450, creditScore: 720,
   })
   closeTo(s.pi, 2275.44, 0.01)
-  assert.equal(s.mortgageInsurance, 0) // 80% LTV — no PMI
+  assert.equal(s.mortgageInsurance, 0) // 80% LTV - no PMI
   assert.equal(s.baseLoan, 360_000)
   assert.equal(s.adjustedLoan, 360_000)
   closeTo(s.ltv, 80, 1e-9)

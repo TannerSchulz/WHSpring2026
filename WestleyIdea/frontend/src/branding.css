@@ -215,7 +215,7 @@
 .top-nav .brand-mark-name { font-size: 1.05rem; color: var(--white); }
 .top-nav .brand-version { color: var(--white); }
 .top-nav-actions { display: flex; align-items: center; gap: 0.6rem; }
-/* ProfileWidget normally floats fixed — inside the nav it flows inline */
+/* ProfileWidget normally floats fixed - inside the nav it flows inline */
 .top-nav .pw-wrap { position: static; }
 
 @media (max-width: 560px) {

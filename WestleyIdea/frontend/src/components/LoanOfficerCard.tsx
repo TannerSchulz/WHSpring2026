@@ -1,6 +1,6 @@
 import { Branding } from '../types/branding'
 
-// Compact contact card for the loan officer — shown wherever a client might
+// Compact contact card for the loan officer - shown wherever a client might
 // want to reach out. Renders nothing until an officer name is set.
 export default function LoanOfficerCard({ branding, compact }: { branding: Branding; compact?: boolean }) {
   const { officerName, officerTitle, officerPhotoDataUrl, phone, email, website, nmlsId, companyName } = branding

@@ -16,7 +16,7 @@ export interface UserProfile {
     topConcern: string
   }
   stepProgress: boolean[]
-  // Per-step checklist checkbox state, keyed by step index — persisted so a
+  // Per-step checklist checkbox state, keyed by step index - persisted so a
   // reload picks up exactly where the user left off
   checklistProgress?: Record<number, boolean[]>
 }

@@ -223,7 +223,7 @@ export function totalScheduledMortgageInsurance(
   return total
 }
 
-// Amortize with an extra monthly payment — months to payoff and total interest paid
+// Amortize with an extra monthly payment - months to payoff and total interest paid
 export function payoffWithExtra(
   loan: number,
   annualRatePct: number,
@@ -283,7 +283,7 @@ export function estimateMonthlyCost(
 // multiplier is backed out when converting max loan → home price.
 export function affordableHomePrice(
   targetMonthly: number,
-  downPct: number, // fraction, 0–1
+  downPct: number, // fraction, 0-1
   opts: MonthlyCostOptions,
 ): number {
   if (targetMonthly <= 0 || downPct < 0 || downPct >= 1) return 0
@@ -344,7 +344,7 @@ export interface PaymentScenario {
 }
 
 // The full monthly-ownership-cost scenario shown by the payment calculator.
-// DTI ratios use the qualifying housing payment (PITI + MI + HOA) — utilities
+// DTI ratios use the qualifying housing payment (PITI + MI + HOA) - utilities
 // and maintenance are ownership costs, not part of lender ratios.
 export function computePaymentScenario(input: PaymentScenarioInput): PaymentScenario {
   const {
@@ -408,7 +408,7 @@ export function downPaymentWarnings(
   }
   if (loanType === 'fha') {
     if (creditScore < 500) warnings.push('FHA standard financing is generally unavailable below a 500 decision credit score.')
-    else if (creditScore < 580 && downPct < 0.10) warnings.push('FHA generally limits scores from 500–579 to 90% LTV, requiring at least 10% down.')
+    else if (creditScore < 580 && downPct < 0.10) warnings.push('FHA generally limits scores from 500-579 to 90% LTV, requiring at least 10% down.')
     else if (creditScore >= 580 && downPct < 0.035) warnings.push('FHA maximum financing generally requires at least 3.5% down.')
   }
   if (loanType === 'va') warnings.push('VA eligibility, entitlement, occupancy, appraisal, and lender underwriting still apply.')

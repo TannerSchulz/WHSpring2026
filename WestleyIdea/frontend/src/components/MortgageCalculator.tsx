@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import {
-  UTAH_COUNTIES, DEFAULT_COUNTY, UTAH_AVERAGES,
+  UTAH_COUNTIES, DEFAULT_COUNTY, UTAH_AVERAGES, estimateAnnualHomeownersInsurance,
   rateForTerm, LiveRates,
 } from '../data/utahData'
 import { MortgageInput } from '../types'
@@ -25,7 +25,7 @@ interface Props {
 
 type Mode = 'payment' | 'afford'
 
-// Closing cost estimate — Utah-typical figures. Utah has no real estate
+// Closing cost estimate - Utah-typical figures. Utah has no real estate
 // transfer tax, and title companies (not attorneys) handle closings.
 function estimateClosingCosts(
   homePrice: number,
@@ -51,7 +51,7 @@ function estimateClosingCosts(
   ]
   if (loan > 0) {
     cashItems.unshift(
-      { label: 'Loan origination fee (0.5–1%)', amount: Math.round(loan * 0.0075) },
+      { label: 'Loan origination fee (0.5-1%)', amount: Math.round(loan * 0.0075) },
       { label: 'Underwriting & processing', amount: 695 },
       { label: 'Appraisal', amount: 550 },
       { label: "Lender's title insurance (~0.4% of loan)", amount: Math.round(loan * 0.004) },
@@ -162,6 +162,7 @@ function CountySelect({ value, onChange }: { value: string; onChange: (v: string
         <div className="calc-sub-hint">
           County planning rate: <strong>{(county.taxRate * 100).toFixed(2)}%/yr</strong> on a primary
           residence (45% residential exemption included). Actual tax-area rates and assessed values vary.
+          Home insurance is estimated separately from this county's benchmark.
         </div>
       )}
     </Field>
@@ -197,7 +198,7 @@ function RatesCard({ rates, loading }: { rates: LiveRates | null; loading: boole
           </div>
         </>
       ) : (
-        <div className="rates-loading">Rates unavailable — enter a rate manually below.</div>
+        <div className="rates-loading">Rates unavailable - enter a rate manually below.</div>
       )}
     </div>
   )
@@ -233,7 +234,8 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
   )
   const [annualTax, setAnnualTax] = useState('')
   const [taxTouched, setTaxTouched] = useState(false)
-  const [annualInsurance, setAnnualInsurance] = useState(fmtInput(UTAH_AVERAGES.insuranceAnnual))
+  const [annualInsurance, setAnnualInsurance] = useState('')
+  const [insuranceTouched, setInsuranceTouched] = useState(false)
   const [monthlyHoa, setMonthlyHoa] = useState('')
   const [hasHoa, setHasHoa] = useState(false)
   const [utilities, setUtilities] = useState(fmtInput(UTAH_AVERAGES.utilitiesMonthly))
@@ -262,6 +264,14 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
     if (taxTouched) return
     const hp = parseCurrency(homePrice)
     setAnnualTax(hp > 0 ? fmtInput(Math.round(hp * UTAH_COUNTIES[county].taxRate)) : '')
+  }, [county, homePrice]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Estimate insurance from the selected county and home-price proxy until the
+  // user replaces it with a quote or their own known annual premium.
+  useEffect(() => {
+    if (insuranceTouched) return
+    const hp = parseCurrency(homePrice)
+    setAnnualInsurance(hp > 0 ? fmtInput(estimateAnnualHomeownersInsurance(county, hp)) : '')
   }, [county, homePrice]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -436,7 +446,7 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
             />
             <div className="calc-sub-hint">
               {loanType === 'fha'  && 'Includes 1.75% upfront MIP (financed) + annual MIP'}
-              {loanType === 'va'   && 'VA funding fee is based on usage, exemption, and down payment — no monthly mortgage insurance'}
+              {loanType === 'va'   && 'VA funding fee is based on usage, exemption, and down payment - no monthly mortgage insurance'}
               {loanType === 'usda' && 'Includes 1% upfront fee + 0.35%/yr annual guarantee fee'}
               {loanType === 'conventional' && (parseFloat(downPct ?? '20') < 20
                 ? 'PMI shown is a planning estimate; enter a lender quote below when available'
@@ -468,7 +478,7 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
               ? undefined
               : defaultRate.estimated && liveRates
                 ? `Planning estimate derived from the national conventional benchmark; enter a lender quote when available`
-                : `National conventional benchmark — edit to match your program-specific lender quote`}
+                : `National conventional benchmark - edit to match your program-specific lender quote`}
           >
             <div className="calc-input-wrap">
               <input
@@ -485,7 +495,7 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
             <CurrencyInput value={annualIncome} onChange={setAnnualIncome} placeholder="80,000" suffix="/yr" />
           </Field>
 
-          <Field label="Existing Monthly Debts" hint="Car, student, and personal loans, minimum credit-card payments, and child support or alimony — not rent, utilities, or this new housing payment.">
+          <Field label="Existing Monthly Debts" hint="Car, student, and personal loans, minimum credit-card payments, and child support or alimony - not rent, utilities, or this new housing payment.">
             <CurrencyInput value={monthlyDebts} onChange={setMonthlyDebts} placeholder="500" suffix="/mo" />
           </Field>
         </div>
@@ -493,7 +503,7 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
         <div className="calc-col">
           <CountySelect value={county} onChange={setCounty} />
 
-          <Field label="Annual Property Tax" hint={taxTouched ? undefined : 'Auto-calculated from your county — edit if you know the exact amount'}>
+          <Field label="Annual Property Tax" hint={taxTouched ? undefined : 'Auto-calculated from your county - edit if you know the exact amount'}>
             <CurrencyInput
               value={annualTax}
               onChange={v => { setTaxTouched(true); setAnnualTax(v) }}
@@ -501,8 +511,15 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
             />
           </Field>
 
-          <Field label="Annual Homeowner's Insurance" hint={`Utah average: ~$${fmt(UTAH_AVERAGES.insuranceAnnual)}/yr`}>
-            <CurrencyInput value={annualInsurance} onChange={setAnnualInsurance} placeholder="1,150" suffix="/yr" />
+          <Field
+            label="Annual Homeowner's Insurance"
+            hint={insuranceTouched ? undefined : 'Estimated from your county and home price using $300,000 coverage as the benchmark - replace with an insurance quote when available'}
+          >
+            <CurrencyInput
+              value={annualInsurance}
+              onChange={v => { setInsuranceTouched(true); setAnnualInsurance(v) }}
+              placeholder="1,800" suffix="/yr"
+            />
           </Field>
 
           <div className="calc-field">
@@ -531,7 +548,7 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
                 {includeMaintenance ? '✓ Included' : 'Excluded'}
               </button>
             </div>
-            <div className="calc-sub-hint">1% of home value per year — industry standard for repairs &amp; upkeep</div>
+            <div className="calc-sub-hint">1% of home value per year - industry standard for repairs &amp; upkeep</div>
           </div>
         </div>
       </div>
@@ -681,7 +698,7 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
             {showClosing && (
               <div className="calc-expand-body">
                 <p className="calc-expand-desc">
-                  Broad planning range: ${fmt(result.closingCosts.range[0])} – ${fmt(result.closingCosts.range[1])} ({result.loanBase > 0 ? '2–5%' : '1–3%'} of home price).
+                  Broad planning range: ${fmt(result.closingCosts.range[0])} - ${fmt(result.closingCosts.range[1])} ({result.loanBase > 0 ? '2-5%' : '1-3%'} of home price).
                   Good news: Utah has <strong>no real estate transfer tax</strong>.
                 </p>
 
@@ -711,7 +728,7 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
                       </div>
                     ))}
                     <div className="closing-financed-note">
-                      These fees are added to your loan balance — you don't pay them upfront, but they increase your monthly payment.
+                      These fees are added to your loan balance - you don't pay them upfront, but they increase your monthly payment.
                     </div>
                   </>
                 )}
@@ -779,7 +796,7 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
                     </div>
 
                     <div className="refi-note">
-                      Refinancing has closing costs (~$3k–$6k). Factor those in when deciding. Rates shown are hypothetical.
+                      Refinancing has closing costs (~$3k-$6k). Factor those in when deciding. Rates shown are hypothetical.
                     </div>
                   </div>
                 )}
@@ -797,7 +814,7 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
 const GRID_RATES = [5.0, 5.5, 6.0, 6.5, 7.0, 7.5, 8.0]
 
 function gridDownPaymentPercents(loanType: LoanType, creditScore: number): number[] {
-  // Round away float noise (0.035 × 100 = 3.5000000000000004) — these are row labels
+  // Round away float noise (0.035 × 100 = 3.5000000000000004) - these are row labels
   const minimum = Math.round(minimumDownPercent(loanType, creditScore) * 1000) / 10
   const candidates = loanType === 'conventional'
     ? [minimum, 5, 10, 15, 20]
@@ -868,10 +885,18 @@ function AffordCalc({ prefill, liveRates, ratesLoading }: {
       return GRID_RATES.map(rate => {
         const costOptions = {
           loanType, ratePct: rate, termYears: t, taxRate: taxRateValue,
-          annualInsurance: UTAH_AVERAGES.insuranceAnnual, monthlyHoa: mHoa,
+          annualInsurance: estimateAnnualHomeownersInsurance(county, 300_000), monthlyHoa: mHoa,
           monthlyUtilities: mUtils, creditScore, feeOptions,
         }
-        const homePrice = affordableHomePrice(target, downPct / 100, costOptions)
+        let homePrice = affordableHomePrice(target, downPct / 100, costOptions)
+        // Insurance rises with the resulting price. Re-solve a few times so the
+        // affordability grid uses the same county-and-price estimate as payment mode.
+        for (let i = 0; i < 4; i += 1) {
+          homePrice = affordableHomePrice(target, downPct / 100, {
+            ...costOptions,
+            annualInsurance: estimateAnnualHomeownersInsurance(county, homePrice),
+          })
+        }
         const loan = homePrice * (1 - downPct / 100)
         const ltv = (1 - downPct / 100) * 100
         const mi = firstYearMortgageInsurance(
@@ -901,7 +926,7 @@ function AffordCalc({ prefill, liveRates, ratesLoading }: {
 
       <div className="calc-form-grid">
         <div className="calc-col">
-          <Field label="Target Monthly Budget" hint="Total you want to spend — P&I, taxes, insurance, HOA, utilities, and MI">
+          <Field label="Target Monthly Budget" hint="Total you want to spend - P&I, taxes, insurance, HOA, utilities, and MI">
             <div style={{display:'flex', gap:'0.5rem', alignItems:'flex-end', flexWrap:'wrap'}}>
               <div style={{flex:1, minWidth:'150px'}}>
                 <CurrencyInput value={targetPayment} onChange={setTargetPayment} placeholder="2,500" suffix="/mo" />
@@ -987,7 +1012,7 @@ function AffordCalc({ prefill, liveRates, ratesLoading }: {
                             <span className="afford-price">{fmtK(cell.homePrice)}</span>
                             {cell.hasMi && <span className="afford-pmi-flag">+MI</span>}
                           </>
-                        ) : <span className="afford-impossible">—</span>}
+                        ) : <span className="afford-impossible">-</span>}
                       </td>
                     ))}
                   </tr>
@@ -1003,7 +1028,7 @@ function AffordCalc({ prefill, liveRates, ratesLoading }: {
             <span style={{marginLeft:'0.5rem', fontStyle:'italic'}}>★ = closest to this week's {term}yr rate ({liveRate.rate}%)</span>
           </div>
           <div className="afford-disclaimer">
-            Figures are estimates assuming a {term}-year loan with {UTAH_COUNTIES[county].name} property taxes. Program minimums, financed fees, and first-year mortgage insurance estimates are included; eligibility, loan limits, exact insurance, and lender qualification still need verification.
+            Figures are estimates assuming a {term}-year loan with {UTAH_COUNTIES[county].name} property taxes and county-and-price homeowner insurance estimates. Program minimums, financed fees, and first-year mortgage insurance estimates are included; eligibility, loan limits, exact insurance, and lender qualification still need verification.
           </div>
         </div>
       )}
@@ -1023,7 +1048,7 @@ function AffordCalc({ prefill, liveRates, ratesLoading }: {
           baseLoan, adjLoan, ltv, loanType, t, r, creditScore,
         )
         const mTax = hp * UTAH_COUNTIES[county].taxRate / 12
-        const mIns = UTAH_AVERAGES.insuranceAnnual / 12
+        const mIns = estimateAnnualHomeownersInsurance(county, hp) / 12
         const mHoa = parseCurrency(monthlyHoa)
         const mUtils = includeUtils ? UTAH_AVERAGES.utilitiesMonthly : 0
         const totalMonthly = pi + mi + mTax + mIns + mHoa + mUtils

@@ -127,7 +127,7 @@ export default function BrandingSettings({ branding, onSave, onReset, onClose }:
       <div className="brand-modal" onClick={e => e.stopPropagation()}>
         <div className="brand-modal-header">
           <h2>Customize Your Branding</h2>
-          <p>Make this tool yours — your clients will see your company, your face, and your colors.</p>
+          <p>Make this tool yours - your clients will see your company, your face, and your colors.</p>
           <button className="brand-close" onClick={onClose}>✕</button>
         </div>
 

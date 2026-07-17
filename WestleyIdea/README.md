@@ -1,6 +1,6 @@
 # MortgageAI
 
-AI-powered mortgage qualification tool. Enter your financial info and get an instant assessment of whether you qualify — and personalized steps to improve your chances if you don't.
+AI-powered mortgage qualification tool. Enter your financial info and get an instant assessment of whether you qualify - and personalized steps to improve your chances if you don't.
 
 ## Stack
 

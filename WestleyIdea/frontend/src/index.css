@@ -26,7 +26,7 @@
   --gray-700: #374151;
   --gray-800: #1f2937;
   --gray-900: #111827;
-  /* Dark-theme tokens — used on glass/dark surfaces */
+  /* Dark-theme tokens - used on glass/dark surfaces */
   --text: #f1f5f9;
   --text-muted: #94a3b8;
   --surface: rgba(255, 255, 255, 0.07);
@@ -102,7 +102,7 @@ body::after {
   margin-bottom: 2.5rem;
 }
 
-/* Tracker — fixed to right side, hidden on mobile */
+/* Tracker - fixed to right side, hidden on mobile */
 .tracker-fixed {
   display: none;
 }
@@ -1556,7 +1556,7 @@ body::after {
   text-align: left;
 }
 
-/* ── Action Plan — two-column layout ──────────────────────────── */
+/* ── Action Plan - two-column layout ──────────────────────────── */
 .plan-layout {
   width: 100%;
   max-width: 1080px;
@@ -1991,7 +1991,7 @@ body::after {
   font-style: italic;
 }
 
-/* Action bar — below resources */
+/* Action bar - below resources */
 .step-actions-bar {
   display: flex;
   align-items: center;
@@ -4197,7 +4197,7 @@ body::after {
   color: var(--gray-700);
 }
 
-/* ── Calculator page — full width ──────────────────────────────── */
+/* ── Calculator page - full width ──────────────────────────────── */
 .calc-page {
   width: 100%;
   max-width: 960px;
@@ -5467,7 +5467,7 @@ body::after {
   margin: -0.25rem -0.25rem 0.75rem;
 }
 
-/* ── Assessment result — dashboard CTA card ─────────────────────────────────── */
+/* ── Assessment result - dashboard CTA card ─────────────────────────────────── */
 
 .dashboard-cta-card {
   background: linear-gradient(135deg, var(--primary), var(--accent)) !important;
@@ -5795,7 +5795,7 @@ body::after {
   .debts-guide-col { padding: 0.8rem 0.85rem; }
 }
 
-/* ── Mobile refinements (≈360–430px phones) ─────────────────────────────────── */
+/* ── Mobile refinements (≈360-430px phones) ─────────────────────────────────── */
 @media (max-width: 720px) {
   /* iOS Safari zooms the whole page when a focused input is below 16px */
   .calc-input,
@@ -5836,7 +5836,7 @@ body::after {
   .dashboard-brand { min-width: 0; }
 }
 
-/* Afford-grid swipe cue — only meaningful where the table overflows */
+/* Afford-grid swipe cue - only meaningful where the table overflows */
 .afford-swipe-hint { display: none; }
 
 @media (max-width: 720px) {

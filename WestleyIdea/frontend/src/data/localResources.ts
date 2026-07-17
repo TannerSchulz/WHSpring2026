@@ -55,7 +55,7 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
     ],
     hudCounselingUrl: hudUrl('AZ'),
     downPaymentAssistance: [
-      { label: 'HOME Plus DPA', description: 'Forgivable assistance — no repayment required if you stay in the home.', url: 'https://housing.az.gov/general-public/home-plus-program' },
+      { label: 'HOME Plus DPA', description: 'Forgivable assistance - no repayment required if you stay in the home.', url: 'https://housing.az.gov/general-public/home-plus-program' },
     ],
     additionalResources: [
       { label: 'Arizona Realtors', description: 'Connect with local agents familiar with AZ assistance programs.', url: 'https://www.aaronline.com' },
@@ -76,16 +76,16 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
   },
   CA: {
     stateCode: 'CA', stateName: 'California',
-    housingAuthority: { name: 'California Housing Finance Agency (CalHFA)', url: 'https://www.calhfa.ca.gov', description: 'California\'s largest state housing agency — offers down payment assistance, low-rate mortgages, and first-time buyer programs.' },
+    housingAuthority: { name: 'California Housing Finance Agency (CalHFA)', url: 'https://www.calhfa.ca.gov', description: 'California\'s largest state housing agency - offers down payment assistance, low-rate mortgages, and first-time buyer programs.' },
     firstTimeBuyerPrograms: [
       { label: 'CalHFA MyHome Assistance', description: 'Deferred-payment junior loan up to 3.5% for down payment and closing costs.', url: 'https://www.calhfa.ca.gov/homebuyer/programs/myhome.htm' },
-      { label: 'CalHFA Dream For All', description: 'Shared appreciation loan providing up to 20% down — check availability as funding opens periodically.', url: 'https://www.calhfa.ca.gov/homebuyer/programs/dream-for-all.htm' },
-      { label: 'California Mortgage Relief', description: 'Assistance for homeowners who fell behind — not DPA, but useful context.', url: 'https://camortgagerelief.org' },
+      { label: 'CalHFA Dream For All', description: 'Shared appreciation loan providing up to 20% down - check availability as funding opens periodically.', url: 'https://www.calhfa.ca.gov/homebuyer/programs/dream-for-all.htm' },
+      { label: 'California Mortgage Relief', description: 'Assistance for homeowners who fell behind - not DPA, but useful context.', url: 'https://camortgagerelief.org' },
     ],
     hudCounselingUrl: hudUrl('CA'),
     downPaymentAssistance: [
       { label: 'CalHFA Zero Interest Program (ZIP)', description: 'Zero-interest loan to cover CalHFA loan closing costs.', url: 'https://www.calhfa.ca.gov' },
-      { label: 'Local City/County DPA Programs', description: 'Many CA cities offer additional assistance — search your city name + "down payment assistance."', url: 'https://www.calhfa.ca.gov/homebuyer/programs' },
+      { label: 'Local City/County DPA Programs', description: 'Many CA cities offer additional assistance - search your city name + "down payment assistance."', url: 'https://www.calhfa.ca.gov/homebuyer/programs' },
     ],
     additionalResources: [
       { label: 'California Association of Realtors', description: 'Find a Realtor and access CA housing market data.', url: 'https://www.car.org' },
@@ -100,7 +100,7 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
     ],
     hudCounselingUrl: hudUrl('CO'),
     downPaymentAssistance: [
-      { label: 'CHFA Down Payment Assistance Grant', description: 'Up to 3% of first mortgage — does not need to be repaid.', url: 'https://www.chfainfo.com/homeownership/homebuyer-programs/down-payment-assistance' },
+      { label: 'CHFA Down Payment Assistance Grant', description: 'Up to 3% of first mortgage - does not need to be repaid.', url: 'https://www.chfainfo.com/homeownership/homebuyer-programs/down-payment-assistance' },
       { label: 'CHFA Second Mortgage', description: 'Up to 4% as a low-interest second mortgage for down payment.', url: 'https://www.chfainfo.com' },
     ],
     additionalResources: [
@@ -109,7 +109,7 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
   },
   FL: {
     stateCode: 'FL', stateName: 'Florida',
-    housingAuthority: { name: 'Florida Housing Finance Corporation', url: 'https://www.floridahousing.org', description: 'Florida\'s state housing agency — administers the Florida First, HFA Preferred, and PLUS Second Mortgage programs.' },
+    housingAuthority: { name: 'Florida Housing Finance Corporation', url: 'https://www.floridahousing.org', description: 'Florida\'s state housing agency - administers the Florida First, HFA Preferred, and PLUS Second Mortgage programs.' },
     firstTimeBuyerPrograms: [
       { label: 'Florida First Program', description: '30-year fixed FHA, VA, USDA or conventional mortgage at below-market rates.', url: 'https://www.floridahousing.org/programs/homebuyer-overview-page/florida-first' },
       { label: 'HFA Preferred Grant', description: '3% or 4% grant (no repayment) for down payment and closing costs.', url: 'https://www.floridahousing.org/programs/homebuyer-overview-page/hfa-preferred-grant' },
@@ -132,7 +132,7 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
     ],
     hudCounselingUrl: hudUrl('TX'),
     downPaymentAssistance: [
-      { label: 'My Choice Texas Home', description: 'Up to 5% DPA — available to both first-time and repeat buyers.', url: 'https://www.tdhca.state.tx.us/homeownership/mychoice/index.htm' },
+      { label: 'My Choice Texas Home', description: 'Up to 5% DPA - available to both first-time and repeat buyers.', url: 'https://www.tdhca.state.tx.us/homeownership/mychoice/index.htm' },
       { label: 'TSAHC Programs', description: 'Texas State Affordable Housing Corporation offers grants and DPA statewide.', url: 'https://www.tsahc.org/homebuyers' },
     ],
     additionalResources: [
@@ -141,21 +141,21 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
   },
   UT: {
     stateCode: 'UT', stateName: 'Utah',
-    housingAuthority: { name: 'Utah Housing Corporation (UHC)', url: 'https://www.utahhousingcorp.org', description: 'Utah\'s primary state housing agency — offers low-rate mortgages, down payment loans, and Score Loan programs for Utah buyers.' },
+    housingAuthority: { name: 'Utah Housing Corporation (UHC)', url: 'https://www.utahhousingcorp.org', description: 'Utah\'s primary state housing agency - offers low-rate mortgages, down payment loans, and Score Loan programs for Utah buyers.' },
     firstTimeBuyerPrograms: [
       { label: 'UHC FirstHome Loan', description: 'Low fixed interest rate for first-time buyers with income limits. One of Utah\'s most used first-time buyer programs.', url: 'https://www.utahhousingcorp.org/SF/firsthome.html' },
-      { label: 'UHC HomeAgain Loan', description: 'For repeat buyers who don\'t qualify as first-time — same competitive rates.', url: 'https://www.utahhousingcorp.org/SF/homeagain.html' },
-      { label: 'UHC Score Loan', description: 'For buyers with credit scores as low as 620 — great if you\'re working on improving credit.', url: 'https://www.utahhousingcorp.org/SF/score.html' },
+      { label: 'UHC HomeAgain Loan', description: 'For repeat buyers who don\'t qualify as first-time - same competitive rates.', url: 'https://www.utahhousingcorp.org/SF/homeagain.html' },
+      { label: 'UHC Score Loan', description: 'For buyers with credit scores as low as 620 - great if you\'re working on improving credit.', url: 'https://www.utahhousingcorp.org/SF/score.html' },
     ],
     hudCounselingUrl: hudUrl('UT'),
     downPaymentAssistance: [
-      { label: 'UHC Down Payment Assistance', description: 'Second mortgage covering down payment — combined with UHC first mortgage. Low interest, long term.', url: 'https://www.utahhousingcorp.org/SF/dpa.html' },
-      { label: 'Olene Walker Housing Loan Fund', description: 'State fund that supports affordable housing — ask your lender if applicable.', url: 'https://housing.utah.gov' },
+      { label: 'UHC Down Payment Assistance', description: 'Second mortgage covering down payment - combined with UHC first mortgage. Low interest, long term.', url: 'https://www.utahhousingcorp.org/SF/dpa.html' },
+      { label: 'Olene Walker Housing Loan Fund', description: 'State fund that supports affordable housing - ask your lender if applicable.', url: 'https://housing.utah.gov' },
     ],
     additionalResources: [
       { label: 'Utah Association of Realtors', description: 'Find a local Utah Realtor familiar with UHC programs.', url: 'https://www.utahrealtors.com' },
       { label: 'Utah Division of Real Estate', description: 'Verify your agent\'s license and access Utah housing resources.', url: 'https://realestate.utah.gov' },
-      { label: 'Utah Homebuyer Education (eHome America)', description: 'Required HUD-approved homebuyer education course for UHC loans — can be done online.', url: 'https://www.ehomeamerica.org' },
+      { label: 'Utah Homebuyer Education (eHome America)', description: 'Required HUD-approved homebuyer education course for UHC loans - can be done online.', url: 'https://www.ehomeamerica.org' },
     ],
   },
   WA: {
@@ -163,11 +163,11 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
     housingAuthority: { name: 'Washington State Housing Finance Commission (WSHFC)', url: 'https://www.wshfc.org', description: 'Offers low-rate mortgages, down payment assistance, and homebuyer education statewide.' },
     firstTimeBuyerPrograms: [
       { label: 'Home Advantage Program', description: 'Below-market rate 30-year fixed mortgage for first-time buyers in WA.', url: 'https://www.wshfc.org/buyers/homeadvantage.htm' },
-      { label: 'House Key Opportunity Program', description: 'For buyers with lower incomes — even more competitive rates.', url: 'https://www.wshfc.org/buyers/housekeyopportunity.htm' },
+      { label: 'House Key Opportunity Program', description: 'For buyers with lower incomes - even more competitive rates.', url: 'https://www.wshfc.org/buyers/housekeyopportunity.htm' },
     ],
     hudCounselingUrl: hudUrl('WA'),
     downPaymentAssistance: [
-      { label: 'WSHFC Down Payment Assistance', description: 'Deferred second mortgage — no payments until you sell, refinance, or pay off.', url: 'https://www.wshfc.org/buyers/downpaymentassistance.htm' },
+      { label: 'WSHFC Down Payment Assistance', description: 'Deferred second mortgage - no payments until you sell, refinance, or pay off.', url: 'https://www.wshfc.org/buyers/downpaymentassistance.htm' },
     ],
     additionalResources: [
       { label: 'Washington Realtors', description: 'WA market data and Realtor directory.', url: 'https://www.warealtor.org' },
@@ -175,15 +175,15 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
   },
   NY: {
     stateCode: 'NY', stateName: 'New York',
-    housingAuthority: { name: 'NYS Homes and Community Renewal (HCR)', url: 'https://hcr.ny.gov', description: 'New York\'s housing finance agency — administers the State of New York Mortgage Agency (SONYMA) low-rate loan programs.' },
+    housingAuthority: { name: 'NYS Homes and Community Renewal (HCR)', url: 'https://hcr.ny.gov', description: 'New York\'s housing finance agency - administers the State of New York Mortgage Agency (SONYMA) low-rate loan programs.' },
     firstTimeBuyerPrograms: [
       { label: 'SONYMA Achieving the Dream', description: 'NY\'s lowest interest rate mortgage program for first-time buyers with low-to-moderate income.', url: 'https://hcr.ny.gov/sonyma-achieving-dream' },
       { label: 'SONYMA Low Interest Rate Program', description: 'Broader eligibility than Achieving the Dream, still below-market rates.', url: 'https://hcr.ny.gov/sonyma-low-interest-rate' },
     ],
     hudCounselingUrl: hudUrl('NY'),
     downPaymentAssistance: [
-      { label: 'SONYMA Down Payment Assistance Loan (DPAL)', description: 'Up to $15,000 or 3% of purchase price — 0% interest, forgiven after 10 years.', url: 'https://hcr.ny.gov/sonyma-down-payment-assistance-loan' },
-      { label: 'NYC HomeFirst', description: 'NYC residents only — up to $100,000 toward down payment/closing costs.', url: 'https://www.nyc.gov/site/hpd/services-and-information/homeownership-assistance.page' },
+      { label: 'SONYMA Down Payment Assistance Loan (DPAL)', description: 'Up to $15,000 or 3% of purchase price - 0% interest, forgiven after 10 years.', url: 'https://hcr.ny.gov/sonyma-down-payment-assistance-loan' },
+      { label: 'NYC HomeFirst', description: 'NYC residents only - up to $100,000 toward down payment/closing costs.', url: 'https://www.nyc.gov/site/hpd/services-and-information/homeownership-assistance.page' },
     ],
     additionalResources: [
       { label: 'New York State Association of Realtors', description: 'Find a NY Realtor.', url: 'https://www.nysar.com' },
@@ -191,9 +191,9 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
   },
   OR: {
     stateCode: 'OR', stateName: 'Oregon',
-    housingAuthority: { name: 'Oregon Housing and Community Services (OHCS)', url: 'https://www.oregon.gov/ohcs', description: 'Oregon\'s housing agency — administers Oregon Bond Residential Loan and down payment assistance programs.' },
+    housingAuthority: { name: 'Oregon Housing and Community Services (OHCS)', url: 'https://www.oregon.gov/ohcs', description: 'Oregon\'s housing agency - administers Oregon Bond Residential Loan and down payment assistance programs.' },
     firstTimeBuyerPrograms: [
-      { label: 'Oregon Bond Residential Loan', description: 'Below-market interest rate for first-time buyers in Oregon — no income limit in some counties.', url: 'https://www.oregon.gov/ohcs/homeownership/pages/oregon-bond-residential-loan-program.aspx' },
+      { label: 'Oregon Bond Residential Loan', description: 'Below-market interest rate for first-time buyers in Oregon - no income limit in some counties.', url: 'https://www.oregon.gov/ohcs/homeownership/pages/oregon-bond-residential-loan-program.aspx' },
       { label: 'Oregon Individual Development Account', description: 'Matched savings program to help build your down payment.', url: 'https://www.oregon.gov/ohcs' },
     ],
     hudCounselingUrl: hudUrl('OR'),
@@ -209,7 +209,7 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
     housingAuthority: { name: 'Wisconsin Housing and Economic Development Authority (WHEDA)', url: 'https://www.wheda.com', description: 'Offers low-rate mortgages and capital access programs for Wisconsin homebuyers.' },
     firstTimeBuyerPrograms: [
       { label: 'WHEDA Advantage Conventional', description: 'Low-rate 30-year conventional mortgage for WI first-time buyers.', url: 'https://www.wheda.com/homeownership/loan-products/wheda-advantage-conventional' },
-      { label: 'WHEDA FHA Advantage', description: 'FHA version — lower credit requirement with competitive rates.', url: 'https://www.wheda.com/homeownership/loan-products/wheda-fha-advantage' },
+      { label: 'WHEDA FHA Advantage', description: 'FHA version - lower credit requirement with competitive rates.', url: 'https://www.wheda.com/homeownership/loan-products/wheda-fha-advantage' },
     ],
     hudCounselingUrl: hudUrl('WI'),
     downPaymentAssistance: [
@@ -228,7 +228,7 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
     ],
     hudCounselingUrl: hudUrl('NC'),
     downPaymentAssistance: [
-      { label: 'NC Home Advantage DPA', description: 'Up to 5% of loan amount — forgiven after year 11 if you stay in the home.', url: 'https://www.nchfa.com/home-buyers/buy-home/down-payment-assistance' },
+      { label: 'NC Home Advantage DPA', description: 'Up to 5% of loan amount - forgiven after year 11 if you stay in the home.', url: 'https://www.nchfa.com/home-buyers/buy-home/down-payment-assistance' },
     ],
     additionalResources: [
       { label: 'NC Realtors', description: 'Find a local North Carolina Realtor.', url: 'https://www.ncrealtors.org' },
@@ -242,7 +242,7 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
     ],
     hudCounselingUrl: hudUrl('GA'),
     downPaymentAssistance: [
-      { label: 'Georgia Dream DPA', description: 'Up to $10,000 in down payment assistance — 0% interest, deferred.', url: 'https://www.dca.ga.gov/safe-affordable-housing/homeownership/georgia-dream/down-payment-assistance' },
+      { label: 'Georgia Dream DPA', description: 'Up to $10,000 in down payment assistance - 0% interest, deferred.', url: 'https://www.dca.ga.gov/safe-affordable-housing/homeownership/georgia-dream/down-payment-assistance' },
       { label: 'Georgia Dream PEN Loan', description: 'Extra $7,500 for public protectors, educators, and healthcare workers.', url: 'https://www.dca.ga.gov' },
     ],
     additionalResources: [
@@ -258,7 +258,7 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
     ],
     hudCounselingUrl: hudUrl('MN'),
     downPaymentAssistance: [
-      { label: 'Deferred Payment Loan (DPL)', description: 'No monthly payment on DPA — repaid when you sell or refinance.', url: 'https://www.mnhousing.gov' },
+      { label: 'Deferred Payment Loan (DPL)', description: 'No monthly payment on DPA - repaid when you sell or refinance.', url: 'https://www.mnhousing.gov' },
     ],
     additionalResources: [
       { label: 'Minnesota Realtors', description: 'Find a local MN Realtor.', url: 'https://www.mnrealtor.com' },
@@ -268,12 +268,12 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
     stateCode: 'IL', stateName: 'Illinois',
     housingAuthority: { name: 'Illinois Housing Development Authority (IHDA)', url: 'https://www.ihda.org', description: 'Offers IHDAccess and SmartBuy programs with down payment assistance for Illinois buyers.' },
     firstTimeBuyerPrograms: [
-      { label: 'IHDAccess Forgivable', description: '4% of purchase price (up to $6,000) — completely forgiven after 10 years.', url: 'https://www.ihda.org/homeowners/access-forgivable/' },
-      { label: 'IHDAccess Deferred', description: '5% (up to $7,500) — no payment until you sell, refinance, or pay off the home.', url: 'https://www.ihda.org/homeowners/access-deferred/' },
+      { label: 'IHDAccess Forgivable', description: '4% of purchase price (up to $6,000) - completely forgiven after 10 years.', url: 'https://www.ihda.org/homeowners/access-forgivable/' },
+      { label: 'IHDAccess Deferred', description: '5% (up to $7,500) - no payment until you sell, refinance, or pay off the home.', url: 'https://www.ihda.org/homeowners/access-deferred/' },
     ],
     hudCounselingUrl: hudUrl('IL'),
     downPaymentAssistance: [
-      { label: 'SmartBuy Program', description: 'Helps buyers with student loan debt — up to $40,000 toward student loans with $5,000 DPA.', url: 'https://www.ihda.org/homeowners/smartbuy/' },
+      { label: 'SmartBuy Program', description: 'Helps buyers with student loan debt - up to $40,000 toward student loans with $5,000 DPA.', url: 'https://www.ihda.org/homeowners/smartbuy/' },
     ],
     additionalResources: [
       { label: 'Illinois Realtors', description: 'Find an Illinois Realtor.', url: 'https://www.illinoisrealtors.org' },
@@ -296,10 +296,10 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
   },
   PA: {
     stateCode: 'PA', stateName: 'Pennsylvania',
-    housingAuthority: { name: 'Pennsylvania Housing Finance Agency (PHFA)', url: 'https://www.phfa.org', description: 'Pennsylvania\'s state housing agency — offers HFA Preferred and Keystone programs with DPA.' },
+    housingAuthority: { name: 'Pennsylvania Housing Finance Agency (PHFA)', url: 'https://www.phfa.org', description: 'Pennsylvania\'s state housing agency - offers HFA Preferred and Keystone programs with DPA.' },
     firstTimeBuyerPrograms: [
       { label: 'Keystone Home Loan', description: 'Below-market rate mortgage for first-time PA buyers with income/purchase price limits.', url: 'https://www.phfa.org/programs/homebuyers/mortgages/keystone-home-loan.aspx' },
-      { label: 'HFA Preferred', description: 'Conventional loan with private mortgage insurance — lower monthly cost.', url: 'https://www.phfa.org' },
+      { label: 'HFA Preferred', description: 'Conventional loan with private mortgage insurance - lower monthly cost.', url: 'https://www.phfa.org' },
     ],
     hudCounselingUrl: hudUrl('PA'),
     downPaymentAssistance: [
@@ -314,11 +314,11 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
     housingAuthority: { name: 'Michigan State Housing Development Authority (MSHDA)', url: 'https://www.michigan.gov/mshda', description: 'Offers MI Home Loan with DPA available across all of Michigan.' },
     firstTimeBuyerPrograms: [
       { label: 'MI Home Loan', description: 'Competitive rate mortgage paired with $10,000 down payment assistance.', url: 'https://www.michigan.gov/mshda/homeownership/mi-home-loan' },
-      { label: 'MI Home Loan Flex', description: 'Broader eligibility — for buyers who don\'t meet standard MI Home Loan requirements.', url: 'https://www.michigan.gov/mshda/homeownership/mi-home-loan' },
+      { label: 'MI Home Loan Flex', description: 'Broader eligibility - for buyers who don\'t meet standard MI Home Loan requirements.', url: 'https://www.michigan.gov/mshda/homeownership/mi-home-loan' },
     ],
     hudCounselingUrl: hudUrl('MI'),
     downPaymentAssistance: [
-      { label: 'MSHDA $10,000 DPA', description: '$10,000 zero-interest deferred loan for MI buyers — repaid when you sell or refinance.', url: 'https://www.michigan.gov/mshda/homeownership/mi-home-loan' },
+      { label: 'MSHDA $10,000 DPA', description: '$10,000 zero-interest deferred loan for MI buyers - repaid when you sell or refinance.', url: 'https://www.michigan.gov/mshda/homeownership/mi-home-loan' },
     ],
     additionalResources: [
       { label: 'Michigan Realtors', description: 'Find a Michigan Realtor.', url: 'https://www.mirealtors.com' },
@@ -328,12 +328,12 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
     stateCode: 'NV', stateName: 'Nevada',
     housingAuthority: { name: 'Nevada Housing Division', url: 'https://housing.nv.gov', description: 'Provides Home Is Possible mortgage and DPA programs for Nevada homebuyers.' },
     firstTimeBuyerPrograms: [
-      { label: 'Home Is Possible (HIP)', description: 'Below-market rate 30-year mortgage for Nevada buyers — income and purchase limits apply.', url: 'https://housing.nv.gov/homebuyers/home-is-possible/' },
+      { label: 'Home Is Possible (HIP)', description: 'Below-market rate 30-year mortgage for Nevada buyers - income and purchase limits apply.', url: 'https://housing.nv.gov/homebuyers/home-is-possible/' },
       { label: 'HIP for Heroes', description: 'Extra 1% rate reduction for teachers, military, first responders, and veterans.', url: 'https://housing.nv.gov/homebuyers/home-is-possible/' },
     ],
     hudCounselingUrl: hudUrl('NV'),
     downPaymentAssistance: [
-      { label: 'HIP Down Payment Assistance', description: '4% of loan amount in DPA — forgiven after 3 years.', url: 'https://housing.nv.gov/homebuyers/home-is-possible/' },
+      { label: 'HIP Down Payment Assistance', description: '4% of loan amount in DPA - forgiven after 3 years.', url: 'https://housing.nv.gov/homebuyers/home-is-possible/' },
     ],
     additionalResources: [
       { label: 'Nevada Realtors', description: 'Find a Nevada Realtor.', url: 'https://www.nevadarealtors.org' },
@@ -341,14 +341,14 @@ export const STATE_RESOURCES: Record<string, StateResources> = {
   },
   VA: {
     stateCode: 'VA', stateName: 'Virginia',
-    housingAuthority: { name: 'Virginia Housing', url: 'https://www.virginiahousing.com', description: 'Offers Home Loans and down payment grants for Virginia buyers — one of the strongest state programs in the country.' },
+    housingAuthority: { name: 'Virginia Housing', url: 'https://www.virginiahousing.com', description: 'Offers Home Loans and down payment grants for Virginia buyers - one of the strongest state programs in the country.' },
     firstTimeBuyerPrograms: [
-      { label: 'Virginia Housing Home Loan', description: 'Below-market fixed rate for first-time buyers in VA — works with FHA, VA, USDA, and conventional.', url: 'https://www.virginiahousing.com/for-home-buyers/home-loans' },
+      { label: 'Virginia Housing Home Loan', description: 'Below-market fixed rate for first-time buyers in VA - works with FHA, VA, USDA, and conventional.', url: 'https://www.virginiahousing.com/for-home-buyers/home-loans' },
       { label: 'Virginia Housing Mortgage Credit Certificate', description: 'Federal tax credit on mortgage interest for first-time VA buyers.', url: 'https://www.virginiahousing.com/for-home-buyers/mortgage-credit-certificate' },
     ],
     hudCounselingUrl: hudUrl('VA'),
     downPaymentAssistance: [
-      { label: 'Virginia Housing Down Payment Grant', description: 'Grant (no repayment) up to 2.5% of purchase price — one of the best DPA programs in the US.', url: 'https://www.virginiahousing.com/for-home-buyers/down-payment-assistance' },
+      { label: 'Virginia Housing Down Payment Grant', description: 'Grant (no repayment) up to 2.5% of purchase price - one of the best DPA programs in the US.', url: 'https://www.virginiahousing.com/for-home-buyers/down-payment-assistance' },
     ],
     additionalResources: [
       { label: 'Virginia Realtors', description: 'Find a Virginia Realtor.', url: 'https://www.virginiarealtors.org' },

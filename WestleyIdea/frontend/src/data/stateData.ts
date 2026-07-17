@@ -1,7 +1,7 @@
 // State-level averages for mortgage cost estimation
 // Sources: Tax Foundation 2024, Insurance Information Institute 2024,
 //          HOA-USA, EIA residential energy survey 2024
-// These are statewide averages — actual values vary widely by city/neighborhood
+// These are statewide averages - actual values vary widely by city/neighborhood
 
 export interface StateData {
   name: string
@@ -79,12 +79,12 @@ export const RATE_DATA_DATE = 'Mar 2026'
 // Mortgage insurance rates
 export const MORTGAGE_INSURANCE = {
   // FHA annual MIP (as % of loan, for 30yr loans)
-  fha_mip_annual: 0.0055,       // 0.55% for LTV 90–96.5%
+  fha_mip_annual: 0.0055,       // 0.55% for LTV 90-96.5%
   fha_mip_annual_high_ltv: 0.0055, // same for most cases as of 2023+
   fha_upfront_mip: 0.0175,      // 1.75% upfront (usually financed)
 
   // Conventional PMI (est. avg for 720 credit score)
-  conventional_pmi_annual: 0.0075, // 0.75% — drops at 80% LTV
+  conventional_pmi_annual: 0.0075, // 0.75% - drops at 80% LTV
 
   // USDA annual guarantee fee
   usda_annual_fee: 0.0035,      // 0.35% of loan

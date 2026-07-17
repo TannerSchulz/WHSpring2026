@@ -127,7 +127,7 @@ def rule_based_assessment(data: MortgageInput, rate_pct: float = DEFAULT_RATE_30
     if not credit_ok:
         gap = min_credit.get(data.loan_type, 620) - data.credit_score
         issues.append(f"Credit score {data.credit_score} is below the {loan_name} minimum of {min_credit.get(data.loan_type, 620)}")
-        steps.append(f"Raise your credit score by at least {gap} points — pay down revolving balances and avoid new hard inquiries")
+        steps.append(f"Raise your credit score by at least {gap} points - pay down revolving balances and avoid new hard inquiries")
 
     if not dti_ok:
         issues.append(f"Debt-to-income ratio of {dti}% exceeds the {loan_name} limit of {max_dti.get(data.loan_type, 43)}%")
@@ -151,13 +151,13 @@ def rule_based_assessment(data: MortgageInput, rate_pct: float = DEFAULT_RATE_30
             "We recommend getting pre-approved with a lender to confirm."
         )
         steps = [
-            f"Know your numbers — your credit score is {data.credit_score}, DTI is {dti}%, and you have ${data.down_payment:,.0f} saved for a down payment",
-            "Gather your documents: 2 years of tax returns, recent pay stubs, and 2–3 months of bank statements",
-            "Get pre-approved with 2–3 lenders and compare their loan offers",
+            f"Know your numbers - your credit score is {data.credit_score}, DTI is {dti}%, and you have ${data.down_payment:,.0f} saved for a down payment",
+            "Gather your documents: 2 years of tax returns, recent pay stubs, and 2-3 months of bank statements",
+            "Get pre-approved with 2-3 lenders and compare their loan offers",
         ]
     else:
         summary = (
-            f"Your profile doesn't quite meet {loan_name} requirements yet, but that's okay — "
+            f"Your profile doesn't quite meet {loan_name} requirements yet, but that's okay - "
             f"many people need to make a few adjustments before qualifying. "
             "Here's what to focus on:"
         )
@@ -221,12 +221,12 @@ Please respond in this EXACT JSON format (no markdown, just raw JSON):
 {{
   "qualifies": true or false,
   "summary": "1-2 sentences max. Be direct. Bold key numbers like **DTI: {dti:.1f}%** using markdown.",
-  "details": ["short detail — bold the key number or factor", "short detail", "short detail"],
-  "action_steps": ["step 1 (know their numbers — include credit score, DTI%, down payment)", "step 2 (gather documents — tax returns, pay stubs, bank statements)", "step 3 (get pre-approved — compare lenders)"],
+  "details": ["short detail - bold the key number or factor", "short detail", "short detail"],
+  "action_steps": ["step 1 (know their numbers - include credit score, DTI%, down payment)", "step 2 (gather documents - tax returns, pay stubs, bank statements)", "step 3 (get pre-approved - compare lenders)"],
   "estimated_monthly_payment": estimated monthly P&I payment as a number or null
 }}
 
-Always return exactly 3 action_steps following this structure: (1) know their numbers — credit score, DTI, down payment, (2) gather documents — tax returns, pay stubs, bank statements, (3) get pre-approved — compare lenders and apply. Personalize each step with their actual numbers. Be direct and brief. Bold the most important numbers."""
+Always return exactly 3 action_steps following this structure: (1) know their numbers - credit score, DTI, down payment, (2) gather documents - tax returns, pay stubs, bank statements, (3) get pre-approved - compare lenders and apply. Personalize each step with their actual numbers. Be direct and brief. Bold the most important numbers."""
 
 
 @app.post("/api/assess", response_model=AssessmentResponse)
@@ -241,7 +241,7 @@ async def assess_mortgage(data: MortgageInput):
             prompt = build_prompt(data, loan_amount, dti, ltv)
             if failures:
                 prompt += (
-                    "\n\nIMPORTANT — the applicant FAILS these hard program requirements, "
+                    "\n\nIMPORTANT - the applicant FAILS these hard program requirements, "
                     "so qualifies MUST be false and the failures must appear in details:\n- "
                     + "\n- ".join(failures)
                 )
@@ -264,10 +264,10 @@ async def assess_mortgage(data: MortgageInput):
                 demo_mode=False,
             )
         except Exception:
-            # AI response parsing failed — fall back to rule-based
+            # AI response parsing failed - fall back to rule-based
             pass
 
-    # No API key or AI parse failure — use rule-based fallback
+    # No API key or AI parse failure - use rule-based fallback
     result = rule_based_assessment(data, rate_30)
     return AssessmentResponse(
         **result,
@@ -300,16 +300,16 @@ class StepHelpResponse(BaseModel):
 STEP_HELP_FALLBACKS = {
     "credit": {
         "title": "Boost Your Credit Score",
-        "explanation": "**Credit score** is the #1 factor lenders check — raising it 20–40 points can unlock better rates.",
+        "explanation": "**Credit score** is the #1 factor lenders check - raising it 20-40 points can unlock better rates.",
         "checklist": [
-            {"task": "Pay down credit card balances", "detail": "Keep utilization **below 30%** on each card — this has the biggest impact."},
+            {"task": "Pay down credit card balances", "detail": "Keep utilization **below 30%** on each card - this has the biggest impact."},
             {"task": "Dispute errors on your report", "detail": "Check all 3 bureaus at **annualcreditreport.com** for mistakes."},
-            {"task": "Don't open new credit accounts", "detail": "Each hard inquiry drops your score — hold off until after closing."},
-            {"task": "Keep old accounts open", "detail": "Credit history length matters — don't close old cards."},
-            {"task": "Set up autopay", "detail": "One missed payment can hurt badly — automate at least the minimum."},
+            {"task": "Don't open new credit accounts", "detail": "Each hard inquiry drops your score - hold off until after closing."},
+            {"task": "Keep old accounts open", "detail": "Credit history length matters - don't close old cards."},
+            {"task": "Set up autopay", "detail": "One missed payment can hurt badly - automate at least the minimum."},
         ],
         "documents": [
-            "Credit reports from all 3 bureaus (annualcreditreport.com — free)",
+            "Credit reports from all 3 bureaus (annualcreditreport.com - free)",
             "List of open accounts and balances",
             "Dispute letters (if correcting errors)",
         ],
@@ -318,17 +318,17 @@ STEP_HELP_FALLBACKS = {
             "Becoming an authorized user on a family member's old card can boost your score fast.",
             "Pay down the card **closest to its limit** first for the quickest gain.",
         ],
-        "timeline": "3–6 months for meaningful improvement",
+        "timeline": "3-6 months for meaningful improvement",
     },
     "dti": {
         "title": "Lower Your DTI Ratio",
-        "explanation": "Lenders want your DTI **below 43%** — eliminate even one monthly payment to make a real impact.",
+        "explanation": "Lenders want your DTI **below 43%** - eliminate even one monthly payment to make a real impact.",
         "checklist": [
             {"task": "List all monthly debt payments", "detail": "Include car loans, student loans, credit card minimums, and any recurring obligations."},
-            {"task": "Pay off the smallest debt first", "detail": "The snowball method removes a payment entirely — even **$200/mo** matters."},
+            {"task": "Pay off the smallest debt first", "detail": "The snowball method removes a payment entirely - even **$200/mo** matters."},
             {"task": "Take on no new debt", "detail": "No car loans or credit card balances until after closing."},
             {"task": "Explore income-driven repayment for student loans", "detail": "An IDR plan can cut your required monthly payment and lower your DTI."},
-            {"task": "Increase your income", "detail": "Freelance or part-time income helps — document all sources."},
+            {"task": "Increase your income", "detail": "Freelance or part-time income helps - document all sources."},
         ],
         "documents": [
             "Statements for all loans and credit cards",
@@ -337,19 +337,19 @@ STEP_HELP_FALLBACKS = {
         ],
         "tips": [
             "Lenders use your **minimum required payment**, not what you actually pay.",
-            "A **large down payment** can sometimes offset a high DTI — ask your lender.",
+            "A **large down payment** can sometimes offset a high DTI - ask your lender.",
             "A co-borrower with low debt can improve your combined DTI.",
         ],
-        "timeline": "3–12 months; paying off one loan can help immediately",
+        "timeline": "3-12 months; paying off one loan can help immediately",
     },
     "employment": {
         "title": "Strengthen Employment History",
-        "explanation": "Lenders want **2 years** of stable employment — gaps or industry changes raise flags.",
+        "explanation": "Lenders want **2 years** of stable employment - gaps or industry changes raise flags.",
         "checklist": [
-            {"task": "Stay at your current job until closing", "detail": "Changing jobs during the process — even for more pay — can kill your approval."},
+            {"task": "Stay at your current job until closing", "detail": "Changing jobs during the process - even for more pay - can kill your approval."},
             {"task": "Document your employment history", "detail": "Gather **W-2s and pay stubs** for the past 2 years."},
             {"task": "Get an offer letter if you recently switched jobs", "detail": "A formal offer letter with salary and start date helps, especially in the same field."},
-            {"task": "Be ready to explain any employment gaps", "detail": "School, medical leave, or caregiving are acceptable — have documentation ready."},
+            {"task": "Be ready to explain any employment gaps", "detail": "School, medical leave, or caregiving are acceptable - have documentation ready."},
         ],
         "documents": [
             "W-2s (past 2 years)",
@@ -366,49 +366,49 @@ STEP_HELP_FALLBACKS = {
     },
     "down": {
         "title": "Save a Larger Down Payment",
-        "explanation": "More down = lower monthly payment and no **PMI** — but many loans accept as little as 3–5%.",
+        "explanation": "More down = lower monthly payment and no **PMI** - but many loans accept as little as 3-5%.",
         "checklist": [
-            {"task": "Open a high-yield savings account", "detail": "Keep savings separate — many online banks offer **4–5% APY**."},
-            {"task": "Automate monthly transfers", "detail": "Move money on payday before you can spend it — even **$300–500/mo** adds up."},
-            {"task": "Research down payment assistance programs", "detail": "Many states offer grants for first-time buyers — check **hud.gov**."},
-            {"task": "Look into gift funds", "detail": "Family can gift your down payment — you'll need a gift letter."},
-            {"task": "Budget for closing costs too", "detail": "Closing costs run **2–5% of the loan** — don't forget them."},
+            {"task": "Open a high-yield savings account", "detail": "Keep savings separate - many online banks offer **4-5% APY**."},
+            {"task": "Automate monthly transfers", "detail": "Move money on payday before you can spend it - even **$300-500/mo** adds up."},
+            {"task": "Research down payment assistance programs", "detail": "Many states offer grants for first-time buyers - check **hud.gov**."},
+            {"task": "Look into gift funds", "detail": "Family can gift your down payment - you'll need a gift letter."},
+            {"task": "Budget for closing costs too", "detail": "Closing costs run **2-5% of the loan** - don't forget them."},
         ],
         "documents": [
-            "Bank statements (last 2–3 months)",
+            "Bank statements (last 2-3 months)",
             "Gift letter (if using family funds)",
             "Down payment assistance paperwork (if applicable)",
         ],
         "tips": [
             "**20% down** eliminates PMI, but it's not required.",
-            "Ask HR — some employers offer **homebuyer assistance** as a benefit.",
+            "Ask HR - some employers offer **homebuyer assistance** as a benefit.",
             "First-time buyers can withdraw up to **$10,000 from a Roth IRA** penalty-free.",
         ],
-        "timeline": "Varies — divide your savings gap by your monthly savings rate",
+        "timeline": "Varies - divide your savings gap by your monthly savings rate",
     },
     "pre-approv": {
         "title": "Get Pre-Approved",
         "explanation": "Pre-approval shows sellers you're serious and tells you **exactly how much you can borrow**.",
         "checklist": [
-            {"task": "Gather your financial documents", "detail": "Have income, assets, employment, and ID ready — this speeds things up significantly."},
-            {"task": "Apply with 2–3 lenders", "detail": "Multiple inquiries within **14–45 days** count as one credit hit — shop around."},
-            {"task": "Compare Loan Estimates side by side", "detail": "Look at **APR** (not just rate) and closing costs — not just the interest rate."},
-            {"task": "Don't borrow your maximum", "detail": "Approval for a large amount doesn't mean you should take it — stick to your budget."},
-            {"task": "Make no major financial changes after pre-approval", "detail": "No new credit or big purchases — lenders may re-check right before closing."},
+            {"task": "Gather your financial documents", "detail": "Have income, assets, employment, and ID ready - this speeds things up significantly."},
+            {"task": "Apply with 2-3 lenders", "detail": "Multiple inquiries within **14-45 days** count as one credit hit - shop around."},
+            {"task": "Compare Loan Estimates side by side", "detail": "Look at **APR** (not just rate) and closing costs - not just the interest rate."},
+            {"task": "Don't borrow your maximum", "detail": "Approval for a large amount doesn't mean you should take it - stick to your budget."},
+            {"task": "Make no major financial changes after pre-approval", "detail": "No new credit or big purchases - lenders may re-check right before closing."},
         ],
         "documents": [
             "Government-issued photo ID",
             "W-2s (past 2 years)",
             "Pay stubs (last 30 days)",
             "Tax returns (last 2 years)",
-            "Bank statements (last 2–3 months)",
+            "Bank statements (last 2-3 months)",
         ],
         "tips": [
             "**Credit unions** often beat big bank rates.",
             "A **mortgage broker** shops multiple lenders for you.",
-            "Pre-approval letters expire in **60–90 days**.",
+            "Pre-approval letters expire in **60-90 days**.",
         ],
-        "timeline": "1–5 business days once documents are submitted",
+        "timeline": "1-5 business days once documents are submitted",
     },
 }
 
@@ -424,12 +424,12 @@ def fallback_step_help(step_text: str) -> dict:
         "explanation": f"Here's a guide to help you work through this step: {step_text}",
         "checklist": [
             {"task": "Research what's required", "detail": "Start by understanding exactly what lenders look for regarding this specific factor."},
-            {"task": "Consult a HUD-approved housing counselor", "detail": "Free counseling is available at hud.gov/counseling — they can give you personalized, unbiased advice."},
+            {"task": "Consult a HUD-approved housing counselor", "detail": "Free counseling is available at hud.gov/counseling - they can give you personalized, unbiased advice."},
             {"task": "Set a measurable goal and timeline", "detail": "Break this step into concrete monthly targets so you can track progress."},
         ],
         "documents": ["Any statements or paperwork relevant to this area of your finances"],
         "tips": ["Don't hesitate to ask your lender directly what they need to see for this specific factor."],
-        "timeline": "Varies — speak with a mortgage advisor for a personalized estimate",
+        "timeline": "Varies - speak with a mortgage advisor for a personalized estimate",
     }
 
 
@@ -450,7 +450,7 @@ USER PROFILE:
 - Employment: {profile.get('employment_years', 0)} years
 - Loan Type: {profile.get('loan_type', 'conventional').upper()}
 
-Give them concise, personalized help. Be direct — no fluff. Respond in this EXACT JSON format (no markdown):
+Give them concise, personalized help. Be direct - no fluff. Respond in this EXACT JSON format (no markdown):
 {{
   "title": "Short title (4-6 words)",
   "explanation": "1 sentence. State the key fact and why it matters to them. Bold the most important number like **score: 590**.",
@@ -462,8 +462,8 @@ Give them concise, personalized help. Be direct — no fluff. Respond in this EX
     {{"task": "...", "detail": "..."}}
   ],
   "documents": ["document 1", "document 2", "document 3"],
-  "tips": ["short tip — bold the key point", "tip 2", "tip 3"],
-  "timeline": "X–Y months" (keep it brief)
+  "tips": ["short tip - bold the key point", "tip 2", "tip 3"],
+  "timeline": "X-Y months" (keep it brief)
 }}
 
 Use their exact numbers. Bold the most critical figures. Keep every field as short as possible."""
@@ -500,7 +500,7 @@ Use their exact numbers. Bold the most critical figures. Keep every field as sho
     )
 
 
-# ── Live mortgage rates (Freddie Mac PMMS — public weekly survey, no API key) ──
+# ── Live mortgage rates (Freddie Mac PMMS - public weekly survey, no API key) ──
 # These are national conventional benchmarks, not Utah- or program-specific quotes.
 
 PMMS_URL = "https://www.freddiemac.com/pmms/docs/PMMS_history.csv"
@@ -554,7 +554,7 @@ async def get_live_rates() -> UtahRatesResponse:
             rate_30yr=6.4,
             rate_15yr=5.8,
             as_of="fallback planning estimate",
-            source="Static estimate — live rate feed unavailable",
+            source="Static estimate - live rate feed unavailable",
             live=False,
         )
 
@@ -596,7 +596,7 @@ USER FINANCIAL PROFILE:
 - Employment: {profile.get('employment_years', 0)} years
 - Loan Type: {profile.get('loan_type', 'conventional').upper()}
 
-Keep responses short (2-4 sentences max). Be direct and personalized — use their actual numbers. No bullet points. Plain conversational text only."""
+Keep responses short (2-4 sentences max). Be direct and personalized - use their actual numbers. No bullet points. Plain conversational text only."""
 
         try:
             message = ai_client.messages.create(
@@ -614,9 +614,9 @@ Keep responses short (2-4 sentences max). Be direct and personalized — use the
     if 'know your' in step or ('credit' in step and 'dti' in step):
         fallback = "Check annualcreditreport.com for your free credit report, then divide your total monthly debt payments by your gross monthly income to get your DTI. These two numbers are what every lender will look at first."
     elif 'gather' in step or 'document' in step or 'tax return' in step:
-        fallback = "Your lender needs to verify your income and assets. Grab your last two tax returns from the IRS Get Transcript tool, your most recent pay stubs, and 2-3 months of bank statements — having these ready before you apply speeds things up significantly."
+        fallback = "Your lender needs to verify your income and assets. Grab your last two tax returns from the IRS Get Transcript tool, your most recent pay stubs, and 2-3 months of bank statements - having these ready before you apply speeds things up significantly."
     elif 'pre-approv' in step or 'lender' in step or 'approv' in step:
-        fallback = "Apply with at least 3 lenders within the same 45-day window so it only counts as one credit inquiry. Compare the APR on each Loan Estimate — not just the interest rate — since APR includes fees and gives you a true cost comparison."
+        fallback = "Apply with at least 3 lenders within the same 45-day window so it only counts as one credit inquiry. Compare the APR on each Loan Estimate - not just the interest rate - since APR includes fees and gives you a true cost comparison."
     else:
         fallback = "I'm here to help! Ask me anything about your current step, what lenders look for, or what to expect next in the home-buying process."
 

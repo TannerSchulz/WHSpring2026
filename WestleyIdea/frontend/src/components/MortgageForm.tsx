@@ -18,14 +18,14 @@ interface Props {
 
 const LOAN_OPTIONS = [
   { value: 'conventional', name: 'Conventional', desc: 'As little as 3% for eligible borrowers' },
-  { value: 'fha',          name: 'FHA',          desc: '3.5% with 580+ score; 10% at 500–579' },
+  { value: 'fha',          name: 'FHA',          desc: '3.5% with 580+ score; 10% at 500-579' },
   { value: 'va',           name: 'VA',            desc: 'Eligible service members, often 0% down' },
   { value: 'usda',         name: 'USDA',          desc: 'Eligible rural homes and households, 0% down' },
 ]
 
 export const STEPS = [
-  { field: 'annual_income',    question: "What's your annual income?",                 hint: 'Before taxes — include all sources of income.',               prefix: '$', placeholder: '75,000',  type: 'currency'    },
-  { field: 'monthly_debts',    question: "What are your monthly debt payments?",        hint: 'Car loans, student loans, credit cards — not rent. Enter 0 if none.', prefix: '$', placeholder: '500', type: 'currency' },
+  { field: 'annual_income',    question: "What's your annual income?",                 hint: 'Before taxes - include all sources of income.',               prefix: '$', placeholder: '75,000',  type: 'currency'    },
+  { field: 'monthly_debts',    question: "What are your monthly debt payments?",        hint: 'Car loans, student loans, credit cards - not rent. Enter 0 if none.', prefix: '$', placeholder: '500', type: 'currency' },
   { field: 'credit_score',     question: "What's your credit score?",                   hint: 'Check Credit Karma or your bank app for a free estimate.',    prefix: null, placeholder: '700',    type: 'number'      },
   { field: 'employment_years', question: "How long have you had steady employment or qualifying income?", hint: 'Include recent jobs in the same field. A shorter history does not automatically disqualify you.', prefix: null, placeholder: null, type: 'employment' },
   { field: 'home_price',       question: "What's the home price you have in mind?",     hint: 'Enter your target purchase price.',                           prefix: '$', placeholder: '350,000', type: 'currency'    },
@@ -48,7 +48,7 @@ function fmt(n: number): string { return Math.round(n).toLocaleString() }
 const DEBT_GUIDE_INCLUDE = [
   ['Car loans or leases', ''],
   ['Minimum credit-card payments', 'just the minimums, not what you actually pay'],
-  ['Student loans', 'count these even if deferred — lenders use the payment on your credit report, or 0.5–1% of the balance if it shows $0'],
+  ['Student loans', 'count these even if deferred - lenders use the payment on your credit report, or 0.5-1% of the balance if it shows $0'],
   ['Personal or installment loans', ''],
   ['Child support or alimony you pay', ''],
   ['Mortgage payments on properties you\'ll keep', ''],
@@ -71,7 +71,7 @@ function DebtsGuide() {
           <div className="debts-guide-head include">Include</div>
           <ul>
             {DEBT_GUIDE_INCLUDE.map(([item, note]) => (
-              <li key={item}>{item}{note && <span className="debts-guide-note"> — {note}</span>}</li>
+              <li key={item}>{item}{note && <span className="debts-guide-note"> - {note}</span>}</li>
             ))}
           </ul>
         </div>
@@ -79,7 +79,7 @@ function DebtsGuide() {
           <div className="debts-guide-head exclude">Leave out</div>
           <ul>
             {DEBT_GUIDE_EXCLUDE.map(([item, note]) => (
-              <li key={item}>{item}{note && <span className="debts-guide-note"> — {note}</span>}</li>
+              <li key={item}>{item}{note && <span className="debts-guide-note"> - {note}</span>}</li>
             ))}
           </ul>
         </div>
@@ -425,7 +425,7 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
                   county: e.target.value || undefined,
                 }))}
               >
-                <option value="">— Select a county —</option>
+                <option value="">- Select a county -</option>
                 {Object.entries(UTAH_COUNTIES).map(([key, county]) => (
                   <option key={key} value={key}>{county.name}</option>
                 ))}

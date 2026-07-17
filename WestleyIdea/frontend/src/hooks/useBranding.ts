@@ -20,7 +20,7 @@ export function applyBranding(b: Branding) {
   const accent = isValidHex(b.accentColor) ? b.accentColor : DEFAULT_BRANDING.accentColor
   const theme = deriveTheme(primary, accent)
   for (const [k, v] of Object.entries(theme)) root.style.setProperty(k, v)
-  document.title = `${b.companyName || DEFAULT_BRANDING.companyName} — Mortgage Tools`
+  document.title = `${b.companyName || DEFAULT_BRANDING.companyName} - Mortgage Tools`
 }
 
 export function useBranding() {
@@ -36,7 +36,7 @@ export function useBranding() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(b))
     } catch {
-      // Data URLs can exceed the localStorage quota — persist everything else
+      // Data URLs can exceed the localStorage quota - persist everything else
       // so at least text/colors survive a reload.
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...b, logoDataUrl: null, officerPhotoDataUrl: null }))

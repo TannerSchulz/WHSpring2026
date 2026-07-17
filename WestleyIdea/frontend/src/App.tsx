@@ -78,7 +78,7 @@ export default function App() {
 
   return (
     <div className={`app${stage === 'dashboard' ? ' app--full' : ''}`}>
-      {/* Top navigation — landing & error stages (dashboard has its own topbar) */}
+      {/* Top navigation - landing & error stages (dashboard has its own topbar) */}
       {showHeader && (
         <nav className="top-nav">
           <div className="brand-version-lockup">
@@ -146,7 +146,7 @@ export default function App() {
       )}
 
       <footer className="disclaimer-footer">
-        <div className="disclaimer-title">Estimates Only — Not Financial, Legal, or Professional Advice</div>
+        <div className="disclaimer-title">Estimates Only - Not Financial, Legal, or Professional Advice</div>
         <p>
           This application is a demonstration tool offered strictly for testing and evaluation
           purposes. It is not operated by a licensed mortgage broker, lender, attorney, financial

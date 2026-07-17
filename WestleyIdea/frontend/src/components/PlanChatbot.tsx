@@ -19,17 +19,17 @@ function getStepHint(stepText: string, profile: UserProfile): string {
   const dti = profile.assessment.dti_ratio
 
   if (s.includes('know your') || s.includes('know their') || (s.includes('credit') && s.includes('dti'))) {
-    return `${hi}your credit score is ${credit_score} and your DTI is ${dti}%. ${credit_score >= 700 ? "That's a solid credit score — most lenders will be happy to work with you." : credit_score >= 640 ? "Your credit is workable, though improving it before applying could get you a better rate." : "Your credit score is on the lower end — we should talk about what you can do to improve it before applying."} Your $${down_payment.toLocaleString()} down payment covers ${Math.round((down_payment / profile.mortgageInput.home_price) * 100)}% of the home price.`
+    return `${hi}your credit score is ${credit_score} and your DTI is ${dti}%. ${credit_score >= 700 ? "That's a solid credit score - most lenders will be happy to work with you." : credit_score >= 640 ? "Your credit is workable, though improving it before applying could get you a better rate." : "Your credit score is on the lower end - we should talk about what you can do to improve it before applying."} Your $${down_payment.toLocaleString()} down payment covers ${Math.round((down_payment / profile.mortgageInput.home_price) * 100)}% of the home price.`
   }
 
   if (s.includes('gather') || s.includes('document') || s.includes('tax return') || s.includes('pay stub') || s.includes('bank statement')) {
-    return `${hi}lenders will need to verify your income of $${annual_income.toLocaleString()}/yr and your $${down_payment.toLocaleString()} in assets. The 3 documents below cover everything — you can drop the files right here to keep track of what you've gathered.`
+    return `${hi}lenders will need to verify your income of $${annual_income.toLocaleString()}/yr and your $${down_payment.toLocaleString()} in assets. The 3 documents below cover everything - you can drop the files right here to keep track of what you've gathered.`
   }
 
   if (s.includes('pre-approv') || s.includes('lender') || s.includes('approv')) {
     const monthlyIncome = Math.round(annual_income / 12)
     const maxPayment = Math.round((monthlyIncome * 0.28))
-    return `${hi}with $${annual_income.toLocaleString()}/yr income and $${monthly_debts.toLocaleString()}/mo in debts, you can likely afford up to ~$${maxPayment.toLocaleString()}/mo in mortgage payments. Apply with 2–3 lenders within the same 45-day window — it only counts as one credit inquiry.`
+    return `${hi}with $${annual_income.toLocaleString()}/yr income and $${monthly_debts.toLocaleString()}/mo in debts, you can likely afford up to ~$${maxPayment.toLocaleString()}/mo in mortgage payments. Apply with 2-3 lenders within the same 45-day window - it only counts as one credit inquiry.`
   }
 
   return `${hi}I'm here to help you work through this step. Ask me anything about what to do next, what lenders look for, or what to expect.`

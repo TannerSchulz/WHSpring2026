@@ -20,7 +20,7 @@ function getResources(stepText: string, stateCode: string): Resource[] {
   const ftb = localRes.firstTimeBuyerPrograms[0] ?? null
   const hudLocal: Resource = {
     icon: '🤝',
-    label: `Free HUD Counseling — ${stateName}`,
+    label: `Free HUD Counseling - ${stateName}`,
     description: `Connect with a HUD-approved housing counselor in ${stateName} for free, unbiased mortgage guidance.`,
     url: localRes.hudCounselingUrl,
   }
@@ -31,12 +31,12 @@ function getResources(stepText: string, stateCode: string): Resource[] {
     url: ha.url,
   }
 
-  // Step 1 — Know your numbers
+  // Step 1 - Know your numbers
   if (s.includes('know your') || s.includes('know their') || (s.includes('credit') && s.includes('dti'))) return [
     {
       icon: '📊',
       label: 'Get Your Free Credit Report',
-      description: 'Pull reports from all three bureaus (Equifax, Experian, TransUnion) for free once a year — required by federal law.',
+      description: 'Pull reports from all three bureaus (Equifax, Experian, TransUnion) for free once a year - required by federal law.',
       url: 'https://www.annualcreditreport.com',
     },
     {
@@ -54,19 +54,19 @@ function getResources(stepText: string, stateCode: string): Resource[] {
     hudLocal,
   ]
 
-  // Step 2 — Gather documents
+  // Step 2 - Gather documents
   if (s.includes('gather') || s.includes('document') || s.includes('tax return') || s.includes('pay stub') || s.includes('bank statement')) return [
     hudLocal,
     {
       icon: '📄',
       label: 'IRS Get Transcript (Tax Returns)',
-      description: 'Download your official tax transcripts directly from the IRS — accepted by all lenders as proof of income.',
+      description: 'Download your official tax transcripts directly from the IRS - accepted by all lenders as proof of income.',
       url: 'https://www.irs.gov/individuals/get-transcript',
     },
     {
       icon: '🏦',
       label: 'Download Bank Statements',
-      description: 'Log into your bank\'s online portal to download the last 2–3 months of statements for all accounts you\'ll use.',
+      description: 'Log into your bank\'s online portal to download the last 2-3 months of statements for all accounts you\'ll use.',
       note: 'Log in to your bank\'s website or app',
     },
     stateAuthority,
@@ -78,7 +78,7 @@ function getResources(stepText: string, stateCode: string): Resource[] {
     {
       icon: '📊',
       label: 'Get Your Free Credit Report',
-      description: 'Pull reports from all three bureaus (Equifax, Experian, TransUnion) for free once a year — required by federal law.',
+      description: 'Pull reports from all three bureaus (Equifax, Experian, TransUnion) for free once a year - required by federal law.',
       url: 'https://www.annualcreditreport.com',
     },
     {
@@ -124,7 +124,7 @@ function getResources(stepText: string, stateCode: string): Resource[] {
     {
       icon: '📈',
       label: 'High-Yield Savings Accounts',
-      description: 'Park your down payment savings in a HYSA to earn 4–5% APY while you save — far better than a standard savings account.',
+      description: 'Park your down payment savings in a HYSA to earn 4-5% APY while you save - far better than a standard savings account.',
       note: 'Search "HYSA" at your bank or credit union',
     },
   ]
@@ -151,20 +151,20 @@ function getResources(stepText: string, stateCode: string): Resource[] {
     hudLocal,
     {
       icon: '🏦',
-      label: 'Compare Mortgage Rates — Bankrate',
+      label: 'Compare Mortgage Rates - Bankrate',
       description: 'Get live rate quotes from multiple lenders side-by-side. Even a 0.25% rate difference saves thousands over the life of your loan.',
       url: 'https://www.bankrate.com/mortgages/mortgage-rates/',
     },
     {
       icon: '🤝',
       label: 'Find a Local Credit Union',
-      description: 'Credit unions are member-owned and typically offer lower rates and fees than traditional banks — worth checking before you commit.',
+      description: 'Credit unions are member-owned and typically offer lower rates and fees than traditional banks - worth checking before you commit.',
       url: 'https://www.mycreditunion.gov/about-credit-unions/credit-union-locator',
     },
     {
       icon: '📋',
       label: 'Pre-Approval Document Checklist',
-      description: 'Gather pay stubs, W-2s, bank statements, tax returns, and ID before applying — having everything ready speeds up approval.',
+      description: 'Gather pay stubs, W-2s, bank statements, tax returns, and ID before applying - having everything ready speeds up approval.',
       url: 'https://www.consumerfinance.gov/owning-a-home/',
     },
   ]
@@ -181,7 +181,7 @@ function getResources(stepText: string, stateCode: string): Resource[] {
     {
       icon: '📋',
       label: 'What Home Inspectors Look For',
-      description: 'Learn what inspectors check so you can spot red flags before making an offer — roof, foundation, HVAC, plumbing, and electrical.',
+      description: 'Learn what inspectors check so you can spot red flags before making an offer - roof, foundation, HVAC, plumbing, and electrical.',
       url: 'https://www.consumerfinance.gov/owning-a-home/',
     },
   ]
@@ -209,18 +209,18 @@ function getResources(stepText: string, stateCode: string): Resource[] {
     {
       icon: '📄',
       label: 'Understand Your Closing Disclosure',
-      description: 'You\'ll receive this 3 days before closing. Review every fee line by line — lenders are required to explain any changes from your loan estimate.',
+      description: 'You\'ll receive this 3 days before closing. Review every fee line by line - lenders are required to explain any changes from your loan estimate.',
       url: 'https://www.consumerfinance.gov/owning-a-home/',
     },
     {
       icon: '🏦',
       label: 'Wire Transfer Safety Guide',
-      description: 'Closing wire fraud is common. Always verify wire instructions by phone with your title company — never trust email instructions alone.',
+      description: 'Closing wire fraud is common. Always verify wire instructions by phone with your title company - never trust email instructions alone.',
       url: 'https://www.consumerfinance.gov/owning-a-home/',
     },
   ]
 
-  // Default — works for any step
+  // Default - works for any step
   return [
     stateAuthority,
     hudLocal,
@@ -244,24 +244,24 @@ interface ChecklistItem { text: string; url?: string }
 function getStepChecklist(stepText: string): ChecklistItem[] {
   const s = stepText.toLowerCase()
 
-  // Step 1 — Know your numbers
+  // Step 1 - Know your numbers
   if (s.includes('know your') || s.includes('know their') || (s.includes('credit') && s.includes('dti'))) return [
     { text: 'Pull your free credit report from all 3 bureaus', url: 'https://www.annualcreditreport.com' },
     { text: 'Calculate your DTI: add up all monthly debt payments ÷ gross monthly income' },
     { text: 'Confirm exactly how much you have saved for a down payment' },
   ]
 
-  // Step 2 — Gather documents
+  // Step 2 - Gather documents
   if (s.includes('gather') || s.includes('document') || s.includes('tax return') || s.includes('pay stub') || s.includes('bank statement')) return [
     { text: '2 years of tax returns (W-2s or 1040s)', url: 'https://www.irs.gov/individuals/get-transcript' },
     { text: 'Recent pay stubs (last 30 days)' },
-    { text: '2–3 months of bank statements' },
+    { text: '2-3 months of bank statements' },
   ]
 
-  // Step 3 — Get pre-approved
+  // Step 3 - Get pre-approved
   if (s.includes('pre-approv') || s.includes('lender') || s.includes('approv') || s.includes('loan officer')) return [
     { text: 'Compare rates from at least 3 lenders (bank, credit union, mortgage broker)', url: 'https://www.bankrate.com/mortgages/mortgage-rates/' },
-    { text: 'Submit pre-approval applications — multiple within 45 days counts as one credit inquiry' },
+    { text: 'Submit pre-approval applications - multiple within 45 days counts as one credit inquiry' },
     { text: 'Review and compare Loan Estimates side by side (look at APR, not just the rate)', url: 'https://www.consumerfinance.gov/owning-a-home/loan-estimate/' },
   ]
 
@@ -283,7 +283,7 @@ function getStepChecklist(stepText: string): ChecklistItem[] {
     { text: 'Open a high-yield savings account dedicated to your down payment' },
     { text: 'Set up automatic monthly transfers into that account' },
     { text: 'Research down payment assistance programs in your state', url: 'https://www.hud.gov/topics/buying_a_home' },
-    { text: 'Calculate your target amount (3–20% of target home price)' },
+    { text: 'Calculate your target amount (3-20% of target home price)' },
   ]
 
   if (s.includes('inspect') || s.includes('apprais')) return [
@@ -303,7 +303,7 @@ function getStepChecklist(stepText: string): ChecklistItem[] {
   if (s.includes('clos') || s.includes('title') || s.includes('escrow')) return [
     { text: 'Review your Closing Disclosure line by line 3 days before closing', url: 'https://www.consumerfinance.gov/owning-a-home/closing-disclosure/' },
     { text: 'Do a final walkthrough of the property' },
-    { text: 'Verify wire transfer instructions by phone — never trust email alone' },
+    { text: 'Verify wire transfer instructions by phone - never trust email alone' },
     { text: 'Sign all closing documents and collect your keys' },
   ]
 
@@ -493,13 +493,13 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
               </button>
               {phaseTwoNote && (
                 <div className="phase-next-note">
-                  🎉 Phase 2 is coming soon — in the meantime, your loan officer can walk you through the home search.
+                  🎉 Phase 2 is coming soon - in the meantime, your loan officer can walk you through the home search.
                 </div>
               )}
             </div>
           )}
 
-          {/* Step card — always visible so completed steps can be reviewed */}
+          {/* Step card - always visible so completed steps can be reviewed */}
           {(() => {
             const stepDone = isStepDone(activeIdx)
             return (
@@ -606,7 +606,7 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
             <div className="plan-save-cta">
               {!showEmailForm ? (
                 <>
-                  <span className="plan-save-cta-text">💾 Save your profile — enter your email to pick up where you left off</span>
+                  <span className="plan-save-cta-text">💾 Save your profile - enter your email to pick up where you left off</span>
                   <button className="plan-save-btn" onClick={() => setShowEmailForm(true)}>Save Profile</button>
                 </>
               ) : (

@@ -29,7 +29,7 @@ interface GoalsForm {
   stateCode: string
 }
 
-// Utah-first product — default the state so local resources point at Utah programs
+// Utah-first product - default the state so local resources point at Utah programs
 const defaultGoals: GoalsForm = {
   name: '', timeline: '', firstHome: true, workingWithAgent: false, topConcern: '', stateCode: 'UT',
 }
@@ -207,7 +207,7 @@ export default function AccountSetupPage({ result, userProfile, onBack, onProfil
                 value={goals.stateCode}
                 onChange={e => set('stateCode', e.target.value)}
               >
-                <option value="">— Select your state —</option>
+                <option value="">- Select your state -</option>
                 {US_STATES.map(s => (
                   <option key={s.code} value={s.code}>{s.name}</option>
                 ))}

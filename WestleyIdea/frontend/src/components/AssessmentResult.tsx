@@ -9,15 +9,15 @@ function bold(text: string) {
 type Status = 'good' | 'borderline' | 'poor' | 'neutral'
 
 function dtiStatus(dti: number): { status: Status; hint: string } {
-  if (dti <= 36) return { status: 'good', hint: 'Strong — lenders prefer below 36%' }
+  if (dti <= 36) return { status: 'good', hint: 'Strong - lenders prefer below 36%' }
   if (dti <= 43) return { status: 'borderline', hint: 'Acceptable, but above the ideal 36%' }
-  return { status: 'poor', hint: 'Above the 43% limit — reduce debt or increase income' }
+  return { status: 'poor', hint: 'Above the 43% limit - reduce debt or increase income' }
 }
 
 function ltvStatus(ltv: number): { status: Status; hint: string } {
   if (ltv <= 80) return { status: 'good', hint: 'No mortgage insurance needed' }
   if (ltv <= 95) return { status: 'borderline', hint: 'Mortgage insurance until you hit 80%' }
-  return { status: 'poor', hint: 'Very high — limited options, higher insurance' }
+  return { status: 'poor', hint: 'Very high - limited options, higher insurance' }
 }
 
 interface Props {
@@ -40,12 +40,12 @@ export default function AssessmentResult({ result, onRestart, onOpenDashboard }:
         </div>
 
         <div className="result-title">
-          {q ? "You're on track." : "Not there yet — here's what to fix."}
+          {q ? "You're on track." : "Not there yet - here's what to fix."}
         </div>
 
         {result.demo_mode && (
           <div className="demo-notice">
-            Running in demo mode — results based on standard mortgage guidelines, not AI.
+            Running in demo mode - results based on standard mortgage guidelines, not AI.
           </div>
         )}
 
@@ -78,7 +78,7 @@ export default function AssessmentResult({ result, onRestart, onOpenDashboard }:
           <div className="payment-highlight">
             <div className="payment-highlight-left">
               <div className="payment-highlight-label">Estimated Monthly Payment</div>
-              <div className="payment-highlight-sub">Principal & Interest only — excludes taxes, insurance, HOA</div>
+              <div className="payment-highlight-sub">Principal & Interest only - excludes taxes, insurance, HOA</div>
             </div>
             <div className="payment-highlight-value">${result.estimated_monthly_payment.toLocaleString()}<span>/mo</span></div>
           </div>
@@ -89,7 +89,7 @@ export default function AssessmentResult({ result, onRestart, onOpenDashboard }:
             <div className="section-label">What This Means</div>
             <div className="factor-grid">
               {result.details.map((d, i) => {
-                const dashIdx = d.indexOf(' — ')
+                const dashIdx = d.indexOf(' - ')
                 const label = dashIdx !== -1 ? d.slice(0, dashIdx) : d
                 const desc = dashIdx !== -1 ? d.slice(dashIdx + 3) : ''
                 return (
@@ -108,7 +108,7 @@ export default function AssessmentResult({ result, onRestart, onOpenDashboard }:
         </div>
         <div className="steps-accordion">
           {result.action_steps.map((s, i) => {
-            const dashIdx = s.indexOf(' — ')
+            const dashIdx = s.indexOf(' - ')
             const title = dashIdx !== -1 ? s.slice(0, dashIdx) : s
             const detail = dashIdx !== -1 ? s.slice(dashIdx + 3) : ''
             const open = expandedStep === i
