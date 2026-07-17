@@ -46,7 +46,7 @@ export default function App() {
     loadingTimerRef.current = window.setTimeout(() => {
       loadingTimerRef.current = null
       setStage('dashboard')
-    }, 5000)
+    }, 3000)
   }
 
   const restart = () => {

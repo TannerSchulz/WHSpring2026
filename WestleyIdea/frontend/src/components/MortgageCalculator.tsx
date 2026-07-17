@@ -220,7 +220,7 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
   prefill?: MortgageInput | null; liveRates: LiveRates | null; ratesLoading: boolean
 }) {
   const [homePrice, setHomePrice] = useState(prefill ? fmtInput(prefill.home_price) : '')
-  const [downDisplay, setDownDisplay] = useState(prefill ? fmtInput(prefill.down_payment) : '')
+  const [downDisplay, setDownDisplay] = useState(prefill ? prefill.down_payment.toLocaleString() : '')
   const [downMode, setDownMode] = useState<'dollar' | 'percent'>('dollar')
   const [loanType, setLoanType] = useState<LoanType>(prefill?.loan_type as LoanType ?? 'conventional')
   const [vaUsage, setVaUsage] = useState<VaUsage>(prefill?.va_usage ?? 'first')
@@ -239,7 +239,7 @@ function PaymentCalc({ prefill, liveRates, ratesLoading }: {
   const [utilities, setUtilities] = useState(fmtInput(UTAH_AVERAGES.utilitiesMonthly))
   const [includeMaintenance, setIncludeMaintenance] = useState(true)
   const [annualIncome, setAnnualIncome] = useState(prefill ? fmtInput(prefill.annual_income) : '')
-  const [monthlyDebts, setMonthlyDebts] = useState(prefill ? fmtInput(prefill.monthly_debts) : '')
+  const [monthlyDebts, setMonthlyDebts] = useState(prefill ? prefill.monthly_debts.toLocaleString() : '')
   const [monthlyPmiOverride, setMonthlyPmiOverride] = useState('')
   const [extraPayment, setExtraPayment] = useState('')
   const [showAmort, setShowAmort] = useState(false)

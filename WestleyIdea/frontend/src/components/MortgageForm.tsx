@@ -1,12 +1,10 @@
 import { useState, useEffect, useRef } from 'react'
 import { MortgageInput } from '../types'
-import { UTAH_COUNTIES, DEFAULT_COUNTY, UTAH_AVERAGES, FALLBACK_RATES } from '../data/utahData'
+import { UTAH_COUNTIES, FALLBACK_RATES } from '../data/utahData'
 import {
   adjustedLoanAmount,
-  affordableHomePrice,
   calcPI,
   downPaymentWarnings,
-  estimateMonthlyCost,
   firstYearMortgageInsurance,
   minimumDownPercent,
   type LoanType,
@@ -43,20 +41,6 @@ function parseCurrency(s: string): number {
 }
 
 function fmt(n: number): string { return Math.round(n).toLocaleString() }
-
-// Planning assumptions for the "help me figure out a price" sub-flow: it runs
-// before a loan program is chosen, so it prices a 30-year conventional loan with
-// 10% down using the credit score already collected earlier in the quiz.
-function subFlowCostOptions(taxRate: number, annualInsurance: number, creditScore: number) {
-  return {
-    loanType: 'conventional' as LoanType,
-    ratePct: FALLBACK_RATES['30'],
-    termYears: 30,
-    taxRate,
-    annualInsurance,
-    creditScore,
-  }
-}
 
 // What lenders count as recurring debt for DTI, per Fannie Mae B3-6-05 and
 // HUD 4000.1. Shown under the monthly-debts question so the number entered
@@ -107,16 +91,6 @@ function DebtsGuide() {
   )
 }
 
-// ── Sub-flow types ────────────────────────────────────────────────────────────
-
-type SubFlowType = 'home_price'
-
-interface SubAnswers {
-  budget?: number
-  budgetDisplay?: string
-  county?: string
-}
-
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props) {
@@ -130,28 +104,18 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
   const [employYears, setEmployYears] = useState<string>('')
   const [employMonths, setEmployMonths] = useState<string>('')
 
-  // Sub-flow state
-  const [subFlow, setSubFlow] = useState<SubFlowType | null>(null)
-  const [subStep, setSubStep] = useState(0)
-  const [subAnswers, setSubAnswers] = useState<SubAnswers>({})
-
   const inputRef = useRef<HTMLInputElement>(null)
   const employYearsRef = useRef<HTMLInputElement>(null)
-  const subInputRef = useRef<HTMLInputElement>(null)
 
   const current = STEPS[step]
 
   useEffect(() => {
-    if (subFlow) {
-      subInputRef.current?.focus()
-      return
-    }
     if (current.type === 'employment') {
       employYearsRef.current?.focus()
     } else if (current.type !== 'select') {
       inputRef.current?.focus()
     }
-  }, [step, subFlow, subStep, current.type])
+  }, [step, current.type])
 
   // ── Validation ──────────────────────────────────────────────────────────────
 
@@ -166,6 +130,7 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
       const n = parseCurrency(displayValues[current.field] ?? '')
       if (current.field === 'monthly_debts') return !isNaN(n) && n >= 0
       if (current.field === 'available_savings') return !isNaN(n) && n >= 0
+      if (current.field === 'home_price') return !isNaN(n) && n > 0 && !!values.county
       return !isNaN(n) && n > 0
     }
     const v = values[current.field as keyof MortgageInput]
@@ -174,14 +139,6 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
       return n >= 300 && n <= 850
     }
     return v !== undefined && Number(v) > 0
-  }
-
-  const isSubValid = (): boolean => {
-    if (subFlow === 'home_price') {
-      if (subStep === 0) return !!subAnswers.budget && subAnswers.budget > 0
-      if (subStep === 1) return !!subAnswers.county
-    }
-    return true
   }
 
   // ── Advance main flow ───────────────────────────────────────────────────────
@@ -231,33 +188,6 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
     setStep(s => s - 1)
   }
 
-  // ── Sub-flow advance ────────────────────────────────────────────────────────
-
-  const advanceSubFlow = () => {
-    if (!isSubValid()) return
-    setSubStep(s => s + 1)
-  }
-
-  const backSubFlow = () => {
-    if (subStep === 0) {
-      setSubFlow(null)
-      setSubStep(0)
-    } else {
-      setSubStep(s => s - 1)
-    }
-  }
-
-  const selectHomePrice = (price: number) => {
-    const selectedCounty = subAnswers.county ?? DEFAULT_COUNTY
-    setValues(v => ({ ...v, home_price: price, state: 'UT', county: selectedCounty }))
-    setDisplayValues(prev => ({ ...prev, home_price: fmt(price) }))
-    onFieldCommit('home_price', price)
-    setSubFlow(null)
-    setSubStep(0)
-    setSubAnswers({})
-    setStep(s => s + 1)
-  }
-
   const selectDownPayment = (amount: number, savings: number) => {
     setValues(v => ({ ...v, available_savings: savings, down_payment: amount }))
     setDisplayValues(prev => ({ ...prev, available_savings: fmt(savings) }))
@@ -270,12 +200,6 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
     } as MortgageInput)
   }
 
-  const enterSubFlow = (type: SubFlowType) => {
-    setSubFlow(type)
-    setSubStep(0)
-    setSubAnswers({})
-  }
-
   // ── Currency change ─────────────────────────────────────────────────────────
 
   const handleCurrencyChange = (field: string, raw: string) => {
@@ -283,129 +207,6 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
     setDisplayValues(prev => ({ ...prev, [field]: cleaned ? Number(cleaned).toLocaleString() : '' }))
     const n = parseFloat(cleaned)
     setValues(v => ({ ...v, [field]: isNaN(n) ? undefined : n }))
-  }
-
-  const handleSubCurrencyChange = (key: keyof SubAnswers, displayKey: keyof SubAnswers, raw: string) => {
-    const cleaned = raw.replace(/[^\d]/g, '')
-    const n = parseFloat(cleaned)
-    setSubAnswers(prev => ({
-      ...prev,
-      [displayKey]: cleaned ? Number(cleaned).toLocaleString() : '',
-      [key]: isNaN(n) ? undefined : n,
-    }))
-  }
-
-  // ── Sub-flow: home price ────────────────────────────────────────────────────
-
-  const renderHomePriceSubFlow = () => {
-    const monthlyGross = (values.annual_income ?? 0) / 12
-    const planningPayment = monthlyGross > 0
-      ? Math.max(0, Math.round(Math.min(
-        monthlyGross * 0.28,
-        monthlyGross * 0.43 - (values.monthly_debts ?? 0),
-      )))
-      : 0
-
-    if (subStep === 0) {
-      return (
-        <>
-          <div className="sub-flow-crumb">🏡 Figuring out home price</div>
-          <div className="step-question">What's your comfortable monthly housing budget?</div>
-          <div className="step-hint">Principal, interest, property taxes, and homeowner's insurance. If the home may have an HOA fee, leave room for it in this number.</div>
-          <div className="input-wrap">
-            <span className="input-prefix">$</span>
-            <input
-              ref={subInputRef}
-              className="step-input"
-              type="text"
-              inputMode="numeric"
-              placeholder="2,500"
-              value={subAnswers.budgetDisplay ?? ''}
-              onChange={e => handleSubCurrencyChange('budget', 'budgetDisplay', e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') advanceSubFlow() }}
-            />
-            <span className="input-suffix">/mo</span>
-          </div>
-          {planningPayment > 0 && (
-            <div className="sub-flow-hint">
-              Planning start after the debts entered: <strong>${fmt(planningPayment)}/mo</strong>. This is a budgeting guide, not an approval limit.
-            </div>
-          )}
-        </>
-      )
-    }
-
-    if (subStep === 1) {
-      return (
-        <>
-          <div className="sub-flow-crumb">🏡 Figuring out home price</div>
-          <div className="step-question">Which Utah county are you looking to buy in?</div>
-          <div className="step-hint">We'll use that county's property tax rate and Utah's average insurance cost.</div>
-          <select
-            className="sub-state-select"
-            value={subAnswers.county ?? ''}
-            onChange={e => setSubAnswers(prev => ({ ...prev, county: e.target.value }))}
-          >
-            <option value="">— Select a county —</option>
-            {Object.entries(UTAH_COUNTIES).map(([key, c]) => (
-              <option key={key} value={key}>{c.name}</option>
-            ))}
-          </select>
-          {subAnswers.county && (
-            <div className="sub-flow-hint">
-              County planning tax rate: <strong>{(UTAH_COUNTIES[subAnswers.county].taxRate * 100).toFixed(2)}%/yr</strong>
-              &nbsp;·&nbsp; Avg. insurance: <strong>${fmt(UTAH_AVERAGES.insuranceAnnual)}/yr</strong>
-              <br />Actual tax-area rate, assessed value, and insurance quote will vary.
-            </div>
-          )}
-        </>
-      )
-    }
-
-    // Step 2: pick from options
-    const budget = subAnswers.budget ?? 2500
-    const county = subAnswers.county ?? DEFAULT_COUNTY
-    const taxRate = UTAH_COUNTIES[county].taxRate
-    const insurance = UTAH_AVERAGES.insuranceAnnual
-    const costOptions = subFlowCostOptions(taxRate, insurance, values.credit_score ?? 720)
-
-    const maxPrice = Math.floor(affordableHomePrice(budget, 0.10, costOptions) / 5000) * 5000
-    const options = [
-      { label: 'Conservative', badge: 'More breathing room', factor: 0.70, color: 'option-green' },
-      { label: 'Comfortable',  badge: 'Recommended',         factor: 0.85, color: 'option-blue', recommended: true },
-      { label: 'Stretch',      badge: 'At your limit',       factor: 1.00, color: 'option-orange' },
-    ].map(opt => {
-      const price = Math.round(maxPrice * opt.factor / 5000) * 5000
-      const down = Math.round(price * 0.1)
-      const monthly = Math.round(estimateMonthlyCost(price, down, costOptions))
-      return { ...opt, price, down, monthly }
-    }).filter(o => o.price > 0)
-
-    return (
-      <>
-        <div className="sub-flow-crumb">🏡 Figuring out home price</div>
-        <div className="step-question">Here's what fits your budget</div>
-        <div className="step-hint">
-          Based on ${fmt(budget)}/mo budget in {UTAH_COUNTIES[county].name}, assuming 10% down at {FALLBACK_RATES['30']}% for 30 years.
-        </div>
-        <div className="price-option-cards">
-          {options.map(opt => (
-            <button
-              key={opt.label}
-              className={`price-option-card ${opt.color}${opt.recommended ? ' recommended' : ''}`}
-              onClick={() => selectHomePrice(opt.price)}
-            >
-              {opt.recommended && <div className="price-option-rec-banner">★ Recommended</div>}
-              <div className="price-option-label">{opt.label}</div>
-              <div className="price-option-price">${fmt(opt.price)}</div>
-              <div className="price-option-detail">~${fmt(opt.monthly)}/mo total</div>
-              <div className="price-option-down">~${fmt(opt.down)} down (10%)</div>
-              <div className="price-option-cta">Select this price →</div>
-            </button>
-          ))}
-        </div>
-      </>
-    )
   }
 
   // ── Inline down-payment scenarios ───────────────────────────────────────────
@@ -502,7 +303,6 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
   // ── Render ──────────────────────────────────────────────────────────────────
 
   const progress = ((step + 1) / STEPS.length) * 100
-  const isLastSubStep = subFlow === 'home_price' && subStep === 2
 
   const renderMainInput = () => {
     if (current.type === 'select') {
@@ -610,6 +410,31 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
               onKeyDown={e => { if (e.key === 'Enter') commitAndAdvance() }}
             />
           </div>
+          {current.field === 'home_price' && (
+            <div className="home-price-details">
+              <label className="home-price-county-label" htmlFor="home-price-county">
+                Which Utah county are you looking in?
+              </label>
+              <select
+                id="home-price-county"
+                className="sub-state-select"
+                value={values.county ?? ''}
+                onChange={e => setValues(prev => ({
+                  ...prev,
+                  state: 'UT',
+                  county: e.target.value || undefined,
+                }))}
+              >
+                <option value="">— Select a county —</option>
+                {Object.entries(UTAH_COUNTIES).map(([key, county]) => (
+                  <option key={key} value={key}>{county.name}</option>
+                ))}
+              </select>
+              <div className="home-price-guidance">
+                <strong>Not sure exactly what you can afford yet?</strong> That’s completely okay. Enter a solid estimate within the range of homes you’re considering. We’ll walk through the monthly payment numbers next, and you can adjust the price in the calculator.
+              </div>
+            </div>
+          )}
           {savingsCoverPrice && (
             <div className="step-hint" style={{ marginTop: '0.5rem' }}>
               Your savings cover the full purchase price. You can still choose a smaller down payment to compare mortgage options.
@@ -651,46 +476,31 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
         <div className="progress-fill" style={{ width: `${progress}%` }} />
       </div>
 
-      <div className="step" key={`${step}-${subFlow}-${subStep}`}>
-        {!subFlow && (
-          <>
-            <div className="step-counter">Step {step + 1} of {STEPS.length}</div>
-            <div className="step-question">{current.question}</div>
-            <div className="step-hint">{current.hint}</div>
-            {renderMainInput()}
+      <div className="step" key={step}>
+        <div className="step-counter">Step {step + 1} of {STEPS.length}</div>
+        <div className="step-question">{current.question}</div>
+        <div className="step-hint">{current.hint}</div>
+        {renderMainInput()}
 
-            {current.field === 'monthly_debts' && <DebtsGuide />}
-
-            {/* "Not sure?" alternatives */}
-            {current.field === 'home_price' && (
-              <button className="not-sure-btn" onClick={() => enterSubFlow('home_price')}>
-                🤔 Not sure what price to target? Help me figure it out
-              </button>
-            )}
-          </>
-        )}
-
-        {subFlow === 'home_price' && renderHomePriceSubFlow()}
+        {current.field === 'monthly_debts' && <DebtsGuide />}
 
         <div className="step-nav">
-          {(subFlow ? true : step > 0) && (
-            <button className="btn-back" type="button" onClick={subFlow ? backSubFlow : back}>
+          {step > 0 && (
+            <button className="btn-back" type="button" onClick={back}>
               ← Back
             </button>
           )}
 
-          {!isLastSubStep && (
-            <button
-              className="btn-next"
-              type="button"
-              onClick={subFlow ? advanceSubFlow : commitAndAdvance}
-              disabled={subFlow ? !isSubValid() : (!isValid() || loading)}
-            >
-              {!subFlow && step === STEPS.length - 1
-                ? loading ? 'Analyzing...' : '✨ Get My Assessment'
-                : 'Continue →'}
-            </button>
-          )}
+          <button
+            className="btn-next"
+            type="button"
+            onClick={commitAndAdvance}
+            disabled={!isValid() || loading}
+          >
+            {step === STEPS.length - 1
+              ? loading ? 'Analyzing...' : '✨ Get My Assessment'
+              : 'Continue →'}
+          </button>
         </div>
       </div>
     </div>
