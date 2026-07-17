@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import MortgageForm from './components/MortgageForm'
 import ValueTracker, { TrackerEntry } from './components/ValueTracker'
+import LoadingScreen from './components/LoadingScreen'
 import Dashboard from './components/Dashboard'
 import BrandingSettings from './components/BrandingSettings'
 import BrandMark from './components/BrandMark'
@@ -9,7 +10,7 @@ import { MortgageInput } from './types'
 import { useBranding } from './hooks/useBranding'
 import { APP_VERSION } from './version'
 
-type Stage = 'form' | 'dashboard'
+type Stage = 'form' | 'loading' | 'dashboard'
 
 // Sample data for the ?preview=calc dev shortcut
 const PREVIEW_INPUT: MortgageInput = {
@@ -27,6 +28,7 @@ export default function App() {
   const [stage, setStage] = useState<Stage>('form')
   const [trackerEntries, setTrackerEntries] = useState<TrackerEntry[]>([])
   const [lastProfile, setLastProfile] = useState<MortgageInput | null>(null)
+  const loadingTimerRef = useRef<number | null>(null)
   const { branding, save: saveBranding, reset: resetBranding } = useBranding()
   const [showBranding, setShowBranding] = useState(false)
 
@@ -38,11 +40,20 @@ export default function App() {
   }
 
   const handleSubmit = (data: MortgageInput) => {
+    if (loadingTimerRef.current !== null) window.clearTimeout(loadingTimerRef.current)
     setLastProfile(data)
-    setStage('dashboard')
+    setStage('loading')
+    loadingTimerRef.current = window.setTimeout(() => {
+      loadingTimerRef.current = null
+      setStage('dashboard')
+    }, 5000)
   }
 
   const restart = () => {
+    if (loadingTimerRef.current !== null) {
+      window.clearTimeout(loadingTimerRef.current)
+      loadingTimerRef.current = null
+    }
     setStage('form')
     setTrackerEntries([])
     setLastProfile(null)
@@ -57,8 +68,12 @@ export default function App() {
     }
   }, [])
 
+  useEffect(() => () => {
+    if (loadingTimerRef.current !== null) window.clearTimeout(loadingTimerRef.current)
+  }, [])
+
   const showHeader = stage === 'form'
-  const inNarrowFlow = stage === 'form'
+  const inNarrowFlow = stage === 'form' || stage === 'loading'
   const showTracker = stage === 'form'
 
   return (
@@ -109,6 +124,8 @@ export default function App() {
               onFieldCommit={handleFieldCommit}
             />
           )}
+
+          {stage === 'loading' && <LoadingScreen branding={branding} />}
 
         </div>
       )}
