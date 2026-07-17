@@ -1,5 +1,10 @@
 name: Docker Image CI
-run-name: Build 0.1.${{ github.run_number }}
+run-name: "CI run #${{ github.run_number }}"
+
+env:
+  VERSION_MAJOR: ${{ vars.VERSION_MAJOR }}
+  VERSION_MINOR: ${{ vars.VERSION_MINOR }}
+  VERSION_RUN_BASE: ${{ vars.VERSION_RUN_BASE }}
 
 on:
   push:
@@ -28,8 +33,25 @@ jobs:
       id: build
       shell: bash
       run: |
-        echo "version=0.2.${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
+        if ! [[ "$VERSION_MAJOR" =~ ^[0-9]+$ && "$VERSION_MINOR" =~ ^[0-9]+$ && "$VERSION_RUN_BASE" =~ ^[0-9]+$ ]]; then
+          echo "VERSION_MAJOR, VERSION_MINOR, and VERSION_RUN_BASE must be repository variables containing whole numbers."
+          exit 1
+        fi
+
+        relative_build=$((GITHUB_RUN_NUMBER - VERSION_RUN_BASE))
+        if (( relative_build < 0 )); then
+          echo "VERSION_RUN_BASE ($VERSION_RUN_BASE) cannot exceed the current GitHub run number ($GITHUB_RUN_NUMBER)."
+          exit 1
+        fi
+
+        version="${VERSION_MAJOR}.${VERSION_MINOR}.${relative_build}"
+        echo "version=${version}" >> "$GITHUB_OUTPUT"
+        echo "github_run=${GITHUB_RUN_NUMBER}" >> "$GITHUB_OUTPUT"
         echo "channel=${GITHUB_BASE_REF:-$GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+        echo "Building version ${version} from GitHub run ${GITHUB_RUN_NUMBER}."
+        echo "### Build version" >> "$GITHUB_STEP_SUMMARY"
+        echo "- Software version: \`${version}\`" >> "$GITHUB_STEP_SUMMARY"
+        echo "- GitHub run: \`${GITHUB_RUN_NUMBER}\`" >> "$GITHUB_STEP_SUMMARY"
 
     - name: Login to Azure Container Registry
       run: echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_LOGIN_SERVER }} -u ${{ secrets.ACR_USERNAME }} --password-stdin
@@ -77,5 +99,6 @@ jobs:
 
         echo "### Demo deployment" >> "$GITHUB_STEP_SUMMARY"
         echo "- Version: \`${{ steps.build.outputs.version }}\`" >> "$GITHUB_STEP_SUMMARY"
+        echo "- GitHub run: \`${{ steps.build.outputs.github_run }}\`" >> "$GITHUB_STEP_SUMMARY"
         echo "- Container App: \`${{ vars.AZURE_CONTAINER_APP_NAME }}\`" >> "$GITHUB_STEP_SUMMARY"
         echo "- Revision: \`${revision}\`" >> "$GITHUB_STEP_SUMMARY"
