@@ -1,7 +1,7 @@
-frontend/node_modules
-frontend/dist
-frontend/.test-dist
-backend/__pycache__
-backend/*.pyc
-backend/.env
-.env
+marketing/
+**/node_modules/
+**/.next/
+**/dist/
+**/__pycache__/
+**/*.pyc
+**/.env*

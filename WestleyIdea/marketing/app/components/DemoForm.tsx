@@ -4,6 +4,8 @@ import { FormEvent, useState } from "react";
 
 type FormState = "idle" | "submitting" | "success" | "error";
 
+const formEndpoint = process.env.NEXT_PUBLIC_DEMO_FORM_ENDPOINT;
+
 export function DemoForm() {
   const [state, setState] = useState<FormState>("idle");
   const [message, setMessage] = useState("");
@@ -17,7 +19,11 @@ export function DemoForm() {
     const payload = Object.fromEntries(new FormData(form).entries());
 
     try {
-      const response = await fetch("/api/demo-requests", {
+      if (!formEndpoint) {
+        throw new Error("This form is ready to connect to your CRM or form service.");
+      }
+
+      const response = await fetch(formEndpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),

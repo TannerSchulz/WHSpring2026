@@ -1,7 +1,5 @@
 node_modules/
-dist/
 .next/
-.wrangler/
-.vinext/
 *.tsbuildinfo
-*.tar.gz
+.env*
+!.env.example
