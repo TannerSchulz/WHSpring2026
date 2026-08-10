@@ -7,6 +7,7 @@ const FIELD_META: Record<string, { label: string; format: (value: string | numbe
   income_source: { label: 'Income path', format: value => value === 'schooling' ? 'Specialized schooling' : 'Employment' },
   employment_years: { label: 'Employment', format: value => `${value} years` },
   school_program: { label: 'Program', format: String },
+  expected_salary: { label: 'Expected income', format: value => `$${Number(value).toLocaleString()}` },
   annual_income: { label: 'Annual income', format: value => `$${Number(value).toLocaleString()}` },
   monthly_debts: { label: 'Monthly debts', format: value => `$${Number(value).toLocaleString()}` },
   credit_range: { label: 'Credit range', format: String },

@@ -12,8 +12,7 @@ interface Props {
 type StepType = 'employment' | 'currency' | 'credit' | 'location' | 'loan'
 
 export const STEPS: Array<{ field: string; question: string; hint: string; type: StepType }> = [
-  { field: 'income_source', question: 'Tell us about your employment or specialized schooling', hint: 'Choose the path that best describes how your future mortgage income will be supported.', type: 'employment' },
-  { field: 'annual_income', question: "What's your annual income?", hint: 'Enter gross income before taxes from all sources.', type: 'currency' },
+  { field: 'income_source', question: 'Tell us about your employment or specialized schooling', hint: 'Choose one path and enter the details used to estimate your home budget.', type: 'employment' },
   { field: 'monthly_debts', question: 'What are your monthly debt payments?', hint: 'Include loan and minimum card payments. Enter 0 if you have none.', type: 'currency' },
   { field: 'credit_range', question: 'Which credit range are you in?', hint: 'An estimate is enough. Every range can continue to the results.', type: 'credit' },
   { field: 'location', question: 'What county and state are you looking in?', hint: 'Location helps estimate property taxes and homeowners insurance.', type: 'location' },
@@ -60,7 +59,9 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
 
   const valid = () => {
     if (current.type === 'employment') {
-      if (values.income_source === 'employment') return values.employment_years !== undefined
+      if (values.income_source === 'employment') {
+        return values.employment_years !== undefined && values.annual_income !== undefined
+      }
       return values.income_source === 'schooling'
         && !!values.school_program?.trim()
         && !!values.graduation_date
@@ -85,15 +86,22 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
     if (current.type === 'loan') commits.push(['loan_type', values.loan_type!])
     if (current.type === 'employment') {
       commits.push(['income_source', values.income_source!])
-      if (values.income_source === 'employment') commits.push(['employment_years', values.employment_years ?? 0])
-      else commits.push(['school_program', values.school_program!])
+      if (values.income_source === 'employment') {
+        commits.push(['employment_years', values.employment_years ?? 0])
+        commits.push(['annual_income', values.annual_income ?? 0])
+      } else {
+        commits.push(['school_program', values.school_program!])
+        commits.push(['expected_salary', values.expected_salary ?? 0])
+      }
     }
     commits.forEach(([field, value]) => onFieldCommit(field, value))
 
     if (step < STEPS.length - 1) return setStep(step + 1)
 
     const range = CREDIT_RANGES.find(item => item.value === values.credit_range)
-    const annualIncome = values.annual_income ?? 0
+    const annualIncome = values.income_source === 'schooling'
+      ? values.expected_salary ?? 0
+      : values.annual_income ?? 0
     const savings = values.available_savings ?? 0
     onSubmit({
       ...values,
@@ -116,14 +124,17 @@ export default function MortgageForm({ onSubmit, loading, onFieldCommit }: Props
     <div className="path-wrap">
       <div className="choice-grid">
         <button type="button" className={`choice-card${values.income_source === 'employment' ? ' selected' : ''}`} onClick={() => setValues(v => ({ ...v, income_source: 'employment' }))}>
-          <strong>Employment</strong><span>I have employment or qualifying income</span>
+          <strong>Employment</strong><span>I am currently employed</span>
         </button>
         <button type="button" className={`choice-card${values.income_source === 'schooling' ? ' selected' : ''}`} onClick={() => setValues(v => ({ ...v, income_source: 'schooling' }))}>
           <strong>Specialized schooling</strong><span>I am preparing for a specialized career</span>
         </button>
       </div>
       {values.income_source === 'employment' && (
-        <label className="field-stack"><span>Years of steady employment or qualifying income</span><input ref={inputRef} className="plain-entry" type="number" min="0" step="0.1" value={values.employment_years ?? ''} onChange={e => setValues(v => ({ ...v, employment_years: e.target.value === '' ? undefined : Number(e.target.value) }))} /></label>
+        <div className="school-grid">
+          <label className="field-stack"><span>Years at steady employment</span><input ref={inputRef} className="plain-entry" type="number" inputMode="numeric" min="0" step="1" value={values.employment_years ?? ''} onChange={e => setValues(v => ({ ...v, employment_years: e.target.value === '' ? undefined : Math.max(0, Math.trunc(Number(e.target.value))) }))} /></label>
+          <label className="field-stack"><span>Annual income before taxes</span><div className="input-wrap"><span className="input-prefix">$</span><input className="step-input" inputMode="numeric" value={display.annual_income ?? ''} onChange={e => setCurrency('annual_income', e.target.value)} /></div></label>
+        </div>
       )}
       {values.income_source === 'schooling' && (
         <div className="school-grid">
