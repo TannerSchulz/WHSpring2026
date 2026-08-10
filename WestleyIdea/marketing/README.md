@@ -20,11 +20,9 @@ pnpm lint
 pnpm build
 ```
 
-## Connect the pilot request form
+## Pilot request form
 
-The form UI is included but no lead data is stored by this repository. Set `NEXT_PUBLIC_DEMO_FORM_ENDPOINT` to your own CRM, form service, or API endpoint when you are ready to connect it.
-
-Set `NEXT_PUBLIC_SITE_URL` when deploying later if you want absolute social-sharing metadata for your final domain.
+The form is a visual preview only. It has no endpoint, performs no network request, and does not store information in the browser or elsewhere.
 
 ## Container
 
@@ -35,4 +33,4 @@ docker build . -t mortgageai-marketing
 docker run --rm -p 8080:8080 mortgageai-marketing
 ```
 
-The `Marketing` GitHub Actions workflow supplies `NEXT_PUBLIC_SITE_URL` and `NEXT_PUBLIC_DEMO_FORM_ENDPOINT` as public build-time values, then pushes the image to Azure Container Registry and updates the marketing Azure Container App on the `demo` branch.
+The `Marketing` GitHub Actions workflow builds the self-contained application, pushes the image to Azure Container Registry, and updates the marketing Azure Container App on the `demo` branch.

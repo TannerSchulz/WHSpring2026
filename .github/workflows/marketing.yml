@@ -99,8 +99,6 @@ jobs:
           docker build ./WestleyIdea/marketing \
             --file WestleyIdea/marketing/Dockerfile \
             --build-arg APP_VERSION=${{ steps.build.outputs.version }} \
-            --build-arg NEXT_PUBLIC_SITE_URL="${{ vars.MARKETING_SITE_URL || 'http://localhost:3000' }}" \
-            --build-arg NEXT_PUBLIC_DEMO_FORM_ENDPOINT="${{ vars.MARKETING_DEMO_FORM_ENDPOINT }}" \
             --tag ${{ steps.build.outputs.image }}:${{ steps.build.outputs.version }} \
             --tag ${{ steps.build.outputs.image }}:${{ steps.build.outputs.channel }}-latest
 

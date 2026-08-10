@@ -6,17 +6,13 @@ RUN corepack enable
 
 FROM base AS dependencies
 WORKDIR /app
-COPY package.json pnpm-lock.yaml ./
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 RUN corepack prepare pnpm@11.16.0 --activate
 RUN pnpm install --frozen-lockfile
 
 FROM base AS builder
 ARG APP_VERSION
-ARG NEXT_PUBLIC_SITE_URL=http://localhost:3000
-ARG NEXT_PUBLIC_DEMO_FORM_ENDPOINT
 ENV APP_VERSION=$APP_VERSION
-ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
-ENV NEXT_PUBLIC_DEMO_FORM_ENDPOINT=$NEXT_PUBLIC_DEMO_FORM_ENDPOINT
 WORKDIR /app
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY . .

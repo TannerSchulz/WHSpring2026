@@ -56,5 +56,3 @@ Both workflows use the existing `ACR_*` and `AZURE_*` secrets. Configure these r
 - `AZURE_BORROWER_CONTAINER_APP_NAME` (falls back to the existing `AZURE_CONTAINER_APP_NAME`)
 - `AZURE_MARKETING_CONTAINER_APP_NAME`
 - `AZURE_RESOURCE_GROUP`, or the optional app-specific `AZURE_BORROWER_RESOURCE_GROUP` and `AZURE_MARKETING_RESOURCE_GROUP`
-- `MARKETING_SITE_URL` for the marketing site's public URL
-- `MARKETING_DEMO_FORM_ENDPOINT` when the pilot form is connected
