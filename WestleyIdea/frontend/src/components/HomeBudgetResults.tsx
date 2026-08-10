@@ -74,6 +74,12 @@ export default function HomeBudgetResults({ profile, onBack, branding }: Props) 
         <div><span>{profile.loan_type === 'conventional' ? 'PMI' : 'Mortgage insurance / fee'}</span><b>{item.detail.mortgageInsurance > 0 ? `$${money(item.detail.mortgageInsurance)}` : 'None'}</b></div>
       </div>
     </article>)}</div>
-    <div className="budget-note">The percentages represent the share of gross monthly income available for housing and existing monthly debts combined. These are planning estimates—not loan offers. Taxes and insurance vary by property, and the final rate depends on lender underwriting.</div>
+    <aside className="results-disclosure" aria-label="Important estimate information">
+      <strong>Planning estimate—not a Loan Estimate, approval, or offer to lend.</strong>
+      <span>
+        Based on a 30-year {profile.loan_type.toUpperCase()} planning rate of {rate.toFixed(2)}%, ${money(profile.available_savings ?? 0)} in entered down-payment funds, and estimated property taxes, homeowners insurance, and mortgage insurance where applicable. Actual rates, payments, closing costs, and eligibility will vary.
+      </span>
+      <small>Rate source: {rates?.source ?? 'fallback planning estimate'} · {rates?.as_of ?? 'live feed unavailable'}</small>
+    </aside>
   </div>
 }

@@ -5,6 +5,7 @@ import ValueTracker, { TrackerEntry } from './components/ValueTracker'
 import BrandingSettings from './components/BrandingSettings'
 import BrandMark from './components/BrandMark'
 import LoanOfficerCard from './components/LoanOfficerCard'
+import LegalFooter from './components/LegalFooter'
 import { MortgageInput } from './types'
 import { useBranding } from './hooks/useBranding'
 import { APP_VERSION } from './version'
@@ -41,9 +42,6 @@ export default function App() {
 
     {showBranding && <BrandingSettings branding={branding} onSave={saveBranding} onReset={resetBranding} onClose={() => setShowBranding(false)} />}
 
-    <footer className="disclaimer-footer">
-      <div className="disclaimer-title">Estimates Only - Not Financial, Legal, or Professional Advice</div>
-      <p>These calculations are unverified planning estimates, not a loan offer, quote, pre-qualification, pre-approval, or commitment to lend. Actual rates, taxes, insurance, eligibility, fees, and terms are determined by licensed professionals and the property selected.</p>
-    </footer>
+    <LegalFooter branding={branding} />
   </div>
 }
