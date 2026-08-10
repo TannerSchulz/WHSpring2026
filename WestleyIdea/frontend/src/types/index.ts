@@ -2,10 +2,16 @@ export interface MortgageInput {
   annual_income: number
   monthly_debts: number
   credit_score: number
+  credit_range: '500-580' | '580-620' | '620-660' | '660+'
   available_savings?: number
   down_payment: number
   home_price: number
   employment_years: number
+  income_source: 'employment' | 'schooling'
+  school_program?: string
+  graduation_date?: string
+  school_gpa?: number
+  expected_salary?: number
   loan_type: 'conventional' | 'fha' | 'va' | 'usda'
   state?: string
   county?: string

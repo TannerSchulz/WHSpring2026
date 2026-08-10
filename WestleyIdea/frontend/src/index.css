@@ -3145,6 +3145,45 @@ body::after {
   font-weight: 600;
 }
 
+/* Questionnaire paths and affordability results */
+.path-wrap, .field-stack { display: flex; flex-direction: column; gap: .65rem; }
+.choice-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+.credit-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.choice-card { min-height: 92px; padding: 1rem; border: 2px solid var(--gray-200); border-radius: var(--radius-sm); background: white; color: var(--gray-800); text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: .35rem; }
+.choice-card span { color: var(--gray-500); font-size: .82rem; line-height: 1.4; }
+.choice-card:hover, .choice-card.selected { border-color: var(--primary); background: rgba(99,102,241,.06); }
+.score-card { min-height: 64px; align-items: center; justify-content: center; font-size: 1.05rem; font-weight: 800; text-align: center; }
+.school-grid, .location-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; margin-top: .35rem; }
+.field-stack > span { font-size: .8rem; font-weight: 700; color: var(--gray-500); }
+.plain-entry { width: 100%; padding: .8rem; border: 2px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--gray-100); color: var(--gray-900); font: inherit; outline: none; box-sizing: border-box; }
+.plain-entry:focus { border-color: var(--primary); }
+.budget-page { width: min(1180px, calc(100% - 2rem)); margin: 0 auto; padding: 1.25rem 0 3rem; }
+.budget-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 2.5rem; }
+.budget-header { text-align: center; color: white; margin-bottom: 1.25rem; }
+.budget-header h1 { font-size: clamp(2rem, 5vw, 3.5rem); margin: .3rem 0 .55rem; }
+.budget-header p { color: rgba(255,255,255,.78); margin: 0; }
+.budget-kicker { color: #c7d2fe; font-size: .75rem; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+.budget-location { width: fit-content; margin: 0 auto 1.5rem; padding: .65rem 1rem; border-radius: 999px; background: rgba(255,255,255,.12); color: white; display: flex; gap: .65rem; align-items: center; font-size: .82rem; }
+.budget-location span { color: rgba(255,255,255,.72); }
+.budget-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; }
+.budget-card { background: white; border-radius: 18px; overflow: hidden; box-shadow: var(--shadow-lg); border-top: 6px solid #10b981; }
+.budget-card--average { border-top-color: #6366f1; transform: translateY(-8px); }
+.budget-card--stretch { border-top-color: #f59e0b; }
+.budget-card-top { display: flex; align-items: center; justify-content: space-between; padding: 1.1rem 1.25rem .5rem; }
+.budget-percent { font-size: 1.8rem; font-weight: 900; color: var(--gray-900); }
+.budget-label { border-radius: 999px; padding: .3rem .65rem; background: var(--gray-100); color: var(--gray-500); font-weight: 800; font-size: .75rem; text-transform: uppercase; }
+.budget-home, .budget-payment { padding: .75rem 1.25rem; display: flex; flex-direction: column; gap: .25rem; }
+.budget-home span, .budget-payment span { color: var(--gray-500); font-size: .78rem; font-weight: 650; }
+.budget-home strong { color: var(--primary-dark); font-size: 2rem; }
+.budget-payment { background: var(--gray-100); }
+.budget-payment strong { color: var(--gray-900); font-size: 1.45rem; }
+.budget-breakdown { padding: 1rem 1.25rem 1.25rem; }
+.budget-breakdown div { display: flex; justify-content: space-between; gap: 1rem; padding: .45rem 0; border-bottom: 1px solid var(--gray-100); font-size: .82rem; color: var(--gray-500); }
+.budget-breakdown b { color: var(--gray-800); }
+.budget-note { color: rgba(255,255,255,.7); font-size: .78rem; line-height: 1.55; text-align: center; max-width: 850px; margin: 1.5rem auto 0; }
+@media (max-width: 800px) { .budget-cards { grid-template-columns: 1fr; } .budget-card--average { transform: none; } .credit-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 520px) { .choice-grid, .school-grid, .location-grid { grid-template-columns: 1fr; } .budget-location { border-radius: 12px; flex-direction: column; text-align: center; } }
+
 /* ── Calculator button in results ───────────────────────────────── */
 .btn-calculator {
   display: block;

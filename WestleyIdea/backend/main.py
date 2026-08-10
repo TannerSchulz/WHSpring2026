@@ -382,7 +382,7 @@ STEP_HELP_FALLBACKS = {
         "tips": [
             "**20% down** eliminates PMI, but it's not required.",
             "Ask HR - some employers offer **homebuyer assistance** as a benefit.",
-            "First-time buyers can withdraw up to **$10,000 from a Roth IRA** penalty-free.",
+            "Keep emergency savings separate from funds reserved for closing.",
         ],
         "timeline": "Varies - divide your savings gap by your monthly savings rate",
     },
