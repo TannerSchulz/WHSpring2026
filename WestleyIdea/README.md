@@ -7,7 +7,8 @@ MortgageAI is organized as separate product surfaces so each site can evolve and
 - `marketing/` — B2B sales site for loan officers and mortgage companies (Next.js)
 - `borrower/` — borrower affordability questionnaire and results experience (React + Vite)
 - `backend/` — FastAPI service used by the borrower app
-- `Dockerfile` — production container for the borrower app and backend
+- `borrower/Dockerfile` — production container for the borrower app and backend
+- `marketing/Dockerfile` — production container for the marketing site
 
 ## Marketing site
 
@@ -40,3 +41,20 @@ uvicorn main:app --reload
 ```
 
 The backend also serves the compiled borrower app from its `static` directory in the production container.
+
+## GitHub Actions and Azure
+
+The `Borrower` and `Marketing` workflows build separate images in Azure Container Registry:
+
+- `mortgageai-borrower`
+- `mortgageai-marketing`
+
+Pushes to `main` and `demo` publish versioned and branch-channel image tags. Pushes to `demo` also update the corresponding Azure Container App.
+
+Both workflows use the existing `ACR_*` and `AZURE_*` secrets. Configure these repository variables for the separate Container Apps:
+
+- `AZURE_BORROWER_CONTAINER_APP_NAME` (falls back to the existing `AZURE_CONTAINER_APP_NAME`)
+- `AZURE_MARKETING_CONTAINER_APP_NAME`
+- `AZURE_RESOURCE_GROUP`, or the optional app-specific `AZURE_BORROWER_RESOURCE_GROUP` and `AZURE_MARKETING_RESOURCE_GROUP`
+- `MARKETING_SITE_URL` for the marketing site's public URL
+- `MARKETING_DEMO_FORM_ENDPOINT` when the pilot form is connected
