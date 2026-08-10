@@ -5,6 +5,7 @@ import { FALLBACK_RATES, LiveRates, UTAH_COUNTIES, estimateAnnualHomeownersInsur
 import { computePaymentScenario } from '../utils/mortgageMath'
 import { Branding } from '../types/branding'
 import BrandMark from './BrandMark'
+import LoanOfficerCard from './LoanOfficerCard'
 
 interface Props { profile: MortgageInput; onBack: () => void; branding: Branding }
 
@@ -81,5 +82,18 @@ export default function HomeBudgetResults({ profile, onBack, branding }: Props) 
       </span>
       <small>Rate source: {rates?.source ?? 'fallback planning estimate'} · {rates?.as_of ?? 'live feed unavailable'}</small>
     </aside>
+    <section className="borrower-next-step">
+      <div className="borrower-next-step-copy">
+        <div className="budget-kicker">Your next step</div>
+        <h2>{branding.officerName ? `Review these numbers with ${branding.officerName}` : 'Review these numbers with a mortgage professional'}</h2>
+        <p>A personalized review can replace planning assumptions with current loan options, property-specific costs, and verified information.</p>
+        <div className="borrower-contact-actions">
+          {branding.email && <a className="borrower-contact-primary" href={`mailto:${branding.email}?subject=${encodeURIComponent('Home budget review')}&body=${encodeURIComponent('I completed your home budget planner and would like to review my results with you.')}`}>Email for a review</a>}
+          {branding.phone && <a className="borrower-contact-secondary" href={`tel:${branding.phone.replace(/[^\d+]/g, '')}`}>Call {branding.phone}</a>}
+        </div>
+        {(branding.email || branding.phone) && <small>Contact links open your email or phone app. Your questionnaire answers are not automatically sent.</small>}
+      </div>
+      {branding.officerName && <LoanOfficerCard branding={branding} compact />}
+    </section>
   </div>
 }

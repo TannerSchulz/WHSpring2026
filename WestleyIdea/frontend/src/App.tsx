@@ -2,19 +2,16 @@ import { useState } from 'react'
 import MortgageForm from './components/MortgageForm'
 import HomeBudgetResults from './components/HomeBudgetResults'
 import ValueTracker, { TrackerEntry } from './components/ValueTracker'
-import BrandingSettings from './components/BrandingSettings'
 import BrandMark from './components/BrandMark'
 import LoanOfficerCard from './components/LoanOfficerCard'
 import LegalFooter from './components/LegalFooter'
 import { MortgageInput } from './types'
 import { useBranding } from './hooks/useBranding'
-import { APP_VERSION } from './version'
 
 export default function App() {
   const [profile, setProfile] = useState<MortgageInput | null>(null)
   const [trackerEntries, setTrackerEntries] = useState<TrackerEntry[]>([])
-  const { branding, save: saveBranding, reset: resetBranding } = useBranding()
-  const [showBranding, setShowBranding] = useState(false)
+  const { branding } = useBranding()
 
   const handleFieldCommit = (field: string, value: string | number) => setTrackerEntries(previous => [
     ...previous.filter(entry => entry.field !== field), { field, value },
@@ -25,11 +22,12 @@ export default function App() {
   return <div className={`app${profile ? ' app--full' : ''}`}>
     {!profile && <>
       <nav className="top-nav">
-        <div className="brand-version-lockup"><BrandMark branding={branding} size="sm" /><span className="brand-version">Version {APP_VERSION}</span></div>
-        <button className="brand-customize-btn" onClick={() => setShowBranding(true)}>Customize</button>
+        <BrandMark branding={branding} size="sm" />
+        <span className="borrower-nav-label">Home budget planner</span>
       </nav>
       <header className="app-header">
-        <h1>Your path to <span>homeownership</span> starts here</h1>
+        {branding.officerName && <div className="borrower-shared-by">Shared with you by {branding.officerName}</div>}
+        <h1>Explore your path to <span>homeownership</span></h1>
         <p>Answer a few quick questions to see a personalized home budget.</p>
         <div className="hero-pills"><span className="hero-pill">About 2 minutes</span><span className="hero-pill">No credit pull</span><span className="hero-pill">No pass/fail screening</span></div>
         <LoanOfficerCard branding={branding} />
@@ -39,8 +37,6 @@ export default function App() {
     </>}
 
     {profile && <HomeBudgetResults profile={profile} onBack={restart} branding={branding} />}
-
-    {showBranding && <BrandingSettings branding={branding} onSave={saveBranding} onReset={resetBranding} onClose={() => setShowBranding(false)} />}
 
     <LegalFooter branding={branding} />
   </div>

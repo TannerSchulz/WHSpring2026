@@ -10,7 +10,7 @@ const PANEL_COPY: Record<LegalPanel, { title: string; content: JSX.Element }> = 
     title: 'Privacy',
     content: <>
       <p>Your questionnaire answers are used to create the home-budget estimates shown in this experience. Do not enter Social Security numbers, bank-account numbers, or other information the questionnaire does not request.</p>
-      <p>If you choose to send your results to a loan officer, the page should identify that recipient and request your permission before sharing your information. The participating mortgage company&apos;s privacy notice will govern its subsequent use of that information.</p>
+      <p>Contact links open your own email or phone application. This version does not automatically send your questionnaire answers. Information you choose to send directly to a mortgage company will be governed by that company&apos;s privacy notice.</p>
     </>,
   },
   terms: {
