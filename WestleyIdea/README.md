@@ -4,6 +4,8 @@ MortgageAI is organized as separate product surfaces so each site can evolve and
 
 ## Project structure
 
+- `loan-officer/` — loan-officer workspace for borrower review, links, and follow-up (Next.js)
+
 - `marketing/` — B2B sales site for loan officers and mortgage companies (Next.js)
 - `borrower/` — borrower affordability questionnaire and results experience (React + Vite)
 - `backend/` — FastAPI service used by the borrower app
@@ -43,6 +45,8 @@ uvicorn main:app --reload
 The backend also serves the compiled borrower app from its `static` directory in the production container.
 
 ## GitHub Actions and Azure
+
+The `Loan Officer` workflow builds and pushes `mortgageai-loan-officer` to Azure Container Registry. It intentionally does not deploy a Container App.
 
 The `Borrower` and `Marketing` workflows build separate images in Azure Container Registry:
 

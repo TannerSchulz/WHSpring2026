@@ -1,0 +1,113 @@
+name: Loan Officer
+run-name: "Loan Officer #${{ github.run_number }}"
+
+env:
+  VERSION_MAJOR: ${{ vars.VERSION_MAJOR }}
+  VERSION_MINOR: ${{ vars.VERSION_MINOR }}
+  VERSION_RUN_BASE: ${{ vars.VERSION_RUN_BASE }}
+
+on:
+  push:
+    branches: ["main", "demo"]
+    paths:
+      - "WestleyIdea/loan-officer/**"
+      - ".github/workflows/loan-officer.yml"
+  pull_request:
+    branches: ["main", "demo"]
+    paths:
+      - "WestleyIdea/loan-officer/**"
+      - ".github/workflows/loan-officer.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: loan-officer-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.16.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.19.0
+          cache: pnpm
+          cache-dependency-path: WestleyIdea/loan-officer/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: WestleyIdea/loan-officer
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint loan-officer workspace
+        working-directory: WestleyIdea/loan-officer
+        run: pnpm lint
+
+      - name: Set build version
+        id: build
+        shell: bash
+        run: |
+          if ! [[ "$VERSION_MAJOR" =~ ^[0-9]+$ && "$VERSION_MINOR" =~ ^[0-9]+$ && "$VERSION_RUN_BASE" =~ ^[0-9]+$ ]]; then
+            echo "VERSION_MAJOR, VERSION_MINOR, and VERSION_RUN_BASE must be repository variables containing whole numbers."
+            exit 1
+          fi
+
+          relative_build=$((GITHUB_RUN_NUMBER - VERSION_RUN_BASE))
+          if (( relative_build < 0 )); then
+            echo "VERSION_RUN_BASE ($VERSION_RUN_BASE) cannot exceed the current GitHub run number ($GITHUB_RUN_NUMBER)."
+            exit 1
+          fi
+
+          version="${VERSION_MAJOR}.${VERSION_MINOR}.${relative_build}"
+          channel="${GITHUB_BASE_REF:-$GITHUB_REF_NAME}"
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            image="mortgageai-loan-officer"
+            publish="false"
+          else
+            image="${{ secrets.ACR_LOGIN_SERVER }}/mortgageai-loan-officer"
+            publish="true"
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+          echo "publish=$publish" >> "$GITHUB_OUTPUT"
+          echo "### Loan Officer build" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Version: \`$version\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Channel: \`$channel\`" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Log in to Azure Container Registry
+        if: steps.build.outputs.publish == 'true'
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ secrets.ACR_LOGIN_SERVER }}
+          username: ${{ secrets.ACR_USERNAME }}
+          password: ${{ secrets.ACR_PASSWORD }}
+
+      - name: Build loan-officer image
+        run: |
+          docker build ./WestleyIdea/loan-officer \
+            --file WestleyIdea/loan-officer/Dockerfile \
+            --build-arg APP_VERSION=${{ steps.build.outputs.version }} \
+            --tag ${{ steps.build.outputs.image }}:${{ steps.build.outputs.version }} \
+            --tag ${{ steps.build.outputs.image }}:${{ steps.build.outputs.channel }}-latest
+
+      - name: Push loan-officer image
+        if: steps.build.outputs.publish == 'true'
+        run: |
+          docker push ${{ steps.build.outputs.image }}:${{ steps.build.outputs.version }}
+          docker push ${{ steps.build.outputs.image }}:${{ steps.build.outputs.channel }}-latest
+
+      - name: Update loan-officer latest tag
+        if: steps.build.outputs.publish == 'true' && steps.build.outputs.channel == 'main'
+        run: |
+          docker tag ${{ steps.build.outputs.image }}:${{ steps.build.outputs.version }} ${{ steps.build.outputs.image }}:latest
+          docker push ${{ steps.build.outputs.image }}:latest

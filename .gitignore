@@ -13,6 +13,8 @@ env/
 
 # Node
 node_modules/
+.next/
+.pnpm-store/
 dist/
 .vite/
 .test-dist/
