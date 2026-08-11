@@ -1,5 +1,5 @@
-name: Borrower
-run-name: "Borrower #${{ github.run_number }}"
+name: API
+run-name: "API #${{ github.run_number }}"
 
 env:
   VERSION_MAJOR: ${{ vars.VERSION_MAJOR }}
@@ -10,20 +10,20 @@ on:
   push:
     branches: ["main", "demo"]
     paths:
-      - "WestleyIdea/borrower/**"
-      - ".github/workflows/borrower.yml"
+      - "WestleyIdea/backend/**"
+      - ".github/workflows/api.yml"
   pull_request:
     branches: ["main", "demo"]
     paths:
-      - "WestleyIdea/borrower/**"
-      - ".github/workflows/borrower.yml"
+      - "WestleyIdea/backend/**"
+      - ".github/workflows/api.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: borrower-${{ github.workflow }}-${{ github.ref }}
+  group: api-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -51,10 +51,10 @@ jobs:
           version="${VERSION_MAJOR}.${VERSION_MINOR}.${relative_build}"
           channel="${GITHUB_BASE_REF:-$GITHUB_REF_NAME}"
           if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
-            image="mortgageai-borrower"
+            image="mortgageai-api"
             publish="false"
           else
-            image="${{ secrets.ACR_LOGIN_SERVER }}/mortgageai-borrower"
+            image="${{ secrets.ACR_LOGIN_SERVER }}/mortgageai-api"
             publish="true"
           fi
 
@@ -62,7 +62,7 @@ jobs:
           echo "channel=$channel" >> "$GITHUB_OUTPUT"
           echo "image=$image" >> "$GITHUB_OUTPUT"
           echo "publish=$publish" >> "$GITHUB_OUTPUT"
-          echo "### Borrower build" >> "$GITHUB_STEP_SUMMARY"
+          echo "### API build" >> "$GITHUB_STEP_SUMMARY"
           echo "- Version: \`$version\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Channel: \`$channel\`" >> "$GITHUB_STEP_SUMMARY"
 
@@ -74,21 +74,21 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      - name: Build borrower image
+      - name: Build API image
         run: |
-          docker build ./WestleyIdea/borrower \
-            --file WestleyIdea/borrower/Dockerfile \
+          docker build ./WestleyIdea/backend \
+            --file WestleyIdea/backend/Dockerfile \
             --build-arg APP_VERSION=${{ steps.build.outputs.version }} \
             --tag ${{ steps.build.outputs.image }}:${{ steps.build.outputs.version }} \
             --tag ${{ steps.build.outputs.image }}:${{ steps.build.outputs.channel }}-latest
 
-      - name: Push borrower image
+      - name: Push API image
         if: steps.build.outputs.publish == 'true'
         run: |
           docker push ${{ steps.build.outputs.image }}:${{ steps.build.outputs.version }}
           docker push ${{ steps.build.outputs.image }}:${{ steps.build.outputs.channel }}-latest
 
-      - name: Update borrower latest tag
+      - name: Update API latest tag
         if: steps.build.outputs.publish == 'true' && steps.build.outputs.channel == 'main'
         run: |
           docker tag ${{ steps.build.outputs.image }}:${{ steps.build.outputs.version }} ${{ steps.build.outputs.image }}:latest

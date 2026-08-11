@@ -1,62 +1,43 @@
 # MortgageAI
 
-MortgageAI is organized as separate product surfaces so each site can evolve and ship independently.
+MortgageAI is organized as separate product surfaces so each application can evolve and ship independently.
 
 ## Project structure
 
-- `loan-officer/` — loan-officer workspace for borrower review, links, and follow-up (Next.js)
-
 - `marketing/` — B2B sales site for loan officers and mortgage companies (Next.js)
 - `borrower/` — borrower affordability questionnaire and results experience (React + Vite)
-- `backend/` — FastAPI service used by the borrower app
-- `borrower/Dockerfile` — production container for the borrower app and backend
-- `marketing/Dockerfile` — production container for the marketing site
+- `loan-officer/` — loan-officer workspace for borrower review, links, and follow-up (Next.js)
+- `backend/` — shared FastAPI API, Azure SQL models, and Alembic migrations
+- `borrower/Dockerfile` — static production borrower container
+- `marketing/Dockerfile` — production marketing container
+- `loan-officer/Dockerfile` — production loan-officer container
+- `backend/Dockerfile` — production API container
 
-## Marketing site
+## Local development
 
-```bash
-cd marketing
-pnpm install
-pnpm dev
-```
-
-Open `http://localhost:3000`.
-
-## Borrower app
-
-```bash
-cd borrower
-npm install
-npm run dev
-```
-
-Open `http://localhost:5173`.
-
-## Backend
+Run the marketing and loan-officer sites with `pnpm dev` from their respective directories. Run the borrower with `npm run dev` and the API with:
 
 ```bash
 cd backend
 python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+.venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-The backend also serves the compiled borrower app from its `static` directory in the production container.
+The borrower development server proxies `/api` to `http://localhost:8000`.
 
-## GitHub Actions and Azure
+## Production boundaries
 
-The `Loan Officer` workflow builds and pushes `mortgageai-loan-officer` to Azure Container Registry. It intentionally does not deploy a Container App.
+The borrower and API are separate production images. The borrower container proxies `/api` requests to its runtime `API_UPSTREAM`; only the API container receives Azure SQL access. Apply Alembic migrations from the API image before starting a new API revision.
 
-The `Borrower` and `Marketing` workflows build separate images in Azure Container Registry:
+## Container images
+
+GitHub Actions publishes these images to Azure Container Registry:
 
 - `mortgageai-borrower`
+- `mortgageai-api`
 - `mortgageai-marketing`
+- `mortgageai-loan-officer`
 
-Pushes to `main` and `demo` publish versioned and branch-channel image tags. Pushes to `demo` also update the corresponding Azure Container App.
-
-Both workflows use the existing `ACR_*` and `AZURE_*` secrets. Configure these repository variables for the separate Container Apps:
-
-- `AZURE_BORROWER_CONTAINER_APP_NAME` (falls back to the existing `AZURE_CONTAINER_APP_NAME`)
-- `AZURE_MARKETING_CONTAINER_APP_NAME`
-- `AZURE_RESOURCE_GROUP`, or the optional app-specific `AZURE_BORROWER_RESOURCE_GROUP` and `AZURE_MARKETING_RESOURCE_GROUP`
+Pushes to `main` and `demo` publish versioned and branch-channel tags. The `Borrower`, `API`, and `Loan Officer` workflows stop after publishing images; Azure deployment is handled separately.

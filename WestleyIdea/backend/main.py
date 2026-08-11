@@ -6,11 +6,14 @@ from typing import Literal
 
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field, model_validator
+
+from app.config import get_database_settings
+from app.database import check_database_connection
 
 load_dotenv()
 
@@ -625,7 +628,24 @@ Keep responses short (2-4 sentences max). Be direct and personalized - use their
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "ai_enabled": ai_client is not None}
+    return {
+        "status": "ok",
+        "ai_enabled": ai_client is not None,
+        "database_configured": get_database_settings().configured,
+    }
+
+
+@app.get("/api/health/database")
+def database_health():
+    if not get_database_settings().configured:
+        raise HTTPException(status_code=503, detail="Database is not configured")
+
+    try:
+        check_database_connection()
+    except Exception as error:
+        raise HTTPException(status_code=503, detail="Database connection failed") from error
+
+    return {"status": "ok"}
 
 
 # Serve built React frontend in production
