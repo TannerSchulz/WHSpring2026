@@ -125,23 +125,15 @@ jobs:
       - name: Deploy marketing Container App
         if: steps.build.outputs.publish == 'true' && steps.build.outputs.channel == 'demo'
         shell: bash
-        env:
-          CONTAINER_APP_NAME: ${{ vars.AZURE_MARKETING_CONTAINER_APP_NAME }}
-          RESOURCE_GROUP: ${{ vars.AZURE_MARKETING_RESOURCE_GROUP || vars.AZURE_RESOURCE_GROUP }}
         run: |
-          if [[ -z "$CONTAINER_APP_NAME" || -z "$RESOURCE_GROUP" ]]; then
-            echo "Configure the marketing Container App name and Azure resource group repository variables."
-            exit 1
-          fi
-
           az config set extension.use_dynamic_install=yes_without_prompt
           revision=$(az containerapp update \
-            --name "$CONTAINER_APP_NAME" \
-            --resource-group "$RESOURCE_GROUP" \
+            --name "teams" \
+            --resource-group "rg-cae-mortgageai" \
             --image "${{ steps.build.outputs.image }}:${{ steps.build.outputs.version }}" \
             --query properties.latestRevisionName \
             --output tsv)
 
           echo "### Marketing deployment" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Container App: \`$CONTAINER_APP_NAME\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Container App: \`teams\`" >> "$GITHUB_STEP_SUMMARY"
           echo "- Revision: \`$revision\`" >> "$GITHUB_STEP_SUMMARY"
