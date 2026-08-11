@@ -7,7 +7,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import select, update
+from sqlalchemy import select, true, update
 from sqlalchemy.orm import Session
 
 from .database import get_session
@@ -130,7 +130,7 @@ def active_link_query(slug: str):
         .outerjoin(BrandingSettings, BrandingSettings.organization_id == Organization.id)
         .where(
             BorrowerLink.slug == slug,
-            BorrowerLink.is_active.is_(True),
+            BorrowerLink.is_active == true(),
             Organization.status == "active",
             OrganizationMembership.status == "active",
             User.status == "active",

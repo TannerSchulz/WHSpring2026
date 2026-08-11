@@ -2,9 +2,10 @@ import unittest
 from uuid import uuid4
 
 from pydantic import ValidationError
+from sqlalchemy.dialects import mssql
 from starlette.routing import Match
 
-from app.public import SubmissionCreate, router
+from app.public import SubmissionCreate, active_link_query, router
 
 
 def valid_payload() -> dict:
@@ -80,6 +81,14 @@ class PublicWorkflowTests(unittest.TestCase):
         full_matches = [route for route in router.routes if route.matches(scope)[0] == Match.FULL]
         self.assertEqual(len(full_matches), 1)
         self.assertIn("POST", full_matches[0].methods)
+
+    def test_active_link_bit_filter_compiles_for_sql_server(self):
+        sql = str(active_link_query("advisor-link").limit(2).compile(
+            dialect=mssql.dialect(),
+            compile_kwargs={"literal_binds": True},
+        ))
+        self.assertIn("crm.borrower_links.is_active = 1", sql)
+        self.assertNotIn("crm.borrower_links.is_active IS 1", sql)
 
 
 if __name__ == "__main__":
