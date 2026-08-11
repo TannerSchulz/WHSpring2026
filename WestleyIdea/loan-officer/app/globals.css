@@ -331,3 +331,81 @@ td:last-child button { background: transparent; border: 0; color: #4e7d74; }
 @media (prefers-reduced-motion: reduce) {
   *, *:before, *:after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
+
+/* Desktop reading scale: the workspace should read as a product, not a reduced mockup. */
+@media (min-width: 761px) {
+  .app-shell { grid-template-columns: 264px 1fr; }
+  .sidebar { padding: 30px 20px 20px; }
+  .brand strong { font-size: 20px; }
+  .brand-symbol { height: 31px; width: 31px; }
+  .sidebar nav button { font-size: 14px; min-height: 48px; }
+  .nav-label { font-size: 10px; }
+  .sidebar nav button small { font-size: 8px; }
+  .workspace-card span, .pilot-card span { font-size: 9px; }
+  .workspace-card strong { font-size: 17px; }
+  .workspace-card p, .pilot-card p { font-size: 11px; }
+  .profile > span { font-size: 11px; height: 36px; width: 36px; }
+  .profile strong { font-size: 12px; }
+  .profile small { font-size: 10px; }
+
+  .topbar { height: 78px; }
+  .global-search { width: 340px; }
+  .global-search input { font-size: 13px; }
+  .icon-button { font-size: 11px; height: 42px; width: 42px; }
+  .primary-button, .secondary-button { font-size: 12px; min-height: 42px; padding-inline: 19px; }
+  .page-content { max-width: 1320px; padding-top: 48px; }
+  .page-heading { margin-bottom: 36px; }
+  .page-heading p { font-size: 10px; }
+  .page-heading h1 { font-size: clamp(38px, 3.4vw, 48px); }
+  .page-heading > div > span { font-size: 14px; }
+
+  .metrics { gap: 16px; margin-bottom: 17px; }
+  .metrics article { min-height: 158px; padding: 23px 25px; }
+  .metric-top > span { font-size: 10px; }
+  .metric-icon { font-size: 13px; height: 32px; width: 32px; }
+  .metrics article > strong { font-size: 38px; }
+  .metrics article > p { font-size: 11px; }
+  .overview-grid { gap: 17px; }
+  .panel-heading { min-height: 82px; padding-inline: 26px; }
+  .panel-heading h2 { font-size: 20px; }
+  .panel-heading p, .panel-heading > button { font-size: 11px; }
+
+  th { font-size: 9px; padding: 14px 16px; }
+  td { font-size: 11px; height: 70px; padding: 10px 16px; }
+  td > strong, .borrower-cell strong { font-size: 12px; }
+  td > small, .borrower-cell small { font-size: 10px; }
+  .borrower-cell > i, .avatar { font-size: 9px; height: 35px; width: 35px; }
+  .status { font-size: 9px; padding: 6px 9px; }
+  .follow-list > button { min-height: 72px; }
+  .follow-list strong { font-size: 12px; }
+  .follow-list small { font-size: 10px; }
+  .follow-list i { font-size: 8px; }
+  .queue-button { font-size: 11px; min-height: 48px; }
+  .chart small, .chart-summary span, .chart-summary b { font-size: 9px; }
+  .chart-summary strong, .link-stats strong { font-size: 24px; }
+  .link-callout span, .link-stats span { font-size: 9px; }
+  .link-callout strong { font-size: 11px; }
+  .link-callout button { font-size: 10px; }
+
+  .inline-search { height: 42px; width: 280px; }
+  .inline-search input { font-size: 12px; }
+  .filter-row button, .filter-button { font-size: 11px; min-height: 36px; }
+  .empty-state span, .compact-empty span { font-size: 11px; }
+  .links-header { font-size: 9px; min-height: 44px; }
+  .link-row { min-height: 88px; }
+  .link-row > div strong, .link-row > strong, .link-row > b { font-size: 12px; }
+  .link-row small { font-size: 10px; }
+  .link-row > button { font-size: 10px; }
+  .link-create-form > div:first-child strong { font-size: 18px; }
+  .link-create-form > div:first-child span { font-size: 11px; }
+  .onboarding-form label, .link-create-form label, .note-form label { font-size: 11px; }
+
+  .drawer { max-width: 540px; padding: 32px 38px; }
+  .drawer-top > span, .intent-card > span, .status-controls > span, .notes-list > span { font-size: 9px; }
+  .drawer-profile h2 { font-size: 25px; }
+  .drawer-profile p { font-size: 11px; }
+  .intent-card p, .detail-grid strong, .drawer-note p, .notes-list p { font-size: 11px; }
+  .detail-grid span, .notes-list small { font-size: 9px; }
+  .status-controls button { font-size: 10px; min-height: 36px; }
+  .estimate-note, .toast { font-size: 10px; }
+}

@@ -249,3 +249,160 @@
   color: rgba(255, 255, 255, 0.85); font-size: 0.8rem; font-weight: 600;
   backdrop-filter: blur(8px);
 }
+
+/* Shared MortgageAI product language -------------------------------------------------
+   Brings the borrower experience into the same forest, mint, lime and cream system
+   as the marketing site and loan-officer workspace while preserving custom branding. */
+:root {
+  --cream: #f7f3e9;
+  --paper-warm: #fffdf7;
+  --lime: #d9f56f;
+  --product-ink: #102b2a;
+  --product-line: #dce4dc;
+  --radius: 12px;
+  --radius-sm: 7px;
+  --shadow: 0 20px 55px rgba(4, 29, 26, 0.18);
+}
+
+body {
+  background:
+    radial-gradient(circle at 12% 2%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 28rem),
+    linear-gradient(145deg, var(--bg-grad-1), var(--primary-dark));
+  color: var(--product-ink);
+  font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body::before {
+  background: radial-gradient(circle, rgba(255,255,255,.12) 1px, transparent 1.5px);
+  background-size: 24px 24px;
+  border-radius: 0;
+  filter: none;
+  height: 320px;
+  opacity: .18;
+  right: auto;
+  top: -60px;
+  width: 380px;
+}
+
+body::after { display: none; }
+
+.top-nav {
+  background: rgba(255, 253, 247, .94);
+  border-bottom-color: rgba(16, 43, 42, .12);
+  color: var(--product-ink);
+  height: 76px;
+  padding-inline: clamp(1.25rem, 4vw, 4rem);
+}
+.top-nav .brand-mark-name, .top-nav .brand-version { color: var(--product-ink); }
+.borrower-nav-label { color: #55706c; font-size: .8rem; letter-spacing: .1em; }
+.brand-mark-name { letter-spacing: -.04em; }
+
+.app { justify-content: flex-start; padding-top: 7.5rem; }
+.app-header { margin-bottom: 2.25rem; }
+.app-header h1, .budget-header h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.8rem, 5vw, 4.6rem);
+  font-weight: 400;
+  letter-spacing: -.052em;
+  line-height: 1.02;
+}
+.app-header h1 span {
+  background: none;
+  color: var(--accent);
+  -webkit-text-fill-color: currentColor;
+}
+.app-header p { color: rgba(226, 239, 234, .76); font-size: 1.08rem; line-height: 1.7; }
+.borrower-shared-by { border-color: rgba(255,255,255,.24); border-radius: 999px; color: rgba(232,244,239,.82); }
+.hero-pill { background: rgba(255,255,255,.075); border-color: rgba(255,255,255,.18); color: rgba(238,247,243,.84); }
+
+.quiz-main { max-width: 680px; }
+.card {
+  background: var(--paper-warm);
+  border: 1px solid rgba(255,255,255,.55);
+  border-radius: 12px;
+  box-shadow: 0 30px 80px rgba(0,0,0,.24);
+  max-width: 680px;
+}
+.progress-bar { background: #e4e7df; height: 6px; }
+.progress-fill { background: linear-gradient(90deg, var(--accent), var(--lime)); }
+.step { padding: clamp(2rem, 4vw, 3.25rem); }
+.step-counter { color: #397669; font-size: .75rem; font-weight: 850; letter-spacing: .14em; }
+.step-question { color: var(--product-ink); font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.75rem, 3vw, 2.15rem); font-weight: 500; letter-spacing: -.03em; }
+.step-hint { color: #687977; font-size: .95rem; line-height: 1.65; }
+
+.choice-card, .plain-entry, .step-input {
+  background: #fbfcf8;
+  border-color: #d6ded7;
+  border-radius: 7px;
+}
+.choice-card { min-height: 102px; padding: 1.15rem; }
+.choice-card strong { color: var(--product-ink); font-size: 1rem; }
+.choice-card span, .field-stack > span { color: #687977; }
+.choice-card:hover, .choice-card.selected {
+  background: color-mix(in srgb, var(--accent) 10%, var(--paper-warm));
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.choice-card.selected strong, .score-card.selected { color: var(--primary-dark); }
+.plain-entry:focus, .step-input:focus {
+  background: white;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+.input-prefix { color: #71817d; }
+.consent-check { background: color-mix(in srgb, var(--accent) 8%, var(--paper-warm)); border-color: color-mix(in srgb, var(--primary) 28%, white); }
+.consent-check input { accent-color: var(--primary); }
+.btn-back { border-color: #cad5cf; border-radius: 7px; color: #516b67; }
+.btn-next {
+  background: var(--primary);
+  border-radius: 7px;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--primary) 28%, transparent);
+  min-height: 52px;
+}
+.btn-next:hover:not(:disabled) { background: color-mix(in srgb, var(--primary) 88%, white); box-shadow: 0 13px 30px color-mix(in srgb, var(--primary) 34%, transparent); }
+
+.tracker-panel { background: rgba(255,253,247,.96); border-color: rgba(255,255,255,.45); border-radius: 9px; color: var(--product-ink); box-shadow: 0 20px 55px rgba(0,0,0,.2); }
+.tracker-toggle-left, .tracker-title, .tracker-chevron { color: var(--product-ink); }
+.tracker-toggle { border-bottom-color: var(--product-line); }
+.tracker-empty { color: #71817d; }
+.tracker-item { background: #eef3ed; border-color: #dce5dd; border-radius: 6px; }
+.tracker-item-label { color: #71817d; }
+.tracker-item-value { color: var(--product-ink); }
+.tracker-item-check { color: #168d70; }
+
+.lo-card { background: rgba(255,255,255,.08); border-radius: 9px; }
+.lo-initials { background: var(--primary); }
+.lo-contact a { color: var(--accent); }
+
+.budget-page { width: min(1240px, calc(100% - 2rem)); }
+.budget-header { margin-bottom: 1.75rem; }
+.budget-kicker { color: var(--accent); }
+.budget-location { background: rgba(255,255,255,.09); border: 1px solid rgba(255,255,255,.15); border-radius: 7px; }
+.budget-card { border-radius: 9px; border-top-color: var(--accent); box-shadow: 0 24px 60px rgba(0,0,0,.18); }
+.budget-card--average { background: var(--primary); border-top-color: var(--lime); color: white; }
+.budget-card--stretch { border-top-color: #ef8d5d; }
+.budget-percent, .budget-home strong { color: var(--primary-dark); font-family: Georgia, "Times New Roman", serif; font-weight: 500; }
+.budget-card--average .budget-percent, .budget-card--average .budget-home strong, .budget-card--average .budget-payment strong, .budget-card--average .budget-breakdown b { color: white; }
+.budget-card--average .budget-label { background: var(--lime); color: var(--product-ink); }
+.budget-card--average .budget-home span, .budget-card--average .budget-payment span, .budget-card--average .budget-breakdown { color: #bad0ca; }
+.budget-card--average .budget-payment { background: rgba(0,0,0,.12); }
+.budget-card--average .budget-breakdown div { border-bottom-color: rgba(255,255,255,.12); }
+.budget-payment { background: #eef2ec; }
+.results-disclosure { background: rgba(5,35,31,.5); border-radius: 7px; }
+.borrower-next-step { border-radius: 9px; }
+.borrower-next-step-copy h2 { color: var(--product-ink); font-family: Georgia, "Times New Roman", serif; font-size: 1.65rem; font-weight: 500; }
+.borrower-contact-primary { background: var(--primary); }
+.borrower-contact-secondary { color: var(--primary); }
+.submission-status, .link-state-card { border-radius: 9px; }
+.link-state-shell { background: radial-gradient(circle at top, var(--primary), var(--bg-grad-1) 70%); }
+.link-state-card h1 { color: var(--product-ink); font-family: Georgia, "Times New Roman", serif; font-weight: 500; }
+.link-state-card button { background: var(--primary); border-radius: 7px; }
+.legal-dialog { border-radius: 9px; }
+
+@media (max-width: 720px) {
+  .top-nav { height: 66px; }
+  .app { padding-top: 5.75rem; }
+  .app-header h1 { font-size: clamp(2.35rem, 12vw, 3.35rem); }
+  .quiz-main { max-width: 100%; }
+  .step { padding: 1.75rem 1.35rem 2rem; }
+}
