@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import type { PortalUser } from "../lib/auth";
 import type { Borrower, BorrowerLink, BorrowerNote, BorrowerStatus, DashboardData } from "../lib/crm-types";
@@ -35,14 +35,44 @@ function relativeDate(value: string) {
 }
 
 async function crmRequest<T>(path: string, method: "POST" | "PATCH", body: unknown): Promise<T> {
-  const response = await fetch(`/api/crm/${path}`, {
-    method,
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 20_000);
+  let response: Response;
+  try {
+    response = await fetch(`/api/crm/${path}`, {
+      method,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error("The CRM request timed out. Please try again.");
+    throw new Error("The Portal could not reach the CRM service. Please try again.", { cause: error });
+  } finally {
+    window.clearTimeout(timeout);
+  }
   const payload = await response.json().catch(() => null) as (T & { error?: string }) | null;
   if (!response.ok) throw new Error(payload?.error || "The CRM operation could not be completed.");
   return payload as T;
+}
+
+async function writeClipboardText(value: string) {
+  try {
+    if (!navigator.clipboard?.writeText) throw new Error("Clipboard API unavailable");
+    await navigator.clipboard.writeText(value);
+    return;
+  } catch {
+    const input = document.createElement("textarea");
+    input.value = value;
+    input.setAttribute("readonly", "");
+    input.style.position = "fixed";
+    input.style.opacity = "0";
+    document.body.appendChild(input);
+    input.select();
+    const copied = document.execCommand("copy");
+    input.remove();
+    if (!copied) throw new Error("Clipboard access was blocked.");
+  }
 }
 
 export function Dashboard({ user, initialData }: { user: PortalUser; initialData: DashboardData }) {
@@ -55,6 +85,12 @@ export function Dashboard({ user, initialData }: { user: PortalUser; initialData
   const [toast, setToast] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
   const [linkFormOpen, setLinkFormOpen] = useState(false);
+  const [linkSaving, setLinkSaving] = useState(false);
+  const [statusSaving, setStatusSaving] = useState<string | null>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
+  const toastTimerRef = useRef<number | null>(null);
+  const linkRequestRef = useRef(false);
+  const statusRequestRef = useRef(false);
   const selected = borrowers.find((borrower) => borrower.id === selectedId) || null;
   const firstName = user.displayName.split(/\s+/)[0] || "there";
   const initials = initialsFor(user.displayName, user.email);
@@ -72,9 +108,36 @@ export function Dashboard({ user, initialData }: { user: PortalUser; initialData
     followUps: borrowers.filter((item) => item.status === "new" || item.status === "reviewing").length,
   };
 
+  useEffect(() => {
+    if (!profileOpen) return;
+    function closeProfile(event: PointerEvent | KeyboardEvent) {
+      if (event instanceof KeyboardEvent && event.key === "Escape") {
+        setProfileOpen(false);
+        return;
+      }
+      if (event instanceof PointerEvent && !profileRef.current?.contains(event.target as Node)) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener("pointerdown", closeProfile);
+    document.addEventListener("keydown", closeProfile);
+    return () => {
+      document.removeEventListener("pointerdown", closeProfile);
+      document.removeEventListener("keydown", closeProfile);
+    };
+  }, [profileOpen]);
+
+  useEffect(() => () => {
+    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
+  }, []);
+
   function showToast(message: string) {
+    if (toastTimerRef.current !== null) window.clearTimeout(toastTimerRef.current);
     setToast(message);
-    window.setTimeout(() => setToast(""), 2600);
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast("");
+      toastTimerRef.current = null;
+    }, 2600);
   }
 
   async function copyLink(slug?: string) {
@@ -84,12 +147,19 @@ export function Dashboard({ user, initialData }: { user: PortalUser; initialData
       setLinkFormOpen(true);
       return;
     }
-    await navigator.clipboard?.writeText(`https://estimate.muddy-puppy.com/${target}`);
-    showToast("Borrower link copied");
+    try {
+      await writeClipboardText(`https://estimate.muddy-puppy.com/${target}`);
+      showToast("Borrower link copied");
+    } catch {
+      showToast("Could not copy the borrower link. Please copy it from the Links page.");
+    }
   }
 
   async function createLink(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (linkRequestRef.current) return;
+    linkRequestRef.current = true;
+    setLinkSaving(true);
     const form = event.currentTarget;
     const values = new FormData(form);
     try {
@@ -103,16 +173,33 @@ export function Dashboard({ user, initialData }: { user: PortalUser; initialData
       showToast("Borrower link created");
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Link creation failed");
+    } finally {
+      linkRequestRef.current = false;
+      setLinkSaving(false);
     }
   }
 
   async function updateStatus(borrower: Borrower, nextStatus: BorrowerStatus) {
+    if (borrower.status === nextStatus || statusRequestRef.current) return;
+    statusRequestRef.current = true;
+    setStatusSaving(nextStatus);
     try {
       await crmRequest(`borrowers/${borrower.id}/status`, "PATCH", { status: nextStatus });
       setBorrowers((current) => current.map((item) => item.id === borrower.id ? { ...item, status: nextStatus } : item));
       showToast(`Borrower marked ${label(nextStatus).toLowerCase()}`);
     } catch (error) {
       showToast(error instanceof Error ? error.message : "Status update failed");
+    } finally {
+      statusRequestRef.current = false;
+      setStatusSaving(null);
+    }
+  }
+
+  function updateGlobalSearch(value: string) {
+    setQuery(value);
+    if (value.trim()) {
+      setStatus("all");
+      setView("Borrowers");
     }
   }
 
@@ -140,7 +227,7 @@ export function Dashboard({ user, initialData }: { user: PortalUser; initialData
           <button disabled title="Workspace settings are the next milestone"><span className="nav-icon icon-settings" aria-hidden="true" />Settings <small>SOON</small></button>
         </nav>
         <div className="workspace-card"><span>ACTIVE WORKSPACE</span><strong>{organization.name}</strong><p>{label(initialData.membership.role)} access</p></div>
-        <div className="profile-wrap">
+        <div className="profile-wrap" ref={profileRef}>
           {profileOpen && <div className="profile-menu">
             <span>SIGNED IN</span><strong>{user.displayName}</strong>{user.email && <small>{user.email}</small>}
             <a href="/.auth/logout?post_logout_redirect_uri=/">Sign out</a>
@@ -153,17 +240,17 @@ export function Dashboard({ user, initialData }: { user: PortalUser; initialData
 
       <section className="workspace">
         <header className="topbar">
-          <button className="mobile-brand" aria-label="Open navigation"><Brand /></button>
-          <div className="global-search"><span aria-hidden="true" /><input aria-label="Search borrowers" placeholder="Search borrowers" value={query} onChange={(event) => setQuery(event.target.value)} /></div>
-          <div className="top-actions"><button className="icon-button" aria-label="Notifications">●<i /></button><button className="primary-button" onClick={() => { setView("Links"); setLinkFormOpen(true); }}>＋ New borrower link</button></div>
+          <div className="mobile-brand"><Brand /></div>
+          <div className="global-search"><span aria-hidden="true" /><input aria-label="Search borrowers" placeholder="Search borrowers" value={query} onChange={(event) => updateGlobalSearch(event.target.value)} /></div>
+          <div className="top-actions"><button className="primary-button" onClick={() => { setView("Links"); setLinkFormOpen(true); }}>＋ New borrower link</button></div>
         </header>
 
         {view === "Overview" && <Overview firstName={firstName} data={initialData} borrowers={borrowers} links={links} metrics={metrics} onViewAll={() => setView("Borrowers")} onSelect={(item) => setSelectedId(item.id)} onCopy={copyLink} />}
         {view === "Borrowers" && <BorrowerView borrowers={filtered} allBorrowers={borrowers} query={query} setQuery={setQuery} status={status} setStatus={setStatus} links={links} onSelect={(item) => setSelectedId(item.id)} onCopy={copyLink} />}
-        {view === "Links" && <LinksView links={links} formOpen={linkFormOpen} setFormOpen={setLinkFormOpen} onCreate={createLink} onCopy={copyLink} />}
+        {view === "Links" && <LinksView links={links} formOpen={linkFormOpen} setFormOpen={setLinkFormOpen} saving={linkSaving} onCreate={createLink} onCopy={copyLink} />}
       </section>
 
-      {selected && <BorrowerDrawer borrower={selected} onClose={() => setSelectedId(null)} onStatus={updateStatus} onNote={addNote} onToast={showToast} />}
+      {selected && <BorrowerDrawer borrower={selected} statusSaving={statusSaving} onClose={() => setSelectedId(null)} onStatus={updateStatus} onNote={addNote} onToast={showToast} />}
       {toast && <div className="toast" role="status"><span>✓</span>{toast}</div>}
     </main>
   );
@@ -200,7 +287,7 @@ function Overview({ firstName, data, borrowers, links, metrics, onViewAll, onSel
         {followUps.length ? <><div className="follow-list">{followUps.map((borrower, index) => <button key={borrower.id} onClick={() => onSelect(borrower)}><span className={`avatar tone-${index}`}>{initialsFor(borrower.name)}</span><div><strong>{borrower.name}</strong><small>{label(borrower.status)} · {relativeDate(borrower.submitted_at)}</small></div><i className={borrower.status === "new" ? "hot" : ""}>{borrower.status === "new" ? "NEW" : "REVIEW"}</i></button>)}</div><button className="queue-button" onClick={onViewAll}>Open follow-up queue <span>→</span></button></> : <div className="compact-empty"><strong>You’re caught up</strong><span>New borrower submissions will appear here.</span></div>}
       </section>
       <section className="panel performance-panel">
-        <PanelHeading title="Borrower activity" subtitle="Submissions over the last 7 days" action="Last 7 days" />
+        <PanelHeading title="Borrower activity" subtitle="Submissions over the last 7 days" meta="Last 7 days" />
         <div className="chart" aria-label="Seven day borrower activity chart">{data.activity.map((item) => <div key={item.date}><span style={{ height: `${Math.max(4, item.count / maxActivity * 92)}%` }} title={`${item.count} submissions`} /><small>{new Date(`${item.date}T12:00:00`).toLocaleDateString("en-US", { weekday: "narrow" })}</small></div>)}</div>
         <div className="chart-summary"><strong>{data.activity.reduce((sum, item) => sum + item.count, 0)}</strong><span>submissions this week</span></div>
       </section>
@@ -212,8 +299,8 @@ function Overview({ firstName, data, borrowers, links, metrics, onViewAll, onSel
   </div>;
 }
 
-function PanelHeading({ title, subtitle, action, onAction }: { title: string; subtitle: string; action?: string; onAction?: () => void }) {
-  return <div className="panel-heading"><div><h2>{title}</h2><p>{subtitle}</p></div>{action && <button onClick={onAction}>{action}</button>}</div>;
+function PanelHeading({ title, subtitle, action, meta, onAction }: { title: string; subtitle: string; action?: string; meta?: string; onAction?: () => void }) {
+  return <div className="panel-heading"><div><h2>{title}</h2><p>{subtitle}</p></div>{action && onAction ? <button onClick={onAction}>{action}</button> : meta ? <span>{meta}</span> : null}</div>;
 }
 
 function EmptyState({ title, detail, action, onAction }: { title: string; detail: string; action?: string; onAction?: () => void }) {
@@ -238,13 +325,27 @@ function BorrowerView({ borrowers, allBorrowers, query, setQuery, status, setSta
   return <div className="page-content borrowers-page"><div className="page-heading"><div><p>BORROWER PIPELINE</p><h1>Borrowers</h1><span>Review affordability submissions and keep follow-up moving.</span></div><button className="primary-button" onClick={() => onCopy(links[0]?.slug)}>↗ Share borrower link</button></div><section className="panel"><div className="table-tools"><div className="inline-search"><span /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search name, email, or market" aria-label="Search borrowers" /></div><div className="filter-row">{(["all", "new", "contacted", "reviewing", "closed"] as const).map((item) => <button className={status === item ? "active" : ""} key={item} onClick={() => setStatus(item)}>{label(item)}</button>)}</div></div>{borrowers.length ? <BorrowerTable borrowers={borrowers} onSelect={onSelect} /> : <EmptyState title={allBorrowers.length ? "No borrowers match this view" : "No borrower submissions yet"} detail={allBorrowers.length ? "Try another search or status filter." : "Share a borrower link and completed questionnaires will appear here."} action={allBorrowers.length ? undefined : "Copy borrower link"} onAction={() => onCopy(links[0]?.slug)} />}</section></div>;
 }
 
-function LinksView({ links, formOpen, setFormOpen, onCreate, onCopy }: { links: BorrowerLink[]; formOpen: boolean; setFormOpen: (open: boolean) => void; onCreate: (event: FormEvent<HTMLFormElement>) => void; onCopy: (slug?: string) => void }) {
-  return <div className="page-content links-page"><div className="page-heading"><div><p>ATTRIBUTION &amp; SHARING</p><h1>Borrower links</h1><span>Create a separate tracked link for each campaign or referral source.</span></div><button className="primary-button" onClick={() => setFormOpen(!formOpen)}>＋ Create link</button></div>{formOpen && <form className="panel link-create-form" onSubmit={onCreate}><div><strong>Create a borrower link</strong><span>Use a descriptive name so you know where each submission originated.</span></div><label>Link name<input name="name" required minLength={2} maxLength={200} placeholder="First-time buyer seminar" /></label><label>Source <small>Optional</small><input name="source" maxLength={120} placeholder="Event, partner, social profile…" /></label><div><button type="button" className="secondary-button" onClick={() => setFormOpen(false)}>Cancel</button><button className="primary-button">Create link</button></div></form>}<section className="panel">{links.length ? <><div className="links-header"><span>LINK NAME</span><span>VISITS</span><span>SUBMISSIONS</span><span>CONVERSION</span><span /></div>{links.map((link) => <div className="link-row" key={link.id}><div><i>⌁</i><span><strong>{link.name}</strong><small>estimate.muddy-puppy.com/{link.slug}</small></span></div><strong>{link.visits}</strong><strong>{link.submissions}</strong><b>{link.conversion_rate}%</b><button onClick={() => onCopy(link.slug)}>Copy link</button></div>)}</> : <EmptyState title="No borrower links" detail="Create a tracked link to start collecting borrower submissions." action="Create link" onAction={() => setFormOpen(true)} />}</section></div>;
+function LinksView({ links, formOpen, setFormOpen, saving, onCreate, onCopy }: {
+  links: BorrowerLink[];
+  formOpen: boolean;
+  setFormOpen: (open: boolean) => void;
+  saving: boolean;
+  onCreate: (event: FormEvent<HTMLFormElement>) => void;
+  onCopy: (slug?: string) => void;
+}) {
+  return <div className="page-content links-page"><div className="page-heading"><div><p>ATTRIBUTION &amp; SHARING</p><h1>Borrower links</h1><span>Create a separate tracked link for each campaign or referral source.</span></div><button className="primary-button" disabled={saving} onClick={() => setFormOpen(!formOpen)}>＋ Create link</button></div>{formOpen && <form className="panel link-create-form" onSubmit={onCreate} aria-busy={saving}><div><strong>Create a borrower link</strong><span>Use a descriptive name so you know where each submission originated.</span></div><label>Link name<input name="name" required minLength={2} maxLength={200} disabled={saving} placeholder="First-time buyer seminar" /></label><label>Source <small>Optional</small><input name="source" maxLength={120} disabled={saving} placeholder="Event, partner, social profile…" /></label><div><button type="button" className="secondary-button" disabled={saving} onClick={() => setFormOpen(false)}>Cancel</button><button className="primary-button" disabled={saving}>{saving ? "Creating…" : "Create link"}</button></div></form>}<section className="panel">{links.length ? <><div className="links-header"><span>LINK NAME</span><span>VISITS</span><span>SUBMISSIONS</span><span>CONVERSION</span><span /></div>{links.map((link) => <div className="link-row" key={link.id}><div><i>⌁</i><span><strong>{link.name}</strong><small>estimate.muddy-puppy.com/{link.slug}</small></span></div><strong>{link.visits}</strong><strong>{link.submissions}</strong><b>{link.conversion_rate}%</b><button onClick={() => onCopy(link.slug)}>Copy link</button></div>)}</> : <EmptyState title="No borrower links" detail="Create a tracked link to start collecting borrower submissions." action="Create link" onAction={() => setFormOpen(true)} />}</section></div>;
 }
 
-function BorrowerDrawer({ borrower, onClose, onStatus, onNote, onToast }: { borrower: Borrower; onClose: () => void; onStatus: (borrower: Borrower, status: BorrowerStatus) => Promise<void>; onNote: (borrower: Borrower, note: string) => Promise<void>; onToast: (message: string) => void }) {
+function BorrowerDrawer({ borrower, statusSaving, onClose, onStatus, onNote, onToast }: { borrower: Borrower; statusSaving: string | null; onClose: () => void; onStatus: (borrower: Borrower, status: BorrowerStatus) => Promise<void>; onNote: (borrower: Borrower, note: string) => Promise<void>; onToast: (message: string) => void }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [onClose]);
   async function submitNote(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = event.currentTarget;
@@ -261,5 +362,17 @@ function BorrowerDrawer({ borrower, onClose, onStatus, onNote, onToast }: { borr
       setSaving(false);
     }
   }
-  return <div className="drawer-layer" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><aside className="drawer" aria-label={`${borrower.name} details`}><div className="drawer-top"><span>BORROWER DETAILS</span><button onClick={onClose} aria-label="Close details">×</button></div><div className="drawer-profile"><span>{initialsFor(borrower.name)}</span><div><h2>{borrower.name}</h2><p>{borrower.email}</p></div><i className={`status status-${borrower.status}`}>{label(borrower.status)}</i></div>{borrower.home_price && <div className="intent-card"><span>{borrower.scenario ? `${label(borrower.scenario)} SCENARIO` : "AFFORDABILITY RESULT"}</span><div><strong>{money.format(borrower.home_price)}</strong></div><p>{borrower.payment ? `${money.format(borrower.payment)} estimated monthly payment` : "Payment estimate pending"}</p></div>}<div className="detail-grid"><div><span>Target market</span><strong>{borrower.market}</strong></div><div><span>Credit range</span><strong>{borrower.credit_range}</strong></div><div><span>Income used</span><strong>{borrower.income ? money.format(borrower.income) : "Not provided"}</strong></div><div><span>Available funds</span><strong>{borrower.available_funds !== null ? money.format(borrower.available_funds) : "Not provided"}</strong></div><div><span>Source</span><strong>{borrower.source}</strong></div><div><span>Submitted</span><strong>{relativeDate(borrower.submitted_at)}</strong></div></div><div className="status-controls"><span>FOLLOW-UP STATUS</span><div>{(["new", "contacted", "reviewing", "closed"] as BorrowerStatus[]).map((item) => <button className={borrower.status === item ? "active" : ""} key={item} onClick={() => onStatus(borrower, item)}>{label(item)}</button>)}</div></div>{borrower.notes.length > 0 && <section className="notes-list"><span>INTERNAL NOTES</span>{borrower.notes.map((note) => <article key={note.id}><p>{note.body}</p><small>{note.author} · {relativeDate(note.created_at)}</small></article>)}</section>}{noteOpen && <form className="note-form" onSubmit={submitNote}><label>Internal note<textarea name="note" required maxLength={4000} rows={4} placeholder="Add context for the next conversation…" /></label><div><button type="button" className="secondary-button" onClick={() => setNoteOpen(false)}>Cancel</button><button className="primary-button" disabled={saving}>{saving ? "Saving…" : "Save note"}</button></div></form>}<div className="drawer-actions"><button className="primary-button" onClick={() => onStatus(borrower, "contacted")}>Mark contacted</button><button className="secondary-button" onClick={() => setNoteOpen(true)}>＋ Add note</button></div><p className="estimate-note">Affordability figures are educational estimates, not a prequalification, approval, or commitment to lend.</p></aside></div>;
+  return <div className="drawer-layer" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+    <aside className="drawer" role="dialog" aria-modal="true" aria-label={`${borrower.name} details`} aria-busy={statusSaving !== null}>
+      <div className="drawer-top"><span>BORROWER DETAILS</span><button onClick={onClose} aria-label="Close details">×</button></div>
+      <div className="drawer-profile"><span>{initialsFor(borrower.name)}</span><div><h2>{borrower.name}</h2><p>{borrower.email}</p></div><i className={`status status-${borrower.status}`}>{label(borrower.status)}</i></div>
+      {borrower.home_price && <div className="intent-card"><span>{borrower.scenario ? `${label(borrower.scenario)} SCENARIO` : "AFFORDABILITY RESULT"}</span><div><strong>{money.format(borrower.home_price)}</strong></div><p>{borrower.payment ? `${money.format(borrower.payment)} estimated monthly payment` : "Payment estimate pending"}</p></div>}
+      <div className="detail-grid"><div><span>Target market</span><strong>{borrower.market}</strong></div><div><span>Credit range</span><strong>{borrower.credit_range}</strong></div><div><span>Income used</span><strong>{borrower.income ? money.format(borrower.income) : "Not provided"}</strong></div><div><span>Available funds</span><strong>{borrower.available_funds !== null ? money.format(borrower.available_funds) : "Not provided"}</strong></div><div><span>Source</span><strong>{borrower.source}</strong></div><div><span>Submitted</span><strong>{relativeDate(borrower.submitted_at)}</strong></div></div>
+      <div className="status-controls"><span>FOLLOW-UP STATUS</span><div>{(["new", "contacted", "reviewing", "closed"] as BorrowerStatus[]).map((item) => <button className={borrower.status === item ? "active" : ""} disabled={statusSaving !== null || borrower.status === item} key={item} onClick={() => onStatus(borrower, item)}>{statusSaving === item ? "Updating…" : label(item)}</button>)}</div></div>
+      {borrower.notes.length > 0 && <section className="notes-list"><span>INTERNAL NOTES</span>{borrower.notes.map((note) => <article key={note.id}><p>{note.body}</p><small>{note.author} · {relativeDate(note.created_at)}</small></article>)}</section>}
+      {noteOpen && <form className="note-form" onSubmit={submitNote} aria-busy={saving}><label>Internal note<textarea name="note" required maxLength={4000} rows={4} disabled={saving} placeholder="Add context for the next conversation…" /></label><div><button type="button" className="secondary-button" disabled={saving} onClick={() => setNoteOpen(false)}>Cancel</button><button className="primary-button" disabled={saving}>{saving ? "Saving…" : "Save note"}</button></div></form>}
+      <div className="drawer-actions"><button className="primary-button" disabled={statusSaving !== null || borrower.status === "contacted"} onClick={() => onStatus(borrower, "contacted")}>{statusSaving === "contacted" ? "Updating…" : borrower.status === "contacted" ? "Contacted" : "Mark contacted"}</button><button className="secondary-button" disabled={saving} onClick={() => setNoteOpen(true)}>＋ Add note</button></div>
+      <p className="estimate-note">Affordability figures are educational estimates, not a prequalification, approval, or commitment to lend.</p>
+    </aside>
+  </div>;
 }

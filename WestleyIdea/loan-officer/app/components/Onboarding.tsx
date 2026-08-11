@@ -1,35 +1,50 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 
 import type { PortalUser } from "../lib/auth";
 
 export function Onboarding({ user }: { user: PortalUser }) {
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (savingRef.current) return;
+    savingRef.current = true;
     setSaving(true);
     setError("");
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/crm/organizations", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        company_name: form.get("companyName"),
-        nmls_id: form.get("nmlsId") || null,
-        phone: form.get("phone") || null,
-        branch_name: form.get("branchName") || null,
-      }),
-    });
-    const payload = await response.json().catch(() => null) as { error?: string } | null;
-    if (!response.ok) {
-      setError(payload?.error || "Your workspace could not be created.");
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), 20_000);
+    try {
+      const response = await fetch("/api/crm/organizations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_name: form.get("companyName"),
+          nmls_id: form.get("nmlsId") || null,
+          phone: form.get("phone") || null,
+          branch_name: form.get("branchName") || null,
+        }),
+        signal: controller.signal,
+      });
+      const payload = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) {
+        setError(payload?.error || "Your workspace could not be created.");
+        return;
+      }
+      window.location.reload();
+    } catch {
+      setError(controller.signal.aborted
+        ? "Workspace setup timed out. Please try again."
+        : "The Portal could not reach the CRM service. Please try again.");
+    } finally {
+      window.clearTimeout(timeout);
+      savingRef.current = false;
       setSaving(false);
-      return;
     }
-    window.location.reload();
   }
 
   return <main className="onboarding-shell">

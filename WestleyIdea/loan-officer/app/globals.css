@@ -86,8 +86,6 @@ button { color: inherit; cursor: pointer; }
 .field-row { display: grid; gap: 13px; grid-template-columns: 1fr 1fr; }
 .form-error { background: #fff0ec; border-left: 3px solid #d87957; color: #8f3e28; font-size: 9px; line-height: 1.5; margin: 0; padding: 11px 12px; }
 .form-note { color: #8b9894; font-size: 8px; line-height: 1.55; margin: -4px 0 0; text-align: center; }
-.primary-button:disabled { cursor: wait; opacity: .65; }
-
 .auth-error-shell { align-items: center; background: var(--canvas); display: flex; justify-content: center; min-height: 100vh; padding: 24px; }
 .auth-error-card { background: white; border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); max-width: 520px; padding: 42px; }
 .auth-error-card .brand-symbol { background: var(--forest-deep); margin-bottom: 28px; }
@@ -105,13 +103,12 @@ button { color: inherit; cursor: pointer; }
 .global-search input { background: transparent; border: 0; color: var(--ink); font-size: 11px; outline: 0; width: 100%; }
 .global-search input::placeholder { color: #93a09d; }
 .top-actions { align-items: center; display: flex; gap: 11px; }
-.icon-button { background: white; border: 1px solid var(--line); border-radius: 6px; color: #43635d; font-size: 8px; height: 36px; position: relative; width: 36px; }
-.icon-button i { background: var(--warm); border: 2px solid white; border-radius: 50%; height: 8px; position: absolute; right: 7px; top: 6px; width: 8px; }
 .primary-button, .secondary-button { align-items: center; border-radius: 5px; display: inline-flex; font-size: 10px; font-weight: 750; justify-content: center; min-height: 37px; padding: 0 16px; }
 .primary-button { background: var(--forest); border: 1px solid var(--forest); color: white; }
 .primary-button:hover { background: #19544b; }
 .secondary-button { background: white; border: 1px solid #cfd8d3; color: #2b5750; }
 .secondary-button:hover { border-color: #81a39a; }
+.primary-button:disabled, .secondary-button:disabled { cursor: not-allowed; opacity: .62; }
 
 .page-content { margin: 0 auto; max-width: 1440px; padding: 42px clamp(24px, 3.4vw, 52px) 65px; }
 .page-heading { align-items: flex-end; display: flex; justify-content: space-between; margin-bottom: 31px; }
@@ -134,6 +131,7 @@ button { color: inherit; cursor: pointer; }
 .panel-heading h2 { font-family: Georgia, serif; font-size: 16px; font-weight: 500; margin: 0 0 4px; }
 .panel-heading p { color: #8a9693; font-size: 8px; margin: 0; }
 .panel-heading > button { background: transparent; border: 0; color: #397669; font-size: 8px; font-weight: 750; }
+.panel-heading > span { color: #75837f; font-size: 8px; font-weight: 650; }
 
 .table-wrap { overflow-x: auto; }
 table { border-collapse: collapse; min-width: 770px; width: 100%; }
@@ -253,6 +251,7 @@ td:last-child button { background: transparent; border: 0; color: #4e7d74; }
 .status-controls > div { display: grid; gap: 6px; grid-template-columns: repeat(4, 1fr); margin-top: 10px; }
 .status-controls button { background: white; border: 1px solid #d3dcd7; border-radius: 4px; color: #6b7c77; font-size: 7px; min-height: 31px; }
 .status-controls button.active { background: #e1f2eb; border-color: #8dc6b5; color: #246b5c; font-weight: 800; }
+.status-controls button:disabled { cursor: default; opacity: .72; }
 .notes-list { border-bottom: 1px solid #e0e5e0; padding: 20px 0 5px; }
 .notes-list > span { color: #4d8276; font-size: 6px; font-weight: 850; letter-spacing: .12em; }
 .notes-list article { background: #eef3ed; border-left: 3px solid #79bda9; margin: 10px 0; padding: 13px 14px; }
@@ -298,7 +297,7 @@ td:last-child button { background: transparent; border: 0; color: #4e7d74; }
   .mobile-brand .brand strong { color: var(--ink); }
   .mobile-brand .brand-symbol { border-color: #3d806f; }
   .mobile-brand .brand-symbol i { border-color: #3d806f; }
-  .global-search, .icon-button { display: none; }
+  .global-search { display: none; }
   .primary-button { font-size: 8px; min-height: 34px; padding: 0 11px; }
   .page-content { padding: 30px 16px 90px; }
   .page-heading { align-items: flex-start; flex-direction: column; gap: 18px; }
@@ -351,7 +350,6 @@ td:last-child button { background: transparent; border: 0; color: #4e7d74; }
   .topbar { height: 78px; }
   .global-search { width: 340px; }
   .global-search input { font-size: 13px; }
-  .icon-button { font-size: 11px; height: 42px; width: 42px; }
   .primary-button, .secondary-button { font-size: 12px; min-height: 42px; padding-inline: 19px; }
   .page-content { max-width: 1320px; padding-top: 48px; }
   .page-heading { margin-bottom: 36px; }
@@ -368,7 +366,7 @@ td:last-child button { background: transparent; border: 0; color: #4e7d74; }
   .overview-grid { gap: 17px; }
   .panel-heading { min-height: 82px; padding-inline: 26px; }
   .panel-heading h2 { font-size: 20px; }
-  .panel-heading p, .panel-heading > button { font-size: 11px; }
+  .panel-heading p, .panel-heading > button, .panel-heading > span { font-size: 11px; }
 
   th { font-size: 9px; padding: 14px 16px; }
   td { font-size: 11px; height: 70px; padding: 10px 16px; }
