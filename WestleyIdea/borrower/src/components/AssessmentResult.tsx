@@ -45,7 +45,7 @@ export default function AssessmentResult({ result, onRestart, onOpenDashboard }:
 
         {result.demo_mode && (
           <div className="demo-notice">
-            Running in demo mode - results based on standard mortgage guidelines, not AI.
+            Running in demo mode - results based on standard mortgage guidelines.
           </div>
         )}
 

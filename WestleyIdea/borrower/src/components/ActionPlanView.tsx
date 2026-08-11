@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getStateResources } from '../data/localResources'
 import type { UserProfile } from '../types/profile'
-import PlanChatbot from './PlanChatbot'
 
 interface Resource {
   icon: string
@@ -630,19 +629,8 @@ export default function ActionPlanView({ profile, onProfileUpdate, onBack, inDas
           )}
         </div>
 
-        {/* ═══ RIGHT: AI assistant ════════════════════════════ */}
+        {/* Right rail: saved documents */}
         <aside className="plan-sidebar">
-          <div className="sidebar-ai-section">
-            <div className="sidebar-ai-header">
-              <span className="sidebar-ai-icon">🤖</span>
-              <div>
-                <div className="sidebar-ai-title">AI can help!</div>
-                <div className="sidebar-ai-sub">Ask anything about your current step</div>
-              </div>
-            </div>
-            {active && <PlanChatbot profile={profile} currentStep={active.text} />}
-          </div>
-
           {/* My Documents */}
           {(() => {
             const allDocs: { stepLabel: string; itemLabel: string; file: File; key: string; fileIdx: number }[] = []
