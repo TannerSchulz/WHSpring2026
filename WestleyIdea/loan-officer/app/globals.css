@@ -51,6 +51,20 @@ button { color: inherit; cursor: pointer; }
 .profile strong { color: white; font-size: 9px; }
 .profile small { color: #78968f; font-size: 8px; }
 .profile i { color: #668981; font-size: 8px; font-style: normal; margin-left: auto; }
+.profile-wrap { position: relative; }
+.profile-menu { background: #fff; border: 1px solid var(--line); border-radius: 9px; bottom: 62px; box-shadow: var(--shadow); color: var(--ink); display: flex; flex-direction: column; gap: 5px; left: 0; padding: 14px; position: absolute; width: 202px; z-index: 20; }
+.profile-menu span { color: var(--muted); font-size: 7px; font-weight: 800; letter-spacing: .13em; }
+.profile-menu strong { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-menu small { color: var(--muted); font-size: 9px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.profile-menu a { border-top: 1px solid var(--line); color: var(--forest); font-size: 10px; font-weight: 750; margin-top: 6px; padding-top: 10px; text-decoration: none; }
+
+.auth-error-shell { align-items: center; background: var(--canvas); display: flex; justify-content: center; min-height: 100vh; padding: 24px; }
+.auth-error-card { background: white; border: 1px solid var(--line); border-radius: 14px; box-shadow: var(--shadow); max-width: 520px; padding: 42px; }
+.auth-error-card .brand-symbol { background: var(--forest-deep); margin-bottom: 28px; }
+.auth-error-card > p { color: var(--muted); font-size: 9px; font-weight: 800; letter-spacing: .16em; margin: 0 0 10px; }
+.auth-error-card h1 { font-family: Georgia, serif; font-size: clamp(28px, 5vw, 42px); font-weight: 500; letter-spacing: -.04em; margin: 0 0 14px; }
+.auth-error-card > span { color: var(--muted); display: block; font-size: 13px; line-height: 1.65; }
+.auth-error-card a { background: var(--forest); border-radius: 7px; color: white; display: inline-block; font-size: 11px; font-weight: 750; margin-top: 26px; padding: 12px 16px; text-decoration: none; }
 
 .workspace { min-width: 0; }
 .topbar { align-items: center; background: rgba(255,255,255,.93); border-bottom: 1px solid var(--line); display: flex; height: 70px; justify-content: space-between; padding: 0 clamp(24px, 3.4vw, 52px); position: sticky; top: 0; z-index: 8; }
