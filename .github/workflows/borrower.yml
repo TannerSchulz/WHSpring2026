@@ -5,6 +5,7 @@ env:
   VERSION_MAJOR: ${{ vars.VERSION_MAJOR }}
   VERSION_MINOR: ${{ vars.VERSION_MINOR }}
   VERSION_RUN_BASE: ${{ vars.VERSION_RUN_BASE }}
+  AZURE_CORE_OUTPUT: none
 
 on:
   push:
@@ -21,13 +22,14 @@ on:
 
 permissions:
   contents: read
+  id-token: write
 
 concurrency:
   group: borrower-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build-and-push:
+  build-push-deploy:
     runs-on: ubuntu-latest
 
     steps:
@@ -93,3 +95,27 @@ jobs:
         run: |
           docker tag ${{ steps.build.outputs.image }}:${{ steps.build.outputs.version }} ${{ steps.build.outputs.image }}:latest
           docker push ${{ steps.build.outputs.image }}:latest
+
+      - name: Log in to Azure
+        if: steps.build.outputs.publish == 'true' && steps.build.outputs.channel == 'demo'
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy borrower Container App
+        if: steps.build.outputs.publish == 'true' && steps.build.outputs.channel == 'demo'
+        shell: bash
+        run: |
+          az config set extension.use_dynamic_install=yes_without_prompt
+          revision=$(az containerapp update \
+            --name "estimate" \
+            --resource-group "rg-cae-mortgageai" \
+            --image "${{ steps.build.outputs.image }}:${{ steps.build.outputs.version }}" \
+            --query properties.latestRevisionName \
+            --output tsv)
+
+          echo "### Borrower deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Container App: \`estimate\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Revision: \`$revision\`" >> "$GITHUB_STEP_SUMMARY"
