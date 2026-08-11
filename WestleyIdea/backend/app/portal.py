@@ -98,9 +98,9 @@ class NoteCreate(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
 
 
-def slugify(value: str, *, fallback: str) -> str:
+def slugify(value: str, *, fallback: str, max_length: int = 80) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
-    return (slug or fallback)[:80]
+    return (slug or fallback)[:max_length]
 
 
 def get_or_create_user(db: Session, identity: PortalIdentity) -> User:
@@ -183,9 +183,9 @@ def create_organization(payload: OrganizationCreate, db: DbSession, identity: Id
     if active_membership(db, user):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User already belongs to an active organization")
 
-    suffix = secrets.token_hex(3)
+    suffix = secrets.token_hex(6)
     organization_slug = f"{slugify(payload.company_name, fallback='team')}-{suffix}"
-    profile_slug = f"{slugify(identity.display_name, fallback='advisor')}-{suffix}"
+    profile_slug = f"{slugify(identity.display_name, fallback='advisor', max_length=70)}-{suffix}"
     organization = Organization(name=payload.company_name.strip(), slug=organization_slug, status="active")
     db.add(organization)
     db.flush()
@@ -353,7 +353,7 @@ def create_link(payload: LinkCreate, db: DbSession, identity: Identity):
     if profile is None:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Loan officer profile is required")
 
-    slug = f"{profile.public_slug}/{slugify(payload.name, fallback='link')}-{secrets.token_hex(2)}"
+    slug = f"{profile.public_slug}/{slugify(payload.name, fallback='link', max_length=60)}-{secrets.token_hex(5)}"
     link = BorrowerLink(
         organization_id=organization.id,
         loan_officer_profile_id=profile.id,

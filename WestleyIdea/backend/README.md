@@ -36,3 +36,5 @@ Application startup never creates or changes tables. The API exposes `/api/healt
 ## Borrower proxy
 
 The borrower image serves `/api` through an nginx reverse proxy. Configure its `API_UPSTREAM` environment variable with this API's origin, without a trailing slash.
+
+Tracked borrower URLs use the public link endpoints under `/api/public/links/{slug}`. The API resolves the organization and loan officer from the stored link; the browser never supplies an organization ID. Consented submissions are idempotent by public reference and persist the questionnaire, three affordability scenarios, link attribution, activity, and audit records in one transaction.

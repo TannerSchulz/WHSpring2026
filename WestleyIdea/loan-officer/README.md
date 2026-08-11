@@ -37,7 +37,7 @@ Configure the same `PORTAL_API_KEY` value on the API Container App. The key is o
 
 On first sign-in, a user creates an organization workspace. The API persists the organization, owner membership, loan-officer profile, branding record, and first tracked borrower link in Azure SQL. The dashboard then loads organization-scoped borrowers, links, scenarios, metrics, statuses, and notes from the database.
 
-The next workflow milestone is connecting the borrower questionnaire completion to these borrower links so new submissions populate the portal automatically.
+Borrower links load the assigned loan officer and company branding. After explicit consent, a completed questionnaire, contact information, and the three affordability scenarios are attributed to that link and appear in the portal automatically.
 
 ## Container
 

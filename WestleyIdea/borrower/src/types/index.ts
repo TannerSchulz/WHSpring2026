@@ -1,4 +1,11 @@
 export interface MortgageInput {
+  submission_reference?: string
+  first_name?: string
+  last_name?: string
+  email?: string
+  phone?: string
+  consent_to_share?: boolean
+  website?: string
   annual_income: number
   monthly_debts: number
   credit_score: number

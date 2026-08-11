@@ -25,3 +25,10 @@ export const DEFAULT_BRANDING: Branding = {
   website: '',
   nmlsId: '',
 }
+
+export interface TrackedLinkContext {
+  slug: string
+  name: string
+  source: string | null
+  branding: Branding
+}

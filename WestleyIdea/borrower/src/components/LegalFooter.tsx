@@ -3,14 +3,14 @@ import { Branding } from '../types/branding'
 
 type LegalPanel = 'privacy' | 'terms' | 'methodology'
 
-interface Props { branding: Branding }
+interface Props { branding: Branding; tracked: boolean }
 
 const PANEL_COPY: Record<LegalPanel, { title: string; content: JSX.Element }> = {
   privacy: {
     title: 'Privacy',
     content: <>
       <p>Your questionnaire answers are used to create the home-budget estimates shown in this experience. Do not enter Social Security numbers, bank-account numbers, or other information the questionnaire does not request.</p>
-      <p>Contact links open your own email or phone application. This version does not automatically send your questionnaire answers. Information you choose to send directly to a mortgage company will be governed by that company&apos;s privacy notice.</p>
+      <p>When you use a tracked loan-officer link and provide consent, your contact information, questionnaire answers, and planning results are sent to that mortgage professional&apos;s workspace for follow-up.</p>
     </>,
   },
   terms: {
@@ -30,7 +30,7 @@ const PANEL_COPY: Record<LegalPanel, { title: string; content: JSX.Element }> = 
   },
 }
 
-export default function LegalFooter({ branding }: Props) {
+export default function LegalFooter({ branding, tracked }: Props) {
   const [panel, setPanel] = useState<LegalPanel | null>(null)
 
   useEffect(() => {
@@ -46,6 +46,7 @@ export default function LegalFooter({ branding }: Props) {
         <strong>{branding.companyName}</strong>
         {branding.officerName && <span>{branding.officerName}</span>}
         {branding.nmlsId && <span>NMLS #{branding.nmlsId}</span>}
+        {tracked && <span className="legal-tracked-label">Secure tracked questionnaire</span>}
       </div>
       <nav className="legal-footer-links" aria-label="Legal information">
         <button type="button" onClick={() => setPanel('privacy')}>Privacy</button>
