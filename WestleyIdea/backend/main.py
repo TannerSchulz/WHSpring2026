@@ -14,10 +14,12 @@ from pydantic import BaseModel, Field, model_validator
 
 from app.config import get_database_settings
 from app.database import check_database_connection
+from app.portal import router as portal_router
 
 load_dotenv()
 
 app = FastAPI(title="MortgageAI API")
+app.include_router(portal_router)
 
 
 def extract_json(text: str) -> dict:

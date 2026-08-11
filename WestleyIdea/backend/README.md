@@ -13,6 +13,16 @@ SQL_DATABASE=database-name
 
 The container authenticates using Azure managed identity. For a user-assigned identity, also set `AZURE_CLIENT_ID` to that identity's client ID. Do not configure a SQL username or password.
 
+## Portal service configuration
+
+Set the same high-entropy secret on the API and loan-officer Container Apps:
+
+```text
+PORTAL_API_KEY=<random secret>
+```
+
+The portal uses this credential only for server-to-server requests inside the Container Apps environment. Browser requests never receive it. The API still derives organization access from the authenticated user's database membership on every CRM request.
+
 ## Migrations
 
 Apply migrations once before starting a new API revision:

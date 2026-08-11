@@ -26,9 +26,18 @@ After signing in, `/api/auth/me` returns a safe summary of the current identity.
 
 For local development only, an identity can be supplied with `PORTAL_DEV_USER_ID`, `PORTAL_DEV_USER_EMAIL`, and `PORTAL_DEV_USER_NAME`. These values are ignored in production.
 
-## Current scope
+## CRM service
 
-The workspace now consumes the authenticated portal identity, while borrower and link records are still realistic in-memory data. Database-backed organization onboarding and CRM records are the next integration milestone.
+The portal reads and writes CRM records through the internal API. Configure these environment variables on the portal Container App:
+
+- `API_UPSTREAM=http://api`
+- `PORTAL_API_KEY=<high-entropy shared secret>`
+
+Configure the same `PORTAL_API_KEY` value on the API Container App. The key is only sent by the portal server and must never be exposed through a `NEXT_PUBLIC_` variable or committed to the repository.
+
+On first sign-in, a user creates an organization workspace. The API persists the organization, owner membership, loan-officer profile, branding record, and first tracked borrower link in Azure SQL. The dashboard then loads organization-scoped borrowers, links, scenarios, metrics, statuses, and notes from the database.
+
+The next workflow milestone is connecting the borrower questionnaire completion to these borrower links so new submissions populate the portal automatically.
 
 ## Container
 

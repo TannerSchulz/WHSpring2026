@@ -28,3 +28,17 @@ def get_database_settings() -> DatabaseSettings:
         database=os.getenv("SQL_DATABASE"),
         managed_identity_client_id=os.getenv("AZURE_CLIENT_ID"),
     )
+
+
+@dataclass(frozen=True)
+class PortalSettings:
+    api_key: str | None
+
+    def require_api_key(self) -> str:
+        if not self.api_key:
+            raise RuntimeError("Missing required portal configuration: PORTAL_API_KEY")
+        return self.api_key
+
+
+def get_portal_settings() -> PortalSettings:
+    return PortalSettings(api_key=os.getenv("PORTAL_API_KEY"))
