@@ -308,7 +308,14 @@ function EmptyState({ title, detail, action, onAction }: { title: string; detail
 }
 
 function BorrowerTable({ borrowers, onSelect }: { borrowers: Borrower[]; onSelect: (borrower: Borrower) => void }) {
-  return <div className="table-wrap"><table><thead><tr><th>Borrower</th><th>Market</th><th>Scenario</th><th>Submitted</th><th>Status</th><th><span className="sr-only">Open</span></th></tr></thead><tbody>{borrowers.map((borrower) => <tr key={borrower.id} onClick={() => onSelect(borrower)}><td><span className="borrower-cell"><i>{initialsFor(borrower.name)}</i><span><strong>{borrower.name}</strong><small>{borrower.email}</small></span></span></td><td>{borrower.market}</td><td>{borrower.home_price ? <><strong>{money.format(borrower.home_price)}</strong><small>{borrower.scenario ? label(borrower.scenario) : "Result"} · {borrower.payment ? `${money.format(borrower.payment)}/mo` : "Payment pending"}</small></> : <small>Results pending</small>}</td><td>{relativeDate(borrower.submitted_at)}</td><td><span className={`status status-${borrower.status}`}>{label(borrower.status)}</span></td><td><button aria-label={`Open ${borrower.name}`}>→</button></td></tr>)}</tbody></table></div>;
+  return <div className="table-wrap"><table><thead><tr><th>Borrower</th><th>Market</th><th>Scenario</th><th>Submitted</th><th>Status</th><th><span className="sr-only">Open</span></th></tr></thead><tbody>{borrowers.map((borrower) => <tr key={borrower.id} onClick={() => onSelect(borrower)}>
+    <td><span className="borrower-cell"><i>{initialsFor(borrower.name)}</i><span><strong>{borrower.name}</strong><small>{borrower.email}</small></span></span></td>
+    <td data-label="Market">{borrower.market}</td>
+    <td data-label="Scenario">{borrower.home_price ? <><strong>{money.format(borrower.home_price)}</strong><small>{borrower.scenario ? label(borrower.scenario) : "Result"} · {borrower.payment ? `${money.format(borrower.payment)}/mo` : "Payment pending"}</small></> : <small>Results pending</small>}</td>
+    <td data-label="Submitted">{relativeDate(borrower.submitted_at)}</td>
+    <td data-label="Status"><span className={`status status-${borrower.status}`}>{label(borrower.status)}</span></td>
+    <td><button aria-label={`Open ${borrower.name}`}>Review borrower <span aria-hidden="true">→</span></button></td>
+  </tr>)}</tbody></table></div>;
 }
 
 function BorrowerView({ borrowers, allBorrowers, query, setQuery, status, setStatus, links, onSelect, onCopy }: {
@@ -333,12 +340,23 @@ function LinksView({ links, formOpen, setFormOpen, saving, onCreate, onCopy }: {
   onCreate: (event: FormEvent<HTMLFormElement>) => void;
   onCopy: (slug?: string) => void;
 }) {
-  return <div className="page-content links-page"><div className="page-heading"><div><p>ATTRIBUTION &amp; SHARING</p><h1>Borrower links</h1><span>Create a separate tracked link for each campaign or referral source.</span></div><button className="primary-button" disabled={saving} onClick={() => setFormOpen(!formOpen)}>＋ Create link</button></div>{formOpen && <form className="panel link-create-form" onSubmit={onCreate} aria-busy={saving}><div><strong>Create a borrower link</strong><span>Use a descriptive name so you know where each submission originated.</span></div><label>Link name<input name="name" required minLength={2} maxLength={200} disabled={saving} placeholder="First-time buyer seminar" /></label><label>Source <small>Optional</small><input name="source" maxLength={120} disabled={saving} placeholder="Event, partner, social profile…" /></label><div><button type="button" className="secondary-button" disabled={saving} onClick={() => setFormOpen(false)}>Cancel</button><button className="primary-button" disabled={saving}>{saving ? "Creating…" : "Create link"}</button></div></form>}<section className="panel">{links.length ? <><div className="links-header"><span>LINK NAME</span><span>VISITS</span><span>SUBMISSIONS</span><span>CONVERSION</span><span /></div>{links.map((link) => <div className="link-row" key={link.id}><div><i>⌁</i><span><strong>{link.name}</strong><small>estimate.muddy-puppy.com/{link.slug}</small></span></div><strong>{link.visits}</strong><strong>{link.submissions}</strong><b>{link.conversion_rate}%</b><button onClick={() => onCopy(link.slug)}>Copy link</button></div>)}</> : <EmptyState title="No borrower links" detail="Create a tracked link to start collecting borrower submissions." action="Create link" onAction={() => setFormOpen(true)} />}</section></div>;
+  return <div className="page-content links-page"><div className="page-heading"><div><p>ATTRIBUTION &amp; SHARING</p><h1>Borrower links</h1><span>Create a separate tracked link for each campaign or referral source.</span></div><button className="primary-button" disabled={saving} onClick={() => setFormOpen(!formOpen)}>＋ Create link</button></div>{formOpen && <form className="panel link-create-form" onSubmit={onCreate} aria-busy={saving}><div><strong>Create a borrower link</strong><span>Use a descriptive name so you know where each submission originated.</span></div><label>Link name<input name="name" required minLength={2} maxLength={200} disabled={saving} placeholder="First-time buyer seminar" /></label><label>Source <small>Optional</small><input name="source" maxLength={120} disabled={saving} placeholder="Event, partner, social profile…" /></label><div><button type="button" className="secondary-button" disabled={saving} onClick={() => setFormOpen(false)}>Cancel</button><button className="primary-button" disabled={saving}>{saving ? "Creating…" : "Create link"}</button></div></form>}<section className="panel">{links.length ? <><div className="links-header"><span>LINK NAME</span><span>VISITS</span><span>SUBMISSIONS</span><span>CONVERSION</span><span /></div>{links.map((link) => <div className="link-row" key={link.id}>
+    <div><i>⌁</i><span><strong>{link.name}</strong><small>estimate.muddy-puppy.com/{link.slug}</small></span></div>
+    <span className="link-value"><small>Visits</small><strong>{link.visits}</strong></span>
+    <span className="link-value"><small>Submissions</small><strong>{link.submissions}</strong></span>
+    <span className="link-value conversion"><small>Conversion</small><strong>{link.conversion_rate}%</strong></span>
+    <button onClick={() => onCopy(link.slug)}>Copy link</button>
+  </div>)}</> : <EmptyState title="No borrower links" detail="Create a tracked link to start collecting borrower submissions." action="Create link" onAction={() => setFormOpen(true)} />}</section></div>;
 }
 
 function BorrowerDrawer({ borrower, statusSaving, onClose, onStatus, onNote, onToast }: { borrower: Borrower; statusSaving: string | null; onClose: () => void; onStatus: (borrower: Borrower, status: BorrowerStatus) => Promise<void>; onNote: (borrower: Borrower, note: string) => Promise<void>; onToast: (message: string) => void }) {
   const [noteOpen, setNoteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = previousOverflow; };
+  }, []);
   useEffect(() => {
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") onClose();
