@@ -58,6 +58,34 @@ export type BorrowerLink = {
   is_active: boolean;
 };
 
+export type TeamMember = {
+  membership_id: string;
+  user_id: string;
+  display_name: string;
+  email: string;
+  role: "owner" | "admin" | "loan_officer" | "reviewer";
+  status: "invited" | "active" | "disabled";
+  title: string | null;
+  joined_at: string;
+};
+
+export type BrandingSettings = {
+  company_display_name: string;
+  primary_color: string;
+  secondary_color: string;
+  logo_url: string | null;
+  call_to_action_label: string | null;
+  disclosure_text: string | null;
+};
+
+export type LoanOfficerSettings = {
+  title: string | null;
+  nmls_id: string | null;
+  phone: string | null;
+  branch_name: string | null;
+  public_slug: string | null;
+};
+
 export type DashboardData = {
   membership: Membership;
   metrics: {
@@ -69,6 +97,14 @@ export type DashboardData = {
   activity: Array<{ date: string; count: number }>;
   borrowers: Borrower[];
   links: BorrowerLink[];
+  team: TeamMember[];
+  branding: BrandingSettings;
+  profile: LoanOfficerSettings;
+  permissions: {
+    manage_team: boolean;
+    manage_branding: boolean;
+    manage_workspace: boolean;
+  };
   top_link_id: string | null;
   current_user_id: string;
 };

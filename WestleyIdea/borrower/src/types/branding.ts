@@ -10,6 +10,8 @@ export interface Branding {
   email: string
   website: string
   nmlsId: string
+  callToActionLabel?: string | null
+  disclosureText?: string | null
 }
 
 export const DEFAULT_BRANDING: Branding = {
@@ -24,6 +26,8 @@ export const DEFAULT_BRANDING: Branding = {
   email: '',
   website: '',
   nmlsId: '',
+  callToActionLabel: null,
+  disclosureText: null,
 }
 
 export interface TrackedLinkContext {

@@ -7,8 +7,12 @@ type RouteContext = { params: Promise<{ path: string[] }> };
 
 function isAllowed(method: string, path: string) {
   if (method === "POST" && /^(organizations|links)$/.test(path)) return true;
+  if (method === "POST" && path === "team/invitations") return true;
   if (method === "POST" && /^borrowers\/[0-9a-f-]{36}\/notes$/i.test(path)) return true;
   if (method === "PATCH" && /^borrowers\/[0-9a-f-]{36}\/status$/i.test(path)) return true;
+  if (method === "PATCH" && /^team\/members\/[0-9a-f-]{36}$/i.test(path)) return true;
+  if (method === "PATCH" && path === "settings/workspace") return true;
+  if (method === "PUT" && /^(branding|settings\/profile)$/.test(path)) return true;
   return false;
 }
 
@@ -38,3 +42,4 @@ async function proxy(request: NextRequest, context: RouteContext) {
 
 export const POST = proxy;
 export const PATCH = proxy;
+export const PUT = proxy;

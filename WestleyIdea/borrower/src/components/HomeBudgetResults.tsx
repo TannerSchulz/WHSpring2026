@@ -221,7 +221,7 @@ export default function HomeBudgetResults({ profile, onBack, branding, trackedLi
     </article>)}</div>
     <aside className="results-disclosure" aria-label="Important estimate information">
       <strong>Planning estimate—not a Loan Estimate, approval, or offer to lend.</strong>
-      <span>Based on a 30-year {profile.loan_type.toUpperCase()} planning rate of {rate.toFixed(2)}%, ${money(profile.available_savings ?? 0)} in entered down-payment funds, and estimated property taxes, homeowners insurance, and mortgage insurance where applicable. Actual rates, payments, closing costs, and eligibility will vary.</span>
+      <span>{branding.disclosureText || `Based on a 30-year ${profile.loan_type.toUpperCase()} planning rate of ${rate.toFixed(2)}%, $${money(profile.available_savings ?? 0)} in entered down-payment funds, and estimated property taxes, homeowners insurance, and mortgage insurance where applicable. Actual rates, payments, closing costs, and eligibility will vary.`}</span>
       <small>Rate source: {rates?.source ?? 'fallback planning estimate'} · {rates?.as_of ?? 'live feed unavailable'}</small>
     </aside>
     <section className="borrower-next-step">
@@ -230,7 +230,7 @@ export default function HomeBudgetResults({ profile, onBack, branding, trackedLi
         <h2>{branding.officerName ? `Review these numbers with ${branding.officerName}` : 'Review these numbers with a mortgage professional'}</h2>
         <p>A personalized review can replace planning assumptions with current loan options, property-specific costs, and verified information.</p>
         <div className="borrower-contact-actions">
-          {branding.email && <a className="borrower-contact-primary" href={`mailto:${branding.email}?subject=${encodeURIComponent('Home budget review')}&body=${encodeURIComponent('I completed your home budget planner and would like to review my results with you.')}`}>Email for a review</a>}
+          {branding.email && <a className="borrower-contact-primary" href={`mailto:${branding.email}?subject=${encodeURIComponent('Home budget review')}&body=${encodeURIComponent('I completed your home budget planner and would like to review my results with you.')}`}>{branding.callToActionLabel || 'Email for a review'}</a>}
           {branding.phone && <a className="borrower-contact-secondary" href={`tel:${branding.phone.replace(/[^\d+]/g, '')}`}>Call {branding.phone}</a>}
         </div>
         {trackedLink && <small>Your consented questionnaire and planning results are stored in this mortgage professional&apos;s secure workspace.</small>}

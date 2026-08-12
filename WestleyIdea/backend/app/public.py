@@ -174,6 +174,8 @@ def public_link_payload(row) -> dict:
             "email": user.email,
             "website": "",
             "nmlsId": profile.nmls_id or "",
+            "callToActionLabel": branding.call_to_action_label if branding else None,
+            "disclosureText": branding.disclosure_text if branding else None,
         },
     }
 

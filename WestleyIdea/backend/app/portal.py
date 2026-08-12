@@ -98,9 +98,64 @@ class NoteCreate(BaseModel):
     body: str = Field(min_length=1, max_length=4000)
 
 
+class TeamInviteCreate(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    display_name: str = Field(min_length=2, max_length=200)
+    role: Literal["admin", "loan_officer", "reviewer"] = "loan_officer"
+
+
+class TeamMemberUpdate(BaseModel):
+    role: Literal["admin", "loan_officer", "reviewer"] | None = None
+    status: Literal["active", "disabled"] | None = None
+
+
+class BrandingUpdate(BaseModel):
+    company_display_name: str = Field(min_length=2, max_length=200)
+    primary_color: str = Field(min_length=7, max_length=7)
+    secondary_color: str = Field(min_length=7, max_length=7)
+    logo_url: str | None = Field(default=None, max_length=500)
+    call_to_action_label: str | None = Field(default=None, max_length=120)
+    disclosure_text: str | None = Field(default=None, max_length=2000)
+
+
+class WorkspaceUpdate(BaseModel):
+    name: str = Field(min_length=2, max_length=200)
+
+
+class ProfileUpdate(BaseModel):
+    title: str | None = Field(default=None, max_length=150)
+    nmls_id: str | None = Field(default=None, max_length=50)
+    phone: str | None = Field(default=None, max_length=40)
+    branch_name: str | None = Field(default=None, max_length=200)
+
+
 def slugify(value: str, *, fallback: str, max_length: int = 80) -> str:
     slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
     return (slug or fallback)[:max_length]
+
+
+def optional_text(value: str | None) -> str | None:
+    normalized = value.strip() if value else ""
+    return normalized or None
+
+
+def require_management_role(membership: OrganizationMembership) -> None:
+    if membership.role not in {"owner", "admin"}:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Owner or admin access is required")
+
+
+def validate_hex_color(value: str) -> str:
+    normalized = value.strip().lower()
+    if not re.fullmatch(r"#[0-9a-f]{6}", normalized):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Brand colors must be six-digit hex values")
+    return normalized
+
+
+def validate_logo_url(value: str | None) -> str | None:
+    normalized = optional_text(value)
+    if normalized and not re.fullmatch(r"https://[^\s]+", normalized, flags=re.IGNORECASE):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Logo URL must use HTTPS")
+    return normalized
 
 
 def get_or_create_user(db: Session, identity: PortalIdentity) -> User:
@@ -122,6 +177,14 @@ def get_or_create_user(db: Session, identity: PortalIdentity) -> User:
 
     user.email = identity.email
     user.display_name = identity.display_name
+    if user.status == "invited":
+        user.status = "active"
+    if user.status == "active":
+        for membership in db.scalars(select(OrganizationMembership).where(
+            OrganizationMembership.user_id == user.id,
+            OrganizationMembership.status == "invited",
+        )):
+            membership.status = "active"
     return user
 
 
@@ -139,12 +202,20 @@ def active_membership(db: Session, user: User) -> tuple[OrganizationMembership, 
     return (row[0], row[1]) if row else None
 
 
+def has_disabled_membership(db: Session, user: User) -> bool:
+    return db.scalar(select(OrganizationMembership.id).where(
+        OrganizationMembership.user_id == user.id,
+        OrganizationMembership.status == "disabled",
+    ).limit(1)) is not None
+
+
 def require_membership(db: Session, identity: PortalIdentity) -> tuple[User, OrganizationMembership, Organization]:
     user = get_or_create_user(db, identity)
     membership = active_membership(db, user)
     if membership is None:
         db.commit()
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization onboarding is required")
+        detail = "Workspace access is disabled" if has_disabled_membership(db, user) else "Organization onboarding is required"
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=detail)
     return user, membership[0], membership[1]
 
 
@@ -164,6 +235,9 @@ def membership_payload(membership: OrganizationMembership, organization: Organiz
 def portal_session(db: DbSession, identity: Identity):
     user = get_or_create_user(db, identity)
     membership = active_membership(db, user)
+    if membership is None and has_disabled_membership(db, user):
+        db.commit()
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Workspace access is disabled")
     db.commit()
     return {
         "user": {
@@ -180,6 +254,8 @@ def portal_session(db: DbSession, identity: Identity):
 @router.post("/organizations", status_code=status.HTTP_201_CREATED)
 def create_organization(payload: OrganizationCreate, db: DbSession, identity: Identity):
     user = get_or_create_user(db, identity)
+    if user.status == "disabled" or has_disabled_membership(db, user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Workspace access is disabled")
     if active_membership(db, user):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="User already belongs to an active organization")
 
@@ -243,6 +319,15 @@ def decimal_value(value: Decimal | None) -> float | None:
 @router.get("/dashboard")
 def dashboard(db: DbSession, identity: Identity):
     user, membership, organization = require_membership(db, identity)
+    profile = db.scalar(select(LoanOfficerProfile).where(LoanOfficerProfile.membership_id == membership.id))
+    branding = db.scalar(select(BrandingSettings).where(BrandingSettings.organization_id == organization.id))
+    member_rows = db.execute(
+        select(OrganizationMembership, User, LoanOfficerProfile)
+        .join(User, User.id == OrganizationMembership.user_id)
+        .outerjoin(LoanOfficerProfile, LoanOfficerProfile.membership_id == OrganizationMembership.id)
+        .where(OrganizationMembership.organization_id == organization.id)
+        .order_by(OrganizationMembership.created_at)
+    ).all()
     submissions = list(db.scalars(
         select(BorrowerSubmission)
         .where(BorrowerSubmission.organization_id == organization.id)
@@ -341,8 +426,265 @@ def dashboard(db: DbSession, identity: Identity):
             "conversion_rate": round(link.submission_count / link.visit_count * 100, 1) if link.visit_count else 0.0,
             "is_active": bool(link.is_active),
         } for link in links],
+        "team": [{
+            "membership_id": str(member.id),
+            "user_id": str(member_user.id),
+            "display_name": member_user.display_name,
+            "email": member_user.email,
+            "role": member.role,
+            "status": member.status,
+            "title": member_profile.title if member_profile else None,
+            "joined_at": member.created_at.isoformat(),
+        } for member, member_user, member_profile in member_rows],
+        "branding": {
+            "company_display_name": branding.company_display_name if branding else organization.name,
+            "primary_color": branding.primary_color if branding else "#103d37",
+            "secondary_color": branding.secondary_color if branding else "#d9f36f",
+            "logo_url": branding.logo_asset_key if branding else None,
+            "call_to_action_label": branding.call_to_action_label if branding else None,
+            "disclosure_text": branding.disclosure_text if branding else None,
+        },
+        "profile": {
+            "title": profile.title if profile else None,
+            "nmls_id": profile.nmls_id if profile else None,
+            "phone": profile.phone if profile else None,
+            "branch_name": profile.branch_name if profile else None,
+            "public_slug": profile.public_slug if profile else None,
+        },
+        "permissions": {
+            "manage_team": membership.role in {"owner", "admin"},
+            "manage_branding": membership.role in {"owner", "admin"},
+            "manage_workspace": membership.role in {"owner", "admin"},
+        },
         "top_link_id": str(top_link.id) if top_link else None,
         "current_user_id": str(user.id),
+    }
+
+
+@router.post("/team/invitations", status_code=status.HTTP_201_CREATED)
+def invite_team_member(payload: TeamInviteCreate, db: DbSession, identity: Identity):
+    actor, actor_membership, organization = require_membership(db, identity)
+    require_management_role(actor_membership)
+    if actor_membership.role == "admin" and payload.role == "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the owner can invite another admin")
+    email = payload.email.strip().lower()
+    if "@" not in email:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Enter a valid email address")
+
+    invited_user = db.scalar(select(User).where(func.lower(User.email) == email))
+    if invited_user is None:
+        invited_user = User(
+            external_subject=f"invited:{secrets.token_urlsafe(24)}",
+            email=email,
+            display_name=payload.display_name.strip(),
+            status="invited",
+        )
+        db.add(invited_user)
+        db.flush()
+    else:
+        other_membership = db.scalar(select(OrganizationMembership).where(
+            OrganizationMembership.user_id == invited_user.id,
+            OrganizationMembership.organization_id != organization.id,
+            OrganizationMembership.status.in_(("active", "invited")),
+        ))
+        if other_membership:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This account already belongs to another active workspace")
+        invited_user.display_name = payload.display_name.strip()
+        invited_user.status = "invited"
+
+    membership = db.scalar(select(OrganizationMembership).where(
+        OrganizationMembership.organization_id == organization.id,
+        OrganizationMembership.user_id == invited_user.id,
+    ))
+    if membership and membership.status == "active":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="This person is already an active team member")
+    if membership is None:
+        membership = OrganizationMembership(
+            organization_id=organization.id,
+            user_id=invited_user.id,
+            role=payload.role,
+            status="invited",
+        )
+        db.add(membership)
+        db.flush()
+    else:
+        membership.role = payload.role
+        membership.status = "invited"
+
+    profile = db.scalar(select(LoanOfficerProfile).where(LoanOfficerProfile.membership_id == membership.id))
+    if profile is None and payload.role != "reviewer":
+        profile = LoanOfficerProfile(
+            organization_id=organization.id,
+            membership_id=membership.id,
+            public_slug=f"{slugify(payload.display_name, fallback='advisor', max_length=70)}-{secrets.token_hex(6)}",
+            title="Loan officer",
+        )
+        db.add(profile)
+
+    db.add(AuditEvent(
+        organization_id=organization.id,
+        actor_user_id=actor.id,
+        event_type="team.invited",
+        entity_type="organization_membership",
+        entity_id=membership.id,
+        event_data={"email": email, "role": payload.role},
+    ))
+    db.commit()
+    return {
+        "membership_id": str(membership.id),
+        "user_id": str(invited_user.id),
+        "display_name": invited_user.display_name,
+        "email": invited_user.email,
+        "role": membership.role,
+        "status": membership.status,
+        "title": profile.title if profile else None,
+        "joined_at": membership.created_at.isoformat(),
+    }
+
+
+@router.patch("/team/members/{membership_id}")
+def update_team_member(membership_id: UUID, payload: TeamMemberUpdate, db: DbSession, identity: Identity):
+    actor, actor_membership, organization = require_membership(db, identity)
+    require_management_role(actor_membership)
+    row = db.execute(
+        select(OrganizationMembership, User, LoanOfficerProfile)
+        .join(User, User.id == OrganizationMembership.user_id)
+        .outerjoin(LoanOfficerProfile, LoanOfficerProfile.membership_id == OrganizationMembership.id)
+        .where(
+            OrganizationMembership.id == membership_id,
+            OrganizationMembership.organization_id == organization.id,
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Team member was not found")
+    target, target_user, profile = row
+    if target.role == "owner":
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="The workspace owner cannot be changed here")
+    if target.id == actor_membership.id:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="You cannot change your own access")
+    if actor_membership.role == "admin" and target.role == "admin":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only the owner can change another admin")
+    if payload.role is None and payload.status is None:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Choose a role or status change")
+
+    previous = {"role": target.role, "status": target.status}
+    if payload.role is not None:
+        target.role = payload.role
+        if profile is None and payload.role != "reviewer":
+            profile = LoanOfficerProfile(
+                organization_id=organization.id,
+                membership_id=target.id,
+                public_slug=f"{slugify(target_user.display_name, fallback='advisor', max_length=70)}-{secrets.token_hex(6)}",
+                title="Loan officer",
+            )
+            db.add(profile)
+    if payload.status is not None:
+        target.status = payload.status
+        target_user.status = payload.status
+
+    db.add(AuditEvent(
+        organization_id=organization.id,
+        actor_user_id=actor.id,
+        event_type="team.updated",
+        entity_type="organization_membership",
+        entity_id=target.id,
+        event_data={"previous": previous, "role": target.role, "status": target.status},
+    ))
+    db.commit()
+    return {
+        "membership_id": str(target.id),
+        "user_id": str(target_user.id),
+        "display_name": target_user.display_name,
+        "email": target_user.email,
+        "role": target.role,
+        "status": target.status,
+        "title": profile.title if profile else None,
+        "joined_at": target.created_at.isoformat(),
+    }
+
+
+@router.put("/branding")
+def update_branding(payload: BrandingUpdate, db: DbSession, identity: Identity):
+    actor, membership, organization = require_membership(db, identity)
+    require_management_role(membership)
+    branding = db.scalar(select(BrandingSettings).where(BrandingSettings.organization_id == organization.id))
+    if branding is None:
+        branding = BrandingSettings(organization_id=organization.id, company_display_name=payload.company_display_name.strip())
+        db.add(branding)
+    branding.company_display_name = payload.company_display_name.strip()
+    branding.primary_color = validate_hex_color(payload.primary_color)
+    branding.secondary_color = validate_hex_color(payload.secondary_color)
+    branding.logo_asset_key = validate_logo_url(payload.logo_url)
+    branding.call_to_action_label = optional_text(payload.call_to_action_label)
+    branding.disclosure_text = optional_text(payload.disclosure_text)
+    db.flush()
+    db.add(AuditEvent(
+        organization_id=organization.id,
+        actor_user_id=actor.id,
+        event_type="branding.updated",
+        entity_type="branding_settings",
+        entity_id=branding.id,
+        event_data={"company_display_name": branding.company_display_name},
+    ))
+    db.commit()
+    return {
+        "company_display_name": branding.company_display_name,
+        "primary_color": branding.primary_color,
+        "secondary_color": branding.secondary_color,
+        "logo_url": branding.logo_asset_key,
+        "call_to_action_label": branding.call_to_action_label,
+        "disclosure_text": branding.disclosure_text,
+    }
+
+
+@router.patch("/settings/workspace")
+def update_workspace(payload: WorkspaceUpdate, db: DbSession, identity: Identity):
+    actor, membership, organization = require_membership(db, identity)
+    require_management_role(membership)
+    organization.name = payload.name.strip()
+    db.add(AuditEvent(
+        organization_id=organization.id,
+        actor_user_id=actor.id,
+        event_type="organization.updated",
+        entity_type="organization",
+        entity_id=organization.id,
+        event_data={"name": organization.name},
+    ))
+    db.commit()
+    return membership_payload(membership, organization)
+
+
+@router.put("/settings/profile")
+def update_profile(payload: ProfileUpdate, db: DbSession, identity: Identity):
+    actor, membership, organization = require_membership(db, identity)
+    profile = db.scalar(select(LoanOfficerProfile).where(LoanOfficerProfile.membership_id == membership.id))
+    if profile is None:
+        profile = LoanOfficerProfile(
+            organization_id=organization.id,
+            membership_id=membership.id,
+            public_slug=f"{slugify(actor.display_name, fallback='advisor', max_length=70)}-{secrets.token_hex(6)}",
+        )
+        db.add(profile)
+    profile.title = optional_text(payload.title)
+    profile.nmls_id = optional_text(payload.nmls_id)
+    profile.phone = optional_text(payload.phone)
+    profile.branch_name = optional_text(payload.branch_name)
+    db.flush()
+    db.add(AuditEvent(
+        organization_id=organization.id,
+        actor_user_id=actor.id,
+        event_type="profile.updated",
+        entity_type="loan_officer_profile",
+        entity_id=profile.id,
+        event_data={"membership_id": str(membership.id)},
+    ))
+    db.commit()
+    return {
+        "title": profile.title,
+        "nmls_id": profile.nmls_id,
+        "phone": profile.phone,
+        "branch_name": profile.branch_name,
+        "public_slug": profile.public_slug,
     }
 
 

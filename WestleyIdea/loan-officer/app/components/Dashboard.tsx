@@ -1,11 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 
 import type { PortalUser } from "../lib/auth";
-import type { Borrower, BorrowerLink, BorrowerNote, BorrowerStatus, DashboardData } from "../lib/crm-types";
+import type { BrandingSettings, Borrower, BorrowerLink, BorrowerNote, BorrowerStatus, DashboardData, LoanOfficerSettings, Membership, TeamMember } from "../lib/crm-types";
 
-type View = "Overview" | "Borrowers" | "Links";
+type View = "Overview" | "Borrowers" | "Links" | "Team" | "Branding" | "Settings";
 
 const money = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 
@@ -34,7 +34,7 @@ function relativeDate(value: string) {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-async function crmRequest<T>(path: string, method: "POST" | "PATCH", body: unknown): Promise<T> {
+async function crmRequest<T>(path: string, method: "POST" | "PATCH" | "PUT", body: unknown): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 20_000);
   let response: Response;
@@ -81,6 +81,10 @@ export function Dashboard({ user, initialData }: { user: PortalUser; initialData
   const [status, setStatus] = useState<BorrowerStatus | "all">("all");
   const [borrowers, setBorrowers] = useState(initialData.borrowers);
   const [links, setLinks] = useState(initialData.links);
+  const [team, setTeam] = useState(initialData.team);
+  const [branding, setBranding] = useState(initialData.branding);
+  const [profile, setProfile] = useState(initialData.profile);
+  const [membership, setMembership] = useState(initialData.membership);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const [profileOpen, setProfileOpen] = useState(false);
@@ -94,7 +98,7 @@ export function Dashboard({ user, initialData }: { user: PortalUser; initialData
   const selected = borrowers.find((borrower) => borrower.id === selectedId) || null;
   const firstName = user.displayName.split(/\s+/)[0] || "there";
   const initials = initialsFor(user.displayName, user.email);
-  const organization = initialData.membership.organization;
+  const organization = membership.organization;
 
   const filtered = useMemo(() => borrowers.filter((borrower) => {
     const matchesQuery = `${borrower.name} ${borrower.market} ${borrower.email}`.toLowerCase().includes(query.toLowerCase());
@@ -211,6 +215,45 @@ export function Dashboard({ user, initialData }: { user: PortalUser; initialData
     showToast("Note saved");
   }
 
+  async function inviteMember(values: { email: string; display_name: string; role: TeamMember["role"] }) {
+    const member = await crmRequest<TeamMember>("team/invitations", "POST", values);
+    setTeam((current) => [...current.filter((item) => item.membership_id !== member.membership_id), member]);
+    showToast("Invitation created");
+    return member;
+  }
+
+  async function updateMember(member: TeamMember, values: { role?: TeamMember["role"]; status?: "active" | "disabled" }) {
+    const updated = await crmRequest<TeamMember>(`team/members/${member.membership_id}`, "PATCH", values);
+    setTeam((current) => current.map((item) => item.membership_id === updated.membership_id ? updated : item));
+    showToast("Team access updated");
+  }
+
+  async function saveBranding(values: BrandingSettings) {
+    const updated = await crmRequest<BrandingSettings>("branding", "PUT", values);
+    setBranding(updated);
+    showToast("Borrower branding saved");
+  }
+
+  async function saveWorkspace(name: string) {
+    try {
+      const updated = await crmRequest<Membership>("settings/workspace", "PATCH", { name });
+      setMembership(updated);
+      showToast("Workspace name saved");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Workspace settings could not be saved");
+    }
+  }
+
+  async function saveProfile(values: LoanOfficerSettings) {
+    try {
+      const updated = await crmRequest<LoanOfficerSettings>("settings/profile", "PUT", values);
+      setProfile(updated);
+      showToast("Profile saved");
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : "Profile settings could not be saved");
+    }
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -222,9 +265,11 @@ export function Dashboard({ user, initialData }: { user: PortalUser; initialData
             </button>
           ))}
           <div className="nav-label">MANAGE</div>
-          <button disabled title="Team management is the next milestone"><span className="nav-icon icon-team" aria-hidden="true" />Team <small>SOON</small></button>
-          <button disabled title="Branding controls are the next milestone"><span className="nav-icon icon-branding" aria-hidden="true" />Branding <small>SOON</small></button>
-          <button disabled title="Workspace settings are the next milestone"><span className="nav-icon icon-settings" aria-hidden="true" />Settings <small>SOON</small></button>
+          {(["Team", "Branding", "Settings"] as View[]).map((item) => (
+            <button className={view === item ? "active" : ""} key={item} onClick={() => setView(item)}>
+              <span className={`nav-icon icon-${item.toLowerCase()}`} aria-hidden="true" />{item}
+            </button>
+          ))}
         </nav>
         <div className="workspace-card"><span>ACTIVE WORKSPACE</span><strong>{organization.name}</strong><p>{label(initialData.membership.role)} access</p></div>
         <div className="profile-wrap" ref={profileRef}>
@@ -248,6 +293,9 @@ export function Dashboard({ user, initialData }: { user: PortalUser; initialData
         {view === "Overview" && <Overview firstName={firstName} data={initialData} borrowers={borrowers} links={links} metrics={metrics} onViewAll={() => setView("Borrowers")} onSelect={(item) => setSelectedId(item.id)} onCopy={copyLink} />}
         {view === "Borrowers" && <BorrowerView borrowers={filtered} allBorrowers={borrowers} query={query} setQuery={setQuery} status={status} setStatus={setStatus} links={links} onSelect={(item) => setSelectedId(item.id)} onCopy={copyLink} />}
         {view === "Links" && <LinksView links={links} formOpen={linkFormOpen} setFormOpen={setLinkFormOpen} saving={linkSaving} onCreate={createLink} onCopy={copyLink} />}
+        {view === "Team" && <TeamView members={team} currentUserId={initialData.current_user_id} currentRole={membership.role} canManage={initialData.permissions.manage_team} onInvite={inviteMember} onUpdate={updateMember} />}
+        {view === "Branding" && <BrandingView value={branding} canManage={initialData.permissions.manage_branding} onSave={saveBranding} />}
+        {view === "Settings" && <SettingsView organizationName={organization.name} profile={profile} canManageWorkspace={initialData.permissions.manage_workspace} onSaveWorkspace={saveWorkspace} onSaveProfile={saveProfile} />}
       </section>
 
       {selected && <BorrowerDrawer borrower={selected} statusSaving={statusSaving} onClose={() => setSelectedId(null)} onStatus={updateStatus} onNote={addNote} onToast={showToast} />}
@@ -347,6 +395,106 @@ function LinksView({ links, formOpen, setFormOpen, saving, onCreate, onCopy }: {
     <span className="link-value conversion"><small>Conversion</small><strong>{link.conversion_rate}%</strong></span>
     <button onClick={() => onCopy(link.slug)}>Copy link</button>
   </div>)}</> : <EmptyState title="No borrower links" detail="Create a tracked link to start collecting borrower submissions." action="Create link" onAction={() => setFormOpen(true)} />}</section></div>;
+}
+
+function TeamView({ members, currentUserId, currentRole, canManage, onInvite, onUpdate }: {
+  members: TeamMember[];
+  currentUserId: string;
+  currentRole: Membership["role"];
+  canManage: boolean;
+  onInvite: (values: { email: string; display_name: string; role: TeamMember["role"] }) => Promise<TeamMember>;
+  onUpdate: (member: TeamMember, values: { role?: TeamMember["role"]; status?: "active" | "disabled" }) => Promise<void>;
+}) {
+  const [formOpen, setFormOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [invitedEmail, setInvitedEmail] = useState("");
+  const [error, setError] = useState("");
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const values = new FormData(form);
+    setSaving(true);
+    setError("");
+    try {
+      const member = await onInvite({
+        email: String(values.get("email") || ""),
+        display_name: String(values.get("displayName") || ""),
+        role: String(values.get("role") || "loan_officer") as TeamMember["role"],
+      });
+      setInvitedEmail(member.email);
+      form.reset();
+      setFormOpen(false);
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : "The invitation could not be created.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  async function update(member: TeamMember, values: { role?: TeamMember["role"]; status?: "active" | "disabled" }) {
+    setUpdatingId(member.membership_id);
+    setError("");
+    try {
+      await onUpdate(member, values);
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "Team access could not be updated.");
+    } finally {
+      setUpdatingId(null);
+    }
+  }
+  return <div className="page-content manage-page"><div className="page-heading"><div><p>WORKSPACE ACCESS</p><h1>Your team</h1><span>Invite colleagues and control what each person can manage.</span></div>{canManage && <button className="primary-button" onClick={() => setFormOpen((open) => !open)}>＋ Invite team member</button>}</div>
+    {!canManage && <div className="permission-note">You can view the team. An owner or admin manages invitations and roles.</div>}
+    {error && <p className="form-error" role="alert">{error}</p>}
+    {invitedEmail && <div className="invite-ready"><div><strong>Invitation ready for {invitedEmail}</strong><span>Email delivery is not connected yet. Send this person the secure Portal sign-in link; their verified email will activate the invitation.</span></div><button className="secondary-button" onClick={async () => { try { await writeClipboardText(window.location.origin); setInvitedEmail(""); } catch { setError("Clipboard access was blocked. Copy the Portal address from your browser."); } }}>Copy sign-in link</button></div>}
+    {formOpen && <form className="panel manage-form team-invite-form" onSubmit={submit} aria-busy={saving}><div><strong>Invite a colleague</strong><span>The invitation is matched to their verified sign-in email.</span></div><label>Full name<input name="displayName" required minLength={2} maxLength={200} disabled={saving} /></label><label>Email<input name="email" type="email" required maxLength={320} disabled={saving} /></label><label>Role<select name="role" defaultValue="loan_officer" disabled={saving}><option value="loan_officer">Loan officer</option><option value="reviewer">Reviewer</option>{currentRole === "owner" && <option value="admin">Admin</option>}</select></label><div><button type="button" className="secondary-button" disabled={saving} onClick={() => setFormOpen(false)}>Cancel</button><button className="primary-button" disabled={saving}>{saving ? "Creating…" : "Create invitation"}</button></div></form>}
+    <section className="panel team-list"><div className="team-list-head"><span>PERSON</span><span>ROLE</span><span>STATUS</span><span>ACCESS</span></div>{members.map((member) => {
+      const locked = !canManage || member.user_id === currentUserId || member.role === "owner" || (currentRole === "admin" && member.role === "admin") || updatingId === member.membership_id;
+      return <article className="team-row" key={member.membership_id}><div className="team-person"><i>{initialsFor(member.display_name, member.email)}</i><span><strong>{member.display_name}</strong><small>{member.email}</small></span></div><label><span className="mobile-field-label">Role</span><select value={member.role} disabled={locked} onChange={(event) => update(member, { role: event.target.value as TeamMember["role"] })}>{member.role === "owner" && <option value="owner">Owner</option>}<option value="admin">Admin</option><option value="loan_officer">Loan officer</option><option value="reviewer">Reviewer</option></select></label><span className={`member-status member-status-${member.status}`}>{label(member.status)}</span><button className="secondary-button" disabled={locked} onClick={() => update(member, { status: member.status === "disabled" ? "active" : "disabled" })}>{member.status === "disabled" ? "Restore access" : "Disable access"}</button></article>;
+    })}</section>
+  </div>;
+}
+
+function BrandingView({ value, canManage, onSave }: { value: BrandingSettings; canManage: boolean; onSave: (value: BrandingSettings) => Promise<void> }) {
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  function set<K extends keyof BrandingSettings>(key: K, next: BrandingSettings[K]) { setDraft((current) => ({ ...current, [key]: next })); }
+  async function submit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSaving(true);
+    setError("");
+    try {
+      await onSave(draft);
+    } catch (saveError) {
+      setError(saveError instanceof Error ? saveError.message : "Branding could not be saved.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  return <div className="page-content manage-page"><div className="page-heading"><div><p>BORROWER EXPERIENCE</p><h1>Branding</h1><span>Control the identity borrowers see when they use one of your tracked links.</span></div></div>
+    {!canManage && <div className="permission-note">Branding is read-only for your role. Ask an owner or admin to make changes.</div>}
+    {error && <p className="form-error" role="alert">{error}</p>}
+    <div className="branding-layout"><form className="panel settings-form" onSubmit={submit} aria-busy={saving}><SectionTitle title="Brand identity" detail="These values are published to every active borrower link." /><label>Company display name<input value={draft.company_display_name} onChange={(event) => set("company_display_name", event.target.value)} required minLength={2} maxLength={200} disabled={!canManage || saving} /></label><div className="color-fields"><label>Primary color<span className="color-input"><input type="color" value={draft.primary_color} onChange={(event) => set("primary_color", event.target.value)} disabled={!canManage || saving} /><input value={draft.primary_color} onChange={(event) => set("primary_color", event.target.value)} pattern="#[0-9a-fA-F]{6}" disabled={!canManage || saving} /></span></label><label>Accent color<span className="color-input"><input type="color" value={draft.secondary_color} onChange={(event) => set("secondary_color", event.target.value)} disabled={!canManage || saving} /><input value={draft.secondary_color} onChange={(event) => set("secondary_color", event.target.value)} pattern="#[0-9a-fA-F]{6}" disabled={!canManage || saving} /></span></label></div><label>Logo URL <small>Optional HTTPS image URL</small><input type="url" value={draft.logo_url || ""} onChange={(event) => set("logo_url", event.target.value || null)} maxLength={500} placeholder="https://…/logo.png" disabled={!canManage || saving} /></label><label>Primary button label <small>Optional</small><input value={draft.call_to_action_label || ""} onChange={(event) => set("call_to_action_label", event.target.value || null)} maxLength={120} placeholder="Email for a review" disabled={!canManage || saving} /></label><label>Custom estimate disclosure <small>Optional</small><textarea rows={5} value={draft.disclosure_text || ""} onChange={(event) => set("disclosure_text", event.target.value || null)} maxLength={2000} placeholder="Leave blank to use the standard estimate language." disabled={!canManage || saving} /></label>{canManage && <div className="form-actions"><button className="primary-button" disabled={saving}>{saving ? "Saving…" : "Save branding"}</button></div>}</form>
+      <aside className="brand-preview" style={{ "--preview-primary": draft.primary_color, "--preview-accent": draft.secondary_color } as CSSProperties}><span>LIVE PREVIEW</span><div>{draft.logo_url ? <span className="preview-logo" role="img" aria-label="Brand logo preview" style={{ backgroundImage: `url(${draft.logo_url})` }} /> : <i /> }<strong>{draft.company_display_name || "Your company"}</strong></div><h2>Explore your path to homeownership</h2><p>A clear, branded planning experience shared directly by your mortgage team.</p><button>{draft.call_to_action_label || "Email for a review"}</button></aside>
+    </div>
+  </div>;
+}
+
+function SettingsView({ organizationName, profile, canManageWorkspace, onSaveWorkspace, onSaveProfile }: { organizationName: string; profile: LoanOfficerSettings; canManageWorkspace: boolean; onSaveWorkspace: (name: string) => Promise<void>; onSaveProfile: (value: LoanOfficerSettings) => Promise<void> }) {
+  const [workspaceName, setWorkspaceName] = useState(organizationName);
+  const [draft, setDraft] = useState(profile);
+  const [savingWorkspace, setSavingWorkspace] = useState(false);
+  const [savingProfile, setSavingProfile] = useState(false);
+  function set<K extends keyof LoanOfficerSettings>(key: K, next: LoanOfficerSettings[K]) { setDraft((current) => ({ ...current, [key]: next })); }
+  return <div className="page-content manage-page"><div className="page-heading"><div><p>ACCOUNT &amp; WORKSPACE</p><h1>Settings</h1><span>Keep your company and borrower-facing loan officer details accurate.</span></div></div><div className="settings-grid">
+    <form className="panel settings-form" onSubmit={async (event) => { event.preventDefault(); setSavingWorkspace(true); try { await onSaveWorkspace(workspaceName); } finally { setSavingWorkspace(false); } }}><SectionTitle title="Workspace" detail="Used inside the Portal for your organization." /><label>Workspace name<input value={workspaceName} onChange={(event) => setWorkspaceName(event.target.value)} required minLength={2} maxLength={200} disabled={!canManageWorkspace || savingWorkspace} /></label>{canManageWorkspace ? <div className="form-actions"><button className="primary-button" disabled={savingWorkspace}>{savingWorkspace ? "Saving…" : "Save workspace"}</button></div> : <p className="form-help">Only an owner or admin can rename the workspace.</p>}</form>
+    <form className="panel settings-form" onSubmit={async (event) => { event.preventDefault(); setSavingProfile(true); try { await onSaveProfile(draft); } finally { setSavingProfile(false); } }}><SectionTitle title="Loan officer profile" detail="Published on borrower links you own." /><label>Professional title<input value={draft.title || ""} onChange={(event) => set("title", event.target.value || null)} maxLength={150} placeholder="Senior loan officer" disabled={savingProfile} /></label><div className="field-row"><label>NMLS ID<input value={draft.nmls_id || ""} onChange={(event) => set("nmls_id", event.target.value || null)} maxLength={50} disabled={savingProfile} /></label><label>Phone<input type="tel" value={draft.phone || ""} onChange={(event) => set("phone", event.target.value || null)} maxLength={40} disabled={savingProfile} /></label></div><label>Branch name<input value={draft.branch_name || ""} onChange={(event) => set("branch_name", event.target.value || null)} maxLength={200} disabled={savingProfile} /></label>{draft.public_slug && <p className="form-help">Public profile: {draft.public_slug}</p>}<div className="form-actions"><button className="primary-button" disabled={savingProfile}>{savingProfile ? "Saving…" : "Save profile"}</button></div></form>
+    <section className="panel settings-form account-settings"><SectionTitle title="Account" detail="Authentication is managed through your secure customer identity account." /><a className="secondary-button" href="/.auth/logout?post_logout_redirect_uri=/">Sign out of Portal</a></section>
+  </div></div>;
+}
+
+function SectionTitle({ title, detail }: { title: string; detail: string }) {
+  return <div className="section-title"><strong>{title}</strong><span>{detail}</span></div>;
 }
 
 function BorrowerDrawer({ borrower, statusSaving, onClose, onStatus, onNote, onToast }: { borrower: Borrower; statusSaving: string | null; onClose: () => void; onStatus: (borrower: Borrower, status: BorrowerStatus) => Promise<void>; onNote: (borrower: Borrower, note: string) => Promise<void>; onToast: (message: string) => void }) {

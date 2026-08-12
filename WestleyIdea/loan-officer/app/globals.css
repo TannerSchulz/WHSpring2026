@@ -223,6 +223,63 @@ td:last-child button span { font-size: 12px; }
 .link-create-form > div:first-child span { color: var(--muted); font-size: 8px; line-height: 1.45; }
 .link-create-form > div:last-child { display: flex; gap: 7px; }
 
+.manage-page { max-width: 1280px; }
+.permission-note, .invite-ready { background: #edf6f1; border: 1px solid #cfe5da; border-left: 3px solid #65ad98; color: #40665e; font-size: 10px; line-height: 1.55; margin-bottom: 16px; padding: 13px 16px; }
+.invite-ready { align-items: center; display: flex; justify-content: space-between; }
+.invite-ready div { display: flex; flex-direction: column; gap: 4px; }
+.invite-ready strong { color: var(--ink); font-size: 11px; }
+.invite-ready span { color: var(--muted); }
+.manage-form { align-items: end; display: grid; gap: 16px; margin-bottom: 16px; padding: 20px 22px; }
+.team-invite-form { grid-template-columns: minmax(190px, 1.15fr) 1fr 1fr .75fr auto; }
+.manage-form > div:first-child { align-self: center; display: flex; flex-direction: column; gap: 5px; }
+.manage-form > div:first-child strong { font-family: Georgia, serif; font-size: 16px; font-weight: 500; }
+.manage-form > div:first-child span { color: var(--muted); font-size: 9px; line-height: 1.5; }
+.manage-form > div:last-child { display: flex; gap: 7px; }
+.manage-form label, .settings-form label { color: #405b56; display: flex; flex-direction: column; font-size: 9px; font-weight: 750; gap: 8px; }
+.manage-form input, .manage-form select, .settings-form input, .settings-form select, .settings-form textarea, .team-row select { background: white; border: 1px solid #ced8d3; border-radius: 5px; color: var(--ink); outline: none; padding: 11px 12px; width: 100%; }
+.manage-form input:focus, .manage-form select:focus, .settings-form input:focus, .settings-form select:focus, .settings-form textarea:focus, .team-row select:focus { border-color: #5a9d8d; box-shadow: 0 0 0 3px rgba(95,212,171,.12); }
+.settings-form textarea { font: inherit; line-height: 1.55; resize: vertical; }
+.team-list { overflow: hidden; }
+.team-list-head, .team-row { align-items: center; display: grid; gap: 20px; grid-template-columns: minmax(240px, 1.5fr) minmax(140px, .8fr) minmax(80px, .4fr) 130px; padding: 0 22px; }
+.team-list-head { background: #fafbf8; color: #87938f; font-size: 7px; font-weight: 850; letter-spacing: .08em; min-height: 40px; }
+.team-row { border-top: 1px solid #edf0ec; min-height: 79px; }
+.team-person { align-items: center; display: flex; gap: 12px; min-width: 0; }
+.team-person > i { align-items: center; background: #dff1ea; border-radius: 50%; color: #306f61; display: flex; flex: 0 0 36px; font-size: 9px; font-style: normal; font-weight: 800; height: 36px; justify-content: center; }
+.team-person > span { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.team-person strong { font-size: 11px; }
+.team-person small { color: var(--muted); font-size: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.team-row label { margin: 0; }
+.team-row select { font-size: 9px; padding: 9px 10px; }
+.mobile-field-label { display: none; }
+.member-status { border-radius: 12px; font-size: 7px; font-weight: 850; padding: 6px 9px; text-align: center; width: fit-content; }
+.member-status-active { background: #ddf5e9; color: #14745c; }
+.member-status-invited { background: #fff0dc; color: #9a5b21; }
+.member-status-disabled { background: #edf0ed; color: #687570; }
+.team-row > button { font-size: 8px; min-height: 34px; padding: 0 10px; }
+.branding-layout { align-items: start; display: grid; gap: 20px; grid-template-columns: minmax(420px, 1fr) minmax(310px, .72fr); }
+.settings-form { display: flex; flex-direction: column; gap: 18px; padding: 25px; }
+.section-title { border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 5px; padding-bottom: 17px; }
+.section-title strong { font-family: Georgia, serif; font-size: 19px; font-weight: 500; }
+.section-title span, .form-help { color: var(--muted); font-size: 9px; line-height: 1.55; }
+.settings-form label small { color: #95a09d; font-weight: 400; margin-left: 3px; }
+.color-fields { display: grid; gap: 13px; grid-template-columns: 1fr 1fr; }
+.color-input { display: grid; gap: 7px; grid-template-columns: 45px 1fr; }
+.color-input input[type="color"] { cursor: pointer; height: 39px; padding: 3px; }
+.form-actions { border-top: 1px solid var(--line); display: flex; justify-content: flex-end; padding-top: 18px; }
+.form-help { margin: 0; }
+.brand-preview { background: var(--preview-primary); border-radius: 10px; box-shadow: var(--shadow); color: white; overflow: hidden; padding: 27px; position: sticky; top: 92px; }
+.brand-preview > span { color: var(--preview-accent); font-size: 7px; font-weight: 850; letter-spacing: .14em; }
+.brand-preview > div { align-items: center; display: flex; gap: 10px; margin-top: 24px; }
+.brand-preview > div i, .brand-preview .preview-logo { background: white center / contain no-repeat; border-radius: 50%; height: 36px; padding: 4px; width: 36px; }
+.brand-preview > div i { background: var(--preview-accent); }
+.brand-preview > div strong { font-size: 12px; }
+.brand-preview h2 { font-family: Georgia, serif; font-size: 29px; font-weight: 400; line-height: 1.1; margin: 45px 0 13px; max-width: 400px; }
+.brand-preview p { color: rgba(255,255,255,.72); font-size: 10px; line-height: 1.55; max-width: 390px; }
+.brand-preview button { background: var(--preview-accent); border: 0; border-radius: 5px; color: var(--preview-primary); font-size: 9px; font-weight: 800; margin-top: 18px; min-height: 38px; padding: 0 15px; }
+.settings-grid { align-items: start; display: grid; gap: 20px; grid-template-columns: 1fr 1fr; }
+.account-settings { grid-column: 1 / -1; }
+.account-settings a { align-self: flex-start; text-decoration: none; }
+
 .drawer-layer { background: rgba(7, 34, 31, .28); inset: 0; position: fixed; z-index: 20; }
 .drawer { background: #fbfcf9; box-shadow: -20px 0 60px rgba(7,34,31,.18); height: 100%; margin-left: auto; max-width: 465px; overflow-y: auto; padding: 27px 31px; width: 94vw; }
 .drawer-top { align-items: center; display: flex; justify-content: space-between; }
@@ -291,9 +348,9 @@ td:last-child button span { font-size: 12px; }
   .onboarding-form { margin: 30px auto; width: calc(100% - 32px); }
   .app-shell { display: block; }
   .sidebar { bottom: 0; box-shadow: 0 -9px 28px rgba(9,43,40,.16); flex-direction: row; height: calc(62px + env(safe-area-inset-bottom)); min-height: 0; padding: 7px 10px calc(7px + env(safe-area-inset-bottom)); position: fixed; top: auto; width: 100%; z-index: 15; }
-  .sidebar > .brand, .sidebar .workspace-card, .sidebar .profile, .nav-label, .sidebar nav button:nth-of-type(n+4) { display: none; }
-  .sidebar nav { display: grid; flex: 1; grid-template-columns: repeat(3, 1fr); margin: 0; }
-  .sidebar nav button { flex-direction: column; font-size: 10px; gap: 5px; justify-content: center; min-height: 48px; padding: 4px; }
+  .sidebar > .brand, .sidebar .workspace-card, .sidebar .profile-wrap, .nav-label { display: none; }
+  .sidebar nav { display: grid; flex: 1; grid-template-columns: repeat(6, 1fr); margin: 0; }
+  .sidebar nav button { flex-direction: column; font-size: 8px; gap: 4px; justify-content: center; min-height: 48px; padding: 3px 1px; }
   .sidebar nav button.active { box-shadow: inset 0 -2px var(--lime); }
   .nav-icon { height: 16px; width: 16px; }
   .topbar { height: 64px; padding: 0 15px; }
@@ -361,6 +418,36 @@ td:last-child button span { font-size: 12px; }
   .link-create-form { display: flex; flex-direction: column; }
   .link-create-form > div:last-child, .link-create-form label { width: 100%; }
   .link-create-form > div:last-child button { flex: 1; }
+
+  .manage-page .page-heading > button { width: 100%; }
+  .permission-note, .invite-ready { font-size: 11px; }
+  .invite-ready { align-items: stretch; flex-direction: column; gap: 12px; }
+  .invite-ready .secondary-button { width: 100%; }
+  .team-invite-form { align-items: stretch; display: flex; flex-direction: column; }
+  .manage-form > div:last-child { width: 100%; }
+  .manage-form > div:last-child button { flex: 1; }
+  .manage-form label, .settings-form label { font-size: 11px; }
+  .manage-form input, .manage-form select, .settings-form input, .settings-form select, .settings-form textarea, .team-row select { font-size: 16px; min-height: 44px; }
+  .team-list { background: transparent; border: 0; overflow: visible; }
+  .team-list-head { display: none; }
+  .team-row { background: white; border: 1px solid var(--line); border-radius: 10px; display: grid; gap: 14px; grid-template-columns: 1fr auto; margin-bottom: 12px; min-height: 0; padding: 17px; }
+  .team-person { border-bottom: 1px solid var(--line); grid-column: 1 / -1; padding-bottom: 14px; }
+  .team-person > i { font-size: 11px; height: 42px; }
+  .team-person strong { font-size: 14px; }
+  .team-person small { font-size: 11px; }
+  .team-row label { grid-column: 1 / -1; }
+  .mobile-field-label { color: var(--muted); display: block; font-size: 9px; font-weight: 850; letter-spacing: .09em; text-transform: uppercase; }
+  .member-status { align-self: center; font-size: 9px; }
+  .team-row > button { font-size: 11px; min-height: 42px; }
+  .branding-layout, .settings-grid { grid-template-columns: 1fr; }
+  .settings-form { gap: 20px; padding: 20px 17px; }
+  .section-title strong { font-size: 20px; }
+  .section-title span, .form-help { font-size: 11px; }
+  .color-fields, .settings-form .field-row { grid-template-columns: 1fr; }
+  .brand-preview { position: static; }
+  .brand-preview h2 { font-size: 31px; }
+  .account-settings { grid-column: auto; }
+  .account-settings a { align-self: stretch; }
 
   .drawer-layer { background: #fbfcf9; }
   .drawer { height: 100dvh; max-width: none; overscroll-behavior: contain; padding: 22px 18px calc(28px + env(safe-area-inset-bottom)); width: 100%; }
